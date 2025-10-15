@@ -17,7 +17,9 @@ func (r *dictRepo) CreateUnit(ctx context.Context, m *dict.Unit) error {
 }
 func (r *dictRepo) GetUnit(ctx context.Context, id string) (*dict.Unit, error) {
 	var out dict.Unit
-	err := r.db.WithContext(ctx).First(&out, "id = ?", id).Error
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND is_deleted = 0", id).
+		First(&out).Error
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +28,8 @@ func (r *dictRepo) GetUnit(ctx context.Context, id string) (*dict.Unit, error) {
 func (r *dictRepo) ListUnits(ctx context.Context, keyword string, page, pageSize int) ([]dict.Unit, int64, error) {
 	var list []dict.Unit
 	var total int64
-	q := r.db.WithContext(ctx).Model(&dict.Unit{})
+	q := r.db.WithContext(ctx).Model(&dict.Unit{}).
+		Where("is_deleted = 0")
 	if keyword != "" {
 		q = q.Where("name LIKE ?", "%"+keyword+"%")
 	}
@@ -45,7 +48,7 @@ func (r *dictRepo) ListUnits(ctx context.Context, keyword string, page, pageSize
 
 func (r *dictRepo) UpdateUnit(ctx context.Context, id string, name string, sort int) error {
 	return r.db.WithContext(ctx).Model(&dict.Unit{}).
-		Where("id = ?", id).
+		Where("id = ? AND is_deleted = 0", id).
 		Updates(map[string]any{
 			"name": name,
 			"sort": sort,
@@ -53,7 +56,9 @@ func (r *dictRepo) UpdateUnit(ctx context.Context, id string, name string, sort 
 }
 
 func (r *dictRepo) DeleteUnit(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&dict.Unit{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Model(&dict.Unit{}).
+		Where("id = ?", id).
+		Update("is_deleted", 1).Error
 }
 
 // ---------- Spec ----------
@@ -63,7 +68,9 @@ func (r *dictRepo) CreateSpec(ctx context.Context, m *dict.Spec) error {
 
 func (r *dictRepo) GetSpec(ctx context.Context, id string) (*dict.Spec, error) {
 	var out dict.Spec
-	err := r.db.WithContext(ctx).First(&out, "id = ?", id).Error
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND is_deleted = 0", id).
+		First(&out).Error
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +79,8 @@ func (r *dictRepo) GetSpec(ctx context.Context, id string) (*dict.Spec, error) {
 func (r *dictRepo) ListSpecs(ctx context.Context, keyword string, page, pageSize int) ([]dict.Spec, int64, error) {
 	var list []dict.Spec
 	var total int64
-	q := r.db.WithContext(ctx).Model(&dict.Spec{})
+	q := r.db.WithContext(ctx).Model(&dict.Spec{}).
+		Where("is_deleted = 0")
 	if keyword != "" {
 		q = q.Where("name LIKE ?", "%"+keyword+"%")
 	}
@@ -91,12 +99,14 @@ func (r *dictRepo) ListSpecs(ctx context.Context, keyword string, page, pageSize
 
 func (r *dictRepo) UpdateSpec(ctx context.Context, id string, name string, sort int) error {
 	return r.db.WithContext(ctx).Model(&dict.Spec{}).
-		Where("id = ?", id).
+		Where("id = ? AND is_deleted = 0", id).
 		Updates(map[string]any{"name": name, "sort": sort}).Error
 }
 
 func (r *dictRepo) DeleteSpec(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&dict.Spec{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Model(&dict.Spec{}).
+		Where("id = ?", id).
+		Update("is_deleted", 1).Error
 }
 
 // ---------- MealTime ----------
@@ -105,7 +115,9 @@ func (r *dictRepo) CreateMealTime(ctx context.Context, m *dict.MealTime) error {
 }
 func (r *dictRepo) GetMealTime(ctx context.Context, id string) (*dict.MealTime, error) {
 	var out dict.MealTime
-	err := r.db.WithContext(ctx).First(&out, "id = ?", id).Error
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND is_deleted = 0", id).
+		First(&out).Error
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +126,8 @@ func (r *dictRepo) GetMealTime(ctx context.Context, id string) (*dict.MealTime, 
 func (r *dictRepo) ListMealTimes(ctx context.Context, keyword string, page, pageSize int) ([]dict.MealTime, int64, error) {
 	var list []dict.MealTime
 	var total int64
-	q := r.db.WithContext(ctx).Model(&dict.MealTime{})
+	q := r.db.WithContext(ctx).Model(&dict.MealTime{}).
+		Where("is_deleted = 0")
 	if keyword != "" {
 		q = q.Where("name LIKE ?", "%"+keyword+"%")
 	}
@@ -132,9 +145,11 @@ func (r *dictRepo) ListMealTimes(ctx context.Context, keyword string, page, page
 }
 func (r *dictRepo) UpdateMealTime(ctx context.Context, id string, name string, sort int) error {
 	return r.db.WithContext(ctx).Model(&dict.MealTime{}).
-		Where("id = ?", id).
+		Where("id = ? AND is_deleted = 0", id).
 		Updates(map[string]any{"name": name, "sort": sort}).Error
 }
 func (r *dictRepo) DeleteMealTime(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&dict.MealTime{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Model(&dict.MealTime{}).
+		Where("id = ?", id).
+		Update("is_deleted", 1).Error
 }

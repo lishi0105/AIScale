@@ -42,8 +42,11 @@ var defaultMealTimes = []struct {
 func upsertByName(ctx context.Context, db *gorm.DB, row any, sort int) error {
 	return db.WithContext(ctx).
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}},                  // 要求表上有 UNIQUE(name)
-			DoUpdates: clause.Assignments(map[string]any{"sort": sort}), // 冲突时更新 sort
+			Columns: []clause.Column{{Name: "name"}}, // 要求表上有 UNIQUE(name)
+			DoUpdates: clause.Assignments(map[string]any{
+				"sort":       sort,
+				"is_deleted": 0,
+			}),
 		}).
 		Create(row).Error
 }

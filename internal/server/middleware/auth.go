@@ -20,9 +20,9 @@ const (
 	RoleAdmin = 0
 	RoleUser  = 1
 
-	// status
-	StatusEnabled  = 0
-	StatusDisabled = 1
+	// status（与数据库 account.status 保持一致：0=禁用 1=启用）
+	StatusDisabled = 0
+	StatusEnabled  = 1
 )
 
 // Actor 注入到 gin.Context 的登录用户快照

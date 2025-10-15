@@ -40,9 +40,6 @@ func (s *Service) GetByUsername(ctx context.Context, username string) (*domain.A
 func (s *Service) List(ctx context.Context, q domain.ListQuery) ([]domain.Account, int64, error) {
 	return s.r.List(ctx, q)
 }
-func (s *Service) UpdateEmail(ctx context.Context, id string, email string) error {
-	return s.r.UpdateEmail(ctx, id, email)
-}
 func (s *Service) UpdatePasswordHash(ctx context.Context, id string, hash string) error {
 	return s.r.UpdatePasswordHash(ctx, id, hash)
 }

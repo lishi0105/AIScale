@@ -17,13 +17,12 @@ func NewGorm(db *gorm.DB) *GormRepo { return &GormRepo{db: db} }
 func (r *GormRepo) Create(ctx context.Context, a *domain.Account) error {
 	return r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "username"}}, // uk_username
+			Columns: []clause.Column{{Name: "username"}}, // uk_account_username
 			DoUpdates: clause.Assignments(map[string]any{
-				"email":         a.Email,
 				"password_hash": a.PasswordHash,
 				"status":        a.Status,
 				"role":          a.Role,
-				"deleted_at":    gorm.Expr("NULL"), // 关键：恢复软删
+				"is_deleted":    0,
 				"updated_at":    gorm.Expr("NOW()"),
 			}),
 		}).
@@ -35,7 +34,7 @@ func (r *GormRepo) GetByID(ctx context.Context, id string) (*domain.Account, err
 	var a domain.Account
 	// 修复：UUID 主键必须显式 where 条件
 	if err := r.db.WithContext(ctx).
-		Where("id = ?", id).
+		Where("id = ? AND is_deleted = 0", id).
 		First(&a).Error; err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func (r *GormRepo) GetByID(ctx context.Context, id string) (*domain.Account, err
 func (r *GormRepo) GetByUsername(ctx context.Context, username string) (*domain.Account, error) {
 	var a domain.Account
 	if err := r.db.WithContext(ctx).
-		Where("username = ?", username).
+		Where("username = ? AND is_deleted = 0", username).
 		First(&a).Error; err != nil {
 		return nil, err
 	}
@@ -53,12 +52,10 @@ func (r *GormRepo) GetByUsername(ctx context.Context, username string) (*domain.
 }
 
 func (r *GormRepo) List(ctx context.Context, q domain.ListQuery) ([]domain.Account, int64, error) {
-	tx := r.db.WithContext(ctx).Model(&domain.Account{})
+	tx := r.db.WithContext(ctx).Model(&domain.Account{}).
+		Where("is_deleted = 0")
 	if q.UsernameLike != "" {
 		tx = tx.Where("username LIKE ?", "%"+q.UsernameLike+"%")
-	}
-	if q.EmailLike != "" {
-		tx = tx.Where("email LIKE ?", "%"+q.EmailLike+"%")
 	}
 	if q.Status != nil {
 		tx = tx.Where("status = ?", *q.Status)
@@ -94,30 +91,26 @@ func (r *GormRepo) List(ctx context.Context, q domain.ListQuery) ([]domain.Accou
 
 // -------- U --------
 
-func (r *GormRepo) UpdateEmail(ctx context.Context, id string, email string) error {
-	return r.db.WithContext(ctx).Model(&domain.Account{}).
-		Where("id = ?", id).
-		Update("email", email).Error
-}
-
 func (r *GormRepo) UpdatePasswordHash(ctx context.Context, id string, hash string) error {
 	return r.db.WithContext(ctx).Model(&domain.Account{}).
-		Where("id = ?", id).
+		Where("id = ? AND is_deleted = 0", id).
 		Update("password_hash", hash).Error
 }
 
 func (r *GormRepo) UpdateStatus(ctx context.Context, id string, status int) error {
 	return r.db.WithContext(ctx).Model(&domain.Account{}).
-		Where("id = ?", id).
+		Where("id = ? AND is_deleted = 0", id).
 		Update("status", status).Error
 }
 
 // -------- D --------
 func (r *GormRepo) SoftDeleteByID(ctx context.Context, id string) error {
-	// 显式 where 更稳妥
-	return r.db.WithContext(ctx).
+	return r.db.WithContext(ctx).Model(&domain.Account{}).
 		Where("id = ?", id).
-		Delete(&domain.Account{}).Error
+		Updates(map[string]any{
+			"is_deleted": 1,
+			"updated_at": gorm.Expr("NOW()"),
+		}).Error
 }
 
 func (r *GormRepo) HardDeleteByID(ctx context.Context, id string) error {
@@ -132,7 +125,7 @@ func (r *GormRepo) lockByID(ctx context.Context, id string) (*domain.Account, er
 	var a domain.Account
 	if err := r.db.WithContext(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("id = ?", id). // 修复这里
+		Where("id = ? AND is_deleted = 0", id). // 修复这里
 		First(&a).Error; err != nil {
 		return nil, err
 	}

@@ -11,9 +11,9 @@ type Unit struct {
 	ID        string    `gorm:"primaryKey;type:char(36)"`
 	Name      string    `gorm:"size:32;not null;uniqueIndex:uk_unit_name;comment:单位"`
 	Sort      int       `gorm:"not null;default:0;index;comment:排序码"`
+	IsDeleted int       `gorm:"not null;default:0;index;comment:是否已删除"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	IsDeleted int       `gorm:"not null;default:0;index;comment:是否已删除"`
 }
 
 func (u *Unit) BeforeCreate(tx *gorm.DB) error {
@@ -23,13 +23,15 @@ func (u *Unit) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+func (Unit) TableName() string { return "base_unit" }
+
 type Spec struct {
-	ID        string         `gorm:"primaryKey;type:char(36)"`
-	Name      string         `gorm:"size:64;not null;uniqueIndex:uk_spec_name;comment:规格名称"`
-	Sort      int            `gorm:"not null;default:0;index"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        string    `gorm:"primaryKey;type:char(36)"`
+	Name      string    `gorm:"size:32;not null;uniqueIndex:uk_spec_name;comment:规格名称"`
+	Sort      int       `gorm:"not null;default:0;index"`
+	IsDeleted int       `gorm:"not null;default:0;index;comment:是否已删除"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 func (s *Spec) BeforeCreate(tx *gorm.DB) error {
@@ -39,13 +41,15 @@ func (s *Spec) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+func (Spec) TableName() string { return "base_spec" }
+
 type MealTime struct {
-	ID        string         `gorm:"primaryKey;type:char(36)"`
-	Name      string         `gorm:"size:32;not null;uniqueIndex:uk_mealtime_name;comment:餐次"`
-	Sort      int            `gorm:"not null;default:0;index;comment:排序码"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        string    `gorm:"primaryKey;type:char(36)"`
+	Name      string    `gorm:"size:32;not null;uniqueIndex:uk_menu_meal_name;comment:餐次"`
+	Sort      int       `gorm:"not null;default:0;index;comment:排序码"`
+	IsDeleted int       `gorm:"not null;default:0;index;comment:是否已删除"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 func (m *MealTime) BeforeCreate(tx *gorm.DB) error {
@@ -54,3 +58,5 @@ func (m *MealTime) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+func (MealTime) TableName() string { return "menu_meal" }

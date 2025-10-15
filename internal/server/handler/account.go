@@ -28,7 +28,6 @@ func (h *AccountHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/get_by_username", h.getByUsername) // 本人或管理员
 	g.POST("/list", h.list)                     // 可按需收紧为仅管理员
 
-	g.POST("/update_email", h.updateEmail)       // 本人或管理员
 	g.POST("/update_password", h.updatePassword) // 仅管理员重置他人（不可给自己）
 	g.POST("/update_status", h.updateStatus)     // 仅管理员
 	g.POST("/delete", h.softDelete)              // 仅管理员；不可删自己&管理员
@@ -39,25 +38,19 @@ func (h *AccountHandler) Register(rg *gin.RouterGroup) {
 // ---------- 请求体 ----------
 type acc_createReq struct {
 	Username string `json:"username" binding:"required,min=1,max=64"`
-	Email    string `json:"email"    binding:"omitempty,email,max=128"`
 	Password string `json:"password" binding:"required,max=128"`
-	Status   int    `json:"status"` // 默认 0
-	Role     int    `json:"role"`   // 默认 1；禁止 0（管理员）
+	Status   int    `json:"status"` // 默认启用（1）
+	Role     int    `json:"role"`   // 默认普通用户（1）；禁止 0（管理员）
 }
 type getByUsernameReq struct {
 	Username string `json:"username" binding:"required"`
 }
 type acc_listReq struct {
 	UsernameLike string `json:"username_like"`
-	EmailLike    string `json:"email_like"`
 	Status       *int   `json:"status"`
 	Role         *int   `json:"role"`
 	Limit        int    `json:"limit"  binding:"omitempty,min=1,max=200"`
 	Offset       int    `json:"offset" binding:"omitempty,min=0"`
-}
-type updateEmailReq struct {
-	ID    string `json:"id"    binding:"required,uuid4"`
-	Email string `json:"email" binding:"omitempty,email,max=128"`
 }
 type updatePasswordReq struct {
 	ID       string `json:"id"       binding:"required,uuid4"`
@@ -92,9 +85,13 @@ func (h *AccountHandler) create(c *gin.Context) {
 		return
 	}
 	// 保底：禁止创建管理员账户
-	if req.Role == middleware.RoleAdmin {
+	role := req.Role
+	if role == middleware.RoleAdmin {
 		BadRequest(c, errTitle, "禁止创建管理员账户")
 		return
+	}
+	if role != middleware.RoleUser {
+		role = middleware.RoleUser
 	}
 	// 密码复杂度
 	if v := security.Validate(req.Password); len(v) > 0 {
@@ -106,12 +103,15 @@ func (h *AccountHandler) create(c *gin.Context) {
 		InternalError(c, errTitle, "hash 密码失败: "+err.Error())
 		return
 	}
+	status := req.Status
+	if status != middleware.StatusDisabled && status != middleware.StatusEnabled {
+		status = middleware.StatusEnabled
+	}
 	a := &domain.Account{
 		Username:     req.Username,
-		Email:        req.Email,
 		PasswordHash: hash,
-		Status:       req.Status,
-		Role:         req.Role,
+		Status:       status,
+		Role:         role,
 	}
 	if err := h.s.Create(c, a); err != nil {
 		InternalError(c, errTitle, err.Error())
@@ -204,7 +204,6 @@ func (h *AccountHandler) list(c *gin.Context) {
 	}
 	items, total, err := h.s.List(c, domain.ListQuery{
 		UsernameLike: req.UsernameLike,
-		EmailLike:    req.EmailLike,
 		Status:       req.Status,
 		Role:         req.Role,
 		Limit:        req.Limit,
@@ -215,30 +214,6 @@ func (h *AccountHandler) list(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"total": total, "items": items})
-}
-
-func (h *AccountHandler) updateEmail(c *gin.Context) {
-	const errTitle = "更新邮箱失败"
-	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
-		return
-	}
-	var req updateEmailReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		BadRequest(c, errTitle, err.Error())
-		return
-	}
-	// 本人或管理员
-	if act.Role != middleware.RoleAdmin && act.ID != req.ID {
-		ForbiddenError(c, errTitle, "仅可修改本人邮箱")
-		return
-	}
-	if err := h.s.UpdateEmail(c, req.ID, req.Email); err != nil {
-		InternalError(c, errTitle, err.Error())
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 func (h *AccountHandler) updatePassword(c *gin.Context) {

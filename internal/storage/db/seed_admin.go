@@ -17,7 +17,6 @@ import (
 const (
 	defaultAdminUsername = "admin"
 	defaultAdminPassword = "admin123456"
-	defaultAdminEmail    = "admin@example.com"
 	defaultAdminRole     = middleware.RoleAdmin
 )
 
@@ -42,9 +41,8 @@ func EnsureDefaultAdmin(ctx context.Context, gdb *gorm.DB) error {
 	}
 	a := &domain.Account{
 		Username:     defaultAdminUsername,
-		Email:        defaultAdminEmail,
 		PasswordHash: hash,
-		Status:       0,
+		Status:       middleware.StatusEnabled,
 		Role:         int(defaultAdminRole),
 	}
 	if err := repo.Create(ctx, a); err != nil {

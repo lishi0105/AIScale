@@ -8,16 +8,15 @@ import (
 )
 
 type Account struct {
-	ID           string         `gorm:"primaryKey;type:char(36)"`
-	Username     string         `gorm:"size:64;uniqueIndex:uk_username;not null;comment:登录名"`
-	Email        string         `gorm:"size:128;index:idx_email;comment:邮箱"` // 可选就别 not null
-	PasswordHash string         `gorm:"size:128;not null;comment:加密后的密码" json:"-"`
-	Status       int            `gorm:"not null;default:0;comment:0 正常 1 禁用等"`
-	Role         int            `gorm:"not null;default:0;comment:0 普通用户 1 超级用户"`
-	LastLoginAt  *time.Time     `gorm:"comment:最近登录时间"`
-	CreatedAt    time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt    time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt    gorm.DeletedAt `gorm:"index"`
+	ID           string     `gorm:"primaryKey;type:char(36)"`
+	Username     string     `gorm:"size:64;uniqueIndex:uk_account_username;not null;comment:用户名"`
+	PasswordHash string     `gorm:"size:255;not null;comment:密码Hash" json:"-"`
+	Role         int        `gorm:"not null;default:1;comment:角色 0管理员 1用户"`
+	Status       int        `gorm:"not null;default:1;comment:状态 0禁用 1启用"`
+	IsDeleted    int        `gorm:"not null;default:0;index;comment:是否已删除" json:"-"`
+	LastLoginAt  *time.Time `gorm:"comment:最后登录时间"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime"`
 }
 
 func (a *Account) BeforeCreate(tx *gorm.DB) error {
@@ -27,9 +26,10 @@ func (a *Account) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+func (Account) TableName() string { return "account" }
+
 type ListQuery struct {
 	UsernameLike string // 模糊匹配
-	EmailLike    string
 	Status       *int
 	Role         *int
 	Limit        int

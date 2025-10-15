@@ -16,7 +16,6 @@ type Repository interface {
 	List(ctx context.Context, q domain.ListQuery) ([]domain.Account, int64, error)
 
 	// U
-	UpdateEmail(ctx context.Context, id string, email string) error
 	UpdatePasswordHash(ctx context.Context, id string, hash string) error
 	UpdateStatus(ctx context.Context, id string, status int) error
 

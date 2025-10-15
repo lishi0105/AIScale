@@ -33,7 +33,7 @@ func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 	lookup := func(ctx context.Context, uid string) (int, int, error) {
 		a, err := accService.GetByID(ctx, uid)
 		if err != nil {
-			return middleware.RoleUser, middleware.StatusDisabled, err
+			return middleware.RoleUser, middleware.StatusDisabled, nil
 		}
 		return a.Role, a.Status, nil
 	}
