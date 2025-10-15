@@ -1,0 +1,16 @@
+USE main;
+
+CREATE TABLE IF NOT EXISTS account (
+  id CHAR(36) NOT NULL COMMENT '主键UUID',
+  username VARCHAR(64) NOT NULL COMMENT '用户名',
+  password_hash VARCHAR(255) NOT NULL COMMENT '密码Hash',
+  role TINYINT NOT NULL DEFAULT 1 COMMENT '角色 0管理员 1用户',
+  status TINYINT NOT NULL DEFAULT 1 COMMENT '状态 0禁用 1启用',
+  is_deleted TINYINT NOT NULL DEFAULT 0 COMMENT '是否已删除 0未删除 1已删除', 
+  last_login_at DATETIME NULL COMMENT '最后登录时间',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_account_username (username)
+) ENGINE=InnoDB COMMENT='账户';

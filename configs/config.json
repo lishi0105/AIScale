@@ -1,0 +1,33 @@
+{
+  "log": {
+    "dir": "logs",
+    "base_name": "app",
+    "level": "info",
+    "max_size_mb": 50,
+    "max_files": 10,
+    "max_age_days": 30,
+    "compress": true,
+    "startup_timestamp": true
+  },
+  "server": {
+    "port": 7380,
+    "web_root": "./web"
+  },
+  "db": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "name": "main",
+    "user": "food_user",
+    "params": "charset=utf8mb4\u0026parseTime=True\u0026loc=Local",
+    "dsn_env": "DB_DSN",
+    "pass_env": "DB_PASS",
+    "pass_file": "",
+    "max_open_conns": 100,
+    "max_idle_conns": 10,
+    "conn_max_life_seconds": 3600
+  },
+  "auth": {
+    "jwt_secret": "dev-secret-change-me",
+    "access_token_ttl_minute": 120
+  }
+}

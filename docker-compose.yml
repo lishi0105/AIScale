@@ -1,0 +1,30 @@
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb-dev
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: RootPassw0rd!
+      TZ: Asia/Shanghai
+      # 可选：首次初始化就自动建库与应用账户（若你改为用 00_db_and_users.sql，也可删掉下面两行）
+      MARIADB_DATABASE: main
+      # MARIADB_USER: food_user
+      # MARIADB_PASSWORD: StrongPassw0rd!
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+      - --skip-host-cache
+      - --skip-name-resolve
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -uroot -p$${MARIADB_ROOT_PASSWORD} --protocol=socket || mariadb-admin ping -uroot -p$${MARIADB_ROOT_PASSWORD} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      # 挂载“整目录”，容器首次初始化会按文件名顺序执行 *.sql / *.sh
+      - ./sql:/docker-entrypoint-initdb.d:ro
+      # 数据持久化
+      - ./data/mariadb:/var/lib/mysql
