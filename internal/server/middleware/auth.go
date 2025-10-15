@@ -17,8 +17,8 @@ const (
 	ContextStatusKey   = "status"
 
 	// roles
-	RoleAdmin = 0
-	RoleUser  = 1
+	RoleUser  = 0
+	RoleAdmin = 1
 
 	// status（与数据库 account.status 保持一致：0=禁用 1=启用）
 	StatusDisabled = 0

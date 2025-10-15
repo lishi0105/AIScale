@@ -45,12 +45,21 @@ func EnsureDefaultAdmin(ctx context.Context, gdb *gorm.DB) error {
 		Status:       middleware.StatusEnabled,
 		Role:         int(defaultAdminRole),
 	}
-	if err := repo.Create(ctx, a); err != nil {
-		return err
-	}
+	logger.L().Info("RoleAdmin value",
+		zap.Int("as_int", int(middleware.RoleAdmin)),
+		zap.Any("raw", middleware.RoleAdmin),
+		zap.Int("role", a.Role),
+	)
+
 	logger.L().Info("created default admin user",
 		zap.String("username", defaultAdminUsername),
 		zap.String("id", a.ID),
+		zap.Int("role", a.Role),
+		zap.Int("defaultAdminRole", defaultAdminRole),
+		zap.Int("status", a.Status),
 	)
+	if err := repo.Create(ctx, a); err != nil {
+		return err
+	}
 	return nil
 }

@@ -3,8 +3,8 @@
 /**
  * 角色类型定义（与后端保持一致）
  */
-export const ROLE_ADMIN = 0
-export const ROLE_USER = 1
+export const ROLE_USER = 0
+export const ROLE_ADMIN = 1
 
 /**
  * 角色标签映射
@@ -23,8 +23,8 @@ export function roleLabel(role: number): string {
 
 // ====== 其他字典（可选扩展）======
 
-export const STATUS_ENABLED = 0
-export const STATUS_DISABLED = 1
+export const STATUS_DISABLED = 0
+export const STATUS_ENABLED = 1
 
 export const STATUS_LABELS: Record<number, string> = {
   [STATUS_ENABLED]: '启用',

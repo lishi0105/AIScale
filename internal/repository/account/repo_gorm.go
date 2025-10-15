@@ -3,9 +3,11 @@ package account
 import (
 	"context"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	domain "hdzk.cn/foodapp/internal/domain/account"
+	"hdzk.cn/foodapp/pkg/logger"
 )
 
 type GormRepo struct{ db *gorm.DB }
@@ -15,9 +17,15 @@ func NewGorm(db *gorm.DB) *GormRepo { return &GormRepo{db: db} }
 // -------- C --------
 
 func (r *GormRepo) Create(ctx context.Context, a *domain.Account) error {
+	logger.L().Info("created default admin user",
+		zap.String("id", a.ID),
+		zap.Int("role", a.Role),
+		zap.Int("status", a.Status),
+	)
 	return r.db.WithContext(ctx).
+		Select("ID", "Username", "PasswordHash", "Role", "Status", "IsDeleted").
 		Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "username"}}, // uk_account_username
+			Columns: []clause.Column{{Name: "username"}},
 			DoUpdates: clause.Assignments(map[string]any{
 				"password_hash": a.PasswordHash,
 				"status":        a.Status,

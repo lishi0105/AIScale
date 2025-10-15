@@ -11,12 +11,8 @@ export const AccountAPI = {
   get_by_username: (username: string) => http.post('/accounts/get_by_username', { username }),
 
   // create: 后端要求字段全小写：username / password / email? / role / status
-  create: (data: { username: string; password: string; role: number; status?: number; email?: string }) =>
+  create: (data: { username: string; password: string; role: number; status?: number }) =>
     http.post('/accounts/create', data),
-
-  // 后端没有 /update，要拆分：
-  update_email: (data: { id: string; email: string }) =>
-    http.post('/accounts/update_email', data),
 
   update_status: (data: { id: string; status: number }) =>
     http.post('/accounts/update_status', data),

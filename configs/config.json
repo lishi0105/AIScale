@@ -14,7 +14,7 @@
     "web_root": "./web"
   },
   "db": {
-    "host": "127.0.0.1",
+    "host": "172.16.66.33",
     "port": 3306,
     "name": "main",
     "user": "food_user",

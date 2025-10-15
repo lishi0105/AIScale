@@ -51,15 +51,3 @@ CREATE TABLE IF NOT EXISTS menu_meal (
 ) ENGINE=InnoDB
   COMMENT='餐次字典（如 早餐/午餐/晚餐）';
 
-/* ---------- 品类字典：蔬菜/肉类/调味品等 ---------- */
-CREATE TABLE IF NOT EXISTS base_category (
-  id          CHAR(36)   NOT NULL COMMENT '主键UUID',
-  name        VARCHAR(64) NOT NULL COMMENT '品类名称（唯一）',
-  code        VARCHAR(64)     NULL COMMENT '品类编码（选填）',
-  is_deleted  TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
-  created_at  DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at  DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_category_name (name)
-) ENGINE=InnoDB
-  COMMENT='商品品类字典（如 蔬菜/肉类/调味品 等）';

@@ -96,10 +96,6 @@
             <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
-
-        <el-form-item label="邮箱">
-          <el-input v-model="form.Email" placeholder="可选" />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible=false" :disabled="submitLoading">取消</el-button>
@@ -146,7 +142,6 @@ import { getToken } from '@/api/http'
 interface Row {
   ID: string
   Username: string
-  Email?: string
   Status: number   // 0启用 1停用
   Role: number     // 0管理员 1普通用户
   LastLoginAt?: string | null
@@ -235,8 +230,7 @@ const openCreate = () => {
     password: '',
     confirmPassword: '',
     Role: ROLE_USER,
-    Status: STATUS_ENABLED,
-    Email: '',
+    Status: STATUS_ENABLED
   }
   dialogVisible.value = true
 }
@@ -246,8 +240,7 @@ const openEdit = (row: Row) => {
     ID: row.ID,
     Username: row.Username,
     Role: row.Role,
-    Status: row.Status,
-    Email: row.Email || '',
+    Status: row.Status
   }
   dialogVisible.value = true
 }
@@ -276,15 +269,11 @@ const onSubmit = async () => {
         username: Username.trim(),
         password,
         role: Number(form.value.Role ?? ROLE_USER),
-        status: Number(form.value.Status ?? STATUS_ENABLED),
-        email: form.value.Email || undefined,
+        status: Number(form.value.Status ?? STATUS_ENABLED)
       })
       ElMessage.success('创建成功')
     } else {
       const id = form.value.ID!
-      if (form.value.Email !== undefined) {
-        await AccountAPI.update_email({ id, email: form.value.Email || '' })
-      }
       await AccountAPI.update_status({ id, status: Number(form.value.Status ?? STATUS_ENABLED) })
       ElMessage.success('保存成功')
     }
