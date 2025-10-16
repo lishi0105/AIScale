@@ -31,6 +31,10 @@
             <el-icon><Document /></el-icon>
             <span>账户管理</span>
           </el-menu-item>
+          <el-menu-item index="/acl/organizations">
+            <el-icon><Document /></el-icon>
+            <span>中队管理</span>
+          </el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="dict">
           <template #title>
