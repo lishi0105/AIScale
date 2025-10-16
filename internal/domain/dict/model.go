@@ -1,14 +1,11 @@
 package dict
 
 import (
-	"fmt"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	utils "hdzk.cn/foodapp/pkg/utils"
 )
 
 type Unit struct {
@@ -25,7 +22,7 @@ func (u *Unit) BeforeCreate(tx *gorm.DB) error {
 	if u.ID == "" {
 		u.ID = uuid.NewString()
 	}
-	code, err := nextDictionaryCode(tx, "base_unit", "01")
+	code, err := utils.NextDictionaryCode(tx, "base_unit", "01")
 	if err != nil {
 		return err
 	}
@@ -49,7 +46,7 @@ func (s *Spec) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == "" {
 		s.ID = uuid.NewString()
 	}
-	code, err := nextDictionaryCode(tx, "base_spec", "02")
+	code, err := utils.NextDictionaryCode(tx, "base_spec", "02")
 	if err != nil {
 		return err
 	}
@@ -73,7 +70,7 @@ func (m *MealTime) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == "" {
 		m.ID = uuid.NewString()
 	}
-	code, err := nextDictionaryCode(tx, "menu_meal", "03")
+	code, err := utils.NextDictionaryCode(tx, "menu_meal", "03")
 	if err != nil {
 		return err
 	}
@@ -82,46 +79,3 @@ func (m *MealTime) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (MealTime) TableName() string { return "menu_meal" }
-
-func nextDictionaryCode(tx *gorm.DB, tableName, base string) (string, error) {
-	var codes []string
-	if err := tx.Table(tableName).
-		Select("code").
-		Where("code IS NOT NULL AND code <> ''").
-		Pluck("code", &codes).Error; err != nil {
-		return "", err
-	}
-
-	numbers := make([]int, 0, len(codes))
-	for _, c := range codes {
-		if !strings.HasPrefix(c, base) {
-			continue
-		}
-		suffix := strings.TrimPrefix(c, base)
-		if suffix == "" {
-			continue
-		}
-		n, err := strconv.Atoi(suffix)
-		if err != nil {
-			continue
-		}
-		numbers = append(numbers, n)
-	}
-
-	sort.Ints(numbers)
-	expected := 1
-	for _, n := range numbers {
-		if n < expected {
-			continue
-		}
-		if n == expected {
-			expected++
-			continue
-		}
-		if n > expected {
-			break
-		}
-	}
-
-	return fmt.Sprintf("%s%03d", base, expected), nil
-}

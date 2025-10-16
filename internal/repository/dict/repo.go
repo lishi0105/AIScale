@@ -3,10 +3,11 @@ package dict
 import (
 	"context"
 
+	"gorm.io/gorm"
 	dict "hdzk.cn/foodapp/internal/domain/dict"
 )
 
-type DictRepo interface {
+type DictRepository interface {
 	// Unit
 	CreateUnit(ctx context.Context, m *dict.Unit) error
 	GetUnit(ctx context.Context, id string) (*dict.Unit, error)
@@ -28,3 +29,5 @@ type DictRepo interface {
 	UpdateMealTime(ctx context.Context, id string, name string, code *string, sort int, updateCode bool) error
 	DeleteMealTime(ctx context.Context, id string) error
 }
+
+func NewRepository(db *gorm.DB) DictRepository { return &dictRepo{db: db} }

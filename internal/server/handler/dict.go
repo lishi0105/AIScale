@@ -10,9 +10,9 @@ import (
 	types "hdzk.cn/foodapp/internal/transport"
 )
 
-type DictHandler struct{ s *svc.DictService }
+type DictHandler struct{ s *svc.Service }
 
-func New(s *svc.DictService) *DictHandler { return &DictHandler{s: s} }
+func NewDictHandler(s *svc.Service) *DictHandler { return &DictHandler{s: s} }
 
 func (h *DictHandler) Register(rg *gin.RouterGroup) {
 	g := rg.Group("/dict")

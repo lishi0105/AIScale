@@ -2,6 +2,7 @@ package account
 
 import (
 	"context"
+	"errors"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -11,8 +12,6 @@ import (
 )
 
 type GormRepo struct{ db *gorm.DB }
-
-func NewGorm(db *gorm.DB) *GormRepo { return &GormRepo{db: db} }
 
 // -------- C --------
 
@@ -104,14 +103,18 @@ func (r *GormRepo) UpdatePasswordHash(ctx context.Context, id string, hash strin
 		Update("password_hash", hash).Error
 }
 
-func (r *GormRepo) UpdateStatus(ctx context.Context, id string, status int) error {
-	return r.db.WithContext(ctx).Model(&domain.Account{}).
+func (r *GormRepo) UpdateFields(ctx context.Context, id string, fields map[string]any) error {
+	if len(fields) == 0 {
+		return errors.New("没有要更新项目")
+	}
+	return r.db.WithContext(ctx).
+		Model(&domain.Account{}).
 		Where("id = ? AND is_deleted = 0", id).
-		Update("status", status).Error
+		Updates(fields).Error
 }
 
 // -------- D --------
-func (r *GormRepo) SoftDeleteByID(ctx context.Context, id string) error {
+func (r *GormRepo) SoftDelete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Model(&domain.Account{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
@@ -120,21 +123,9 @@ func (r *GormRepo) SoftDeleteByID(ctx context.Context, id string) error {
 		}).Error
 }
 
-func (r *GormRepo) HardDeleteByID(ctx context.Context, id string) error {
+func (r *GormRepo) HardDelete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).
 		Unscoped().
 		Where("id = ?", id).
 		Delete(&domain.Account{}).Error
-}
-
-// 可选：行级锁
-func (r *GormRepo) lockByID(ctx context.Context, id string) (*domain.Account, error) {
-	var a domain.Account
-	if err := r.db.WithContext(ctx).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("id = ? AND is_deleted = 0", id). // 修复这里
-		First(&a).Error; err != nil {
-		return nil, err
-	}
-	return &a, nil
 }

@@ -58,12 +58,16 @@ func main() {
 	}
 
 	// 3.2 确保默认管理员（admin/admin123456）
-	if err := foodDB.EnsureDefaultAdmin(context.Background(), food_db); err != nil {
+	if err := foodDB.EnsureDefaultAccount(context.Background(), food_db); err != nil {
 		log.Fatal("ensure default admin failed", zap.Error(err))
 	}
 
 	if err := foodDB.EnsureDefaultDicts(context.Background(), food_db); err != nil {
 		log.Fatal("seed dicts failed", zap.Error(err))
+	}
+
+	if err := foodDB.EnsureDefaultOrganization(context.Background(), food_db); err != nil {
+		log.Fatal("ensure default org failed", zap.Error(err))
 	}
 
 	engine := server.New(food_db, cfg.Auth, cfg.Server.WebRoot)

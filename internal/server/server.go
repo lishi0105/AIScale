@@ -20,7 +20,7 @@ import (
 )
 
 func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	accService := accsvc.New(accrepo.NewGorm(gdb))
+	accService := accsvc.NewService(accrepo.NewRepository(gdb))
 	accH := acchandler.NewAccountHandler(accService)
 	authH := acchandler.NewAuthHandler(accService, authCfg.JWTSecret, authCfg.AccessTokenTTLMinute)
 
@@ -48,9 +48,9 @@ func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 }
 
 func registerDictRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	dictRepo := dictrepo.New(gdb)
-	dictSvc := dictsvc.New(dictRepo)
-	dictH := dicthandler.New(dictSvc)
+	dictRepo := dictrepo.NewRepository(gdb)
+	dictSvc := dictsvc.NewService(dictRepo)
+	dictH := dicthandler.NewDictHandler(dictSvc)
 
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")

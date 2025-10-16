@@ -66,19 +66,42 @@ CREATE TABLE IF NOT EXISTS menu_meal (
 
 /* ---------- 组织架构表 ---------- */
 CREATE TABLE IF NOT EXISTS base_org (
-  id          CHAR(36)     NOT NULL COMMENT '组织机构Id(UUID)',
-  name        VARCHAR(128) NOT NULL COMMENT '组织机构名称',
-  code        VARCHAR(64)  NOT NULL COMMENT '组织机构编码',
-  sort        INT          NOT NULL DEFAULT 0 COMMENT '排序码',
-  is_deleted  TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否删除：0=否 1=是',
-  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id          CHAR(36)      NOT NULL COMMENT '组织机构Id(UUID)',
+  name        VARCHAR(128)  NOT NULL COMMENT '组织机构名称',
+  code        VARCHAR(64)   NOT NULL COMMENT '组织机构编码',
+  sort        INT           NOT NULL DEFAULT 0 COMMENT '排序码（-1 表示系统保留/隐藏）',
+  parent_id   CHAR(36)      NOT NULL COMMENT '上级组织机构Id（base_org.id；根节点自指）',
+  description TEXT          NOT NULL COMMENT '组织机构描述',
+  is_deleted  TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '是否删除：0=否 1=是',
+  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
   PRIMARY KEY (id),
+
+  -- 编码全局唯一
   UNIQUE KEY uk_org_code (code),
+
+  -- 同级下名称唯一（避免同一个 parent 下重名）
+  UNIQUE KEY uk_org_parent_name (parent_id, name),
+
+  -- 常用索引
+  KEY idx_org_parent (parent_id),
   KEY idx_org_sort (sort),
-  KEY idx_org_del  (is_deleted)
+  KEY idx_org_del (is_deleted),
+  KEY idx_org_del_sort (is_deleted, sort),
+
+  -- 自引用外键（根组织采用自指 parent_id = id）
+  CONSTRAINT fk_org_parent
+    FOREIGN KEY (parent_id) REFERENCES base_org(id)
+    ON UPDATE RESTRICT
+    ON DELETE RESTRICT,
+
+  -- 约束（MariaDB 11+ 有效）
+  CONSTRAINT chk_org_deleted CHECK (is_deleted IN (0,1)),
+  CONSTRAINT chk_org_sort    CHECK (sort >= -1)
 ) ENGINE=InnoDB
   COMMENT='Base_组织机构表';
+
 
 /* ---------- 智能秤表 ---------- */
 CREATE TABLE IF NOT EXISTS base_smart_scale (
@@ -118,10 +141,11 @@ CREATE TABLE IF NOT EXISTS base_ai_model (
 /* -------------- 用户 模型表 ------------------ */
 CREATE TABLE IF NOT EXISTS base_user (
   id             CHAR(36)     NOT NULL COMMENT '用户_id(UUID)',
-  org_id         CHAR(36)         NULL COMMENT '组织机构id（base_org.id）',
-  role           TINYINT NOT NULL DEFAULT 1 COMMENT '角色 0管理员 1用户',
   username       VARCHAR(64)  NOT NULL COMMENT '用户名',
+  description    VARCHAR(128) NULL COMMENT '用户描述',
   password_hash  VARCHAR(255) NOT NULL COMMENT '用户密码Hash（建议BCrypt/Argon2）',
+  org_id         CHAR(36)     NOT NULL COMMENT '组织机构id（base_org.id）',
+  role           TINYINT      NOT NULL DEFAULT 1 COMMENT '角色 0管理员 1用户',
   is_deleted     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否删除标记：0=否 1=是',
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   last_login_at  DATETIME         NULL COMMENT '登录时间',

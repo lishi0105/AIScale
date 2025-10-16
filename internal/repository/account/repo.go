@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 
+	"gorm.io/gorm"
 	domain "hdzk.cn/foodapp/internal/domain/account"
 )
 
@@ -17,9 +18,11 @@ type Repository interface {
 
 	// U
 	UpdatePasswordHash(ctx context.Context, id string, hash string) error
-	UpdateStatus(ctx context.Context, id string, status int) error
+	UpdateFields(ctx context.Context, id string, fields map[string]any) error
 
 	// D
-	SoftDeleteByID(ctx context.Context, id string) error
-	HardDeleteByID(ctx context.Context, id string) error
+	SoftDelete(ctx context.Context, id string) error
+	HardDelete(ctx context.Context, id string) error
 }
+
+func NewRepository(db *gorm.DB) *GormRepo { return &GormRepo{db: db} }

@@ -9,8 +9,6 @@ import (
 
 type dictRepo struct{ db *gorm.DB }
 
-func New(db *gorm.DB) DictRepo { return &dictRepo{db: db} }
-
 // ---------- Unit ----------
 func (r *dictRepo) CreateUnit(ctx context.Context, m *dict.Unit) error {
 	return r.db.WithContext(ctx).Create(m).Error
