@@ -31,7 +31,8 @@ func (r *dictRepo) ListUnits(ctx context.Context, keyword string, page, pageSize
 	q := r.db.WithContext(ctx).Model(&dict.Unit{}).
 		Where("is_deleted = 0")
 	if keyword != "" {
-		q = q.Where("name LIKE ?", "%"+keyword+"%")
+		pattern := "%" + keyword + "%"
+		q = q.Where("(name LIKE ? OR code LIKE ?)", pattern, pattern)
 	}
 	q.Count(&total)
 	if page < 1 {
@@ -46,13 +47,21 @@ func (r *dictRepo) ListUnits(ctx context.Context, keyword string, page, pageSize
 	return list, total, err
 }
 
-func (r *dictRepo) UpdateUnit(ctx context.Context, id string, name string, sort int) error {
+func (r *dictRepo) UpdateUnit(ctx context.Context, id string, name string, code *string, sort int, updateCode bool) error {
+	updates := map[string]any{
+		"name": name,
+		"sort": sort,
+	}
+	if updateCode {
+		if code != nil {
+			updates["code"] = *code
+		} else {
+			updates["code"] = nil
+		}
+	}
 	return r.db.WithContext(ctx).Model(&dict.Unit{}).
 		Where("id = ? AND is_deleted = 0", id).
-		Updates(map[string]any{
-			"name": name,
-			"sort": sort,
-		}).Error
+		Updates(updates).Error
 }
 
 func (r *dictRepo) DeleteUnit(ctx context.Context, id string) error {
@@ -82,7 +91,8 @@ func (r *dictRepo) ListSpecs(ctx context.Context, keyword string, page, pageSize
 	q := r.db.WithContext(ctx).Model(&dict.Spec{}).
 		Where("is_deleted = 0")
 	if keyword != "" {
-		q = q.Where("name LIKE ?", "%"+keyword+"%")
+		pattern := "%" + keyword + "%"
+		q = q.Where("(name LIKE ? OR code LIKE ?)", pattern, pattern)
 	}
 	q.Count(&total)
 	if page < 1 {
@@ -97,10 +107,18 @@ func (r *dictRepo) ListSpecs(ctx context.Context, keyword string, page, pageSize
 	return list, total, err
 }
 
-func (r *dictRepo) UpdateSpec(ctx context.Context, id string, name string, sort int) error {
+func (r *dictRepo) UpdateSpec(ctx context.Context, id string, name string, code *string, sort int, updateCode bool) error {
+	updates := map[string]any{"name": name, "sort": sort}
+	if updateCode {
+		if code != nil {
+			updates["code"] = *code
+		} else {
+			updates["code"] = nil
+		}
+	}
 	return r.db.WithContext(ctx).Model(&dict.Spec{}).
 		Where("id = ? AND is_deleted = 0", id).
-		Updates(map[string]any{"name": name, "sort": sort}).Error
+		Updates(updates).Error
 }
 
 func (r *dictRepo) DeleteSpec(ctx context.Context, id string) error {
@@ -129,7 +147,8 @@ func (r *dictRepo) ListMealTimes(ctx context.Context, keyword string, page, page
 	q := r.db.WithContext(ctx).Model(&dict.MealTime{}).
 		Where("is_deleted = 0")
 	if keyword != "" {
-		q = q.Where("name LIKE ?", "%"+keyword+"%")
+		pattern := "%" + keyword + "%"
+		q = q.Where("(name LIKE ? OR code LIKE ?)", pattern, pattern)
 	}
 	q.Count(&total)
 	if page < 1 {
@@ -143,10 +162,18 @@ func (r *dictRepo) ListMealTimes(ctx context.Context, keyword string, page, page
 		Find(&list).Error
 	return list, total, err
 }
-func (r *dictRepo) UpdateMealTime(ctx context.Context, id string, name string, sort int) error {
+func (r *dictRepo) UpdateMealTime(ctx context.Context, id string, name string, code *string, sort int, updateCode bool) error {
+	updates := map[string]any{"name": name, "sort": sort}
+	if updateCode {
+		if code != nil {
+			updates["code"] = *code
+		} else {
+			updates["code"] = nil
+		}
+	}
 	return r.db.WithContext(ctx).Model(&dict.MealTime{}).
 		Where("id = ? AND is_deleted = 0", id).
-		Updates(map[string]any{"name": name, "sort": sort}).Error
+		Updates(updates).Error
 }
 func (r *dictRepo) DeleteMealTime(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Model(&dict.MealTime{}).
