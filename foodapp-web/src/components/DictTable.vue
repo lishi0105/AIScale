@@ -21,6 +21,11 @@
       v-loading="tableLoading"
     >
       <el-table-column type="index" label="序号" width="80" />
+      <el-table-column label="编码" width="160">
+        <template #default="{ row }">
+          {{ row.Code || '—' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="Name" :label="label" min-width="160" />
       <el-table-column prop="Sort" label="排序码" width="120" />
       <el-table-column label="操作" width="180">
@@ -59,6 +64,14 @@
         <el-form-item label="名称">
           <el-input v-model="form.Name" maxlength="64" show-word-limit />
         </el-form-item>
+        <el-form-item label="编码">
+          <el-input
+            v-model="form.Code"
+            maxlength="32"
+            placeholder="留空将按规则自动生成"
+            show-word-limit
+          />
+        </el-form-item>
         <el-form-item label="排序码">
           <el-input-number v-model="form.Sort" :min="0" :step="1" />
         </el-form-item>
@@ -81,14 +94,15 @@ interface Row {
   ID: string
   Name: string
   Sort: number
+  Code?: string | null
 }
 
 const props = defineProps<{
   label: string
   // 保持你的 props 形状：父组件传入具体 API
   list: (params: { keyword?: string; page?: number; page_size?: number }) => Promise<any>
-  create: (data: { Name: string; Sort?: number }) => Promise<any>
-  update: (data: { ID: string; Name: string; Sort?: number }) => Promise<any>
+  create: (data: { Name: string; Sort?: number; Code?: string }) => Promise<any>
+  update: (data: { ID: string; Name: string; Sort?: number; Code?: string }) => Promise<any>
   remove: (id: string) => Promise<any>
 }>()
 
@@ -109,7 +123,7 @@ const deletingId = ref<string | null>(null)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const submitLoading = ref(false)
-const form = ref<Partial<Row>>({ Name: '', Sort: 0 })
+const form = ref<Partial<Row>>({ Name: '', Sort: 0, Code: '' })
 
 const fetchList = async () => {
   try {
@@ -137,13 +151,13 @@ const onSearch = () => {
 
 const openCreate = () => {
   dialogMode.value = 'create'
-  form.value = { Name: '', Sort: 0 }
+  form.value = { Name: '', Sort: 0, Code: '' }
   dialogVisible.value = true
 }
 
 const openEdit = (row: Row) => {
   dialogMode.value = 'edit'
-  form.value = { ...row }
+  form.value = { ...row, Code: row.Code ?? '' }
   dialogVisible.value = true
 }
 
@@ -155,6 +169,7 @@ const onSubmit = async () => {
     return
   }
   const sort = Number(form.value.Sort ?? 0)
+  const code = form.value.Code?.trim()
   if (!Number.isInteger(sort) || sort < 0) {
     ElMessage.warning('排序码需为非负整数')
     return
@@ -162,11 +177,19 @@ const onSubmit = async () => {
 
   try {
     submitLoading.value = true
+    const payload: { Name: string; Sort: number; Code?: string } = { Name: name, Sort: sort }
+    if (code) payload.Code = code.toUpperCase()
     if (dialogMode.value === 'create') {
-      await props.create({ Name: name, Sort: sort })
+      await props.create(payload)
       ElMessage.success('创建成功')
     } else {
-      await props.update({ ID: String(form.value.ID), Name: name, Sort: sort })
+      const updatePayload: { ID: string; Name: string; Sort: number; Code?: string } = {
+        ID: String(form.value.ID),
+        Name: name,
+        Sort: sort,
+      }
+      if (code) updatePayload.Code = code.toUpperCase()
+      await props.update(updatePayload)
       ElMessage.success('保存成功')
     }
     dialogVisible.value = false

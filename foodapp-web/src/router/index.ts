@@ -6,6 +6,7 @@ import MealTimes from '@/pages/MealTimes.vue'
 import Login from '@/pages/Login.vue'
 import { getToken } from '@/api/http'
 import Accounts from '@/pages/Accounts.vue'
+import Organs from '@/pages/Organs.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -25,6 +26,10 @@ const routes = [
   { path: '/acl/accounts',
     component: Accounts,
     meta: { requiresAuth: true, section: '权限管理', title: '账户管理' }
+  },
+  { path: '/acl/organs',
+    component: Organs,
+    meta: { requiresAuth: true, section: '权限管理', title: '中队管理' }
   },
 ]
 

@@ -30,5 +30,32 @@ export const AccountAPI = {
   // 如需硬删，可暴露：hardRemove: (id: string) => http.post('/accounts/hard_delete', { id }),
 }
 
-// 占位
-export const PermAPI = {}
+export const OrganAPI = {
+  list: (params: { keyword?: string; limit?: number; offset?: number; status?: number }) =>
+    http.post('/organs/list', params || {}),
+
+  get: (id: string) => http.post('/organs/get', { id }),
+
+  create: (data: {
+    name: string
+    code?: string
+    leader?: string
+    phone?: string
+    sort?: number
+    status?: number
+    remark?: string
+  }) => http.post('/organs/create', data),
+
+  update: (data: {
+    id: string
+    name: string
+    code?: string
+    leader?: string
+    phone?: string
+    sort?: number
+    status?: number
+    remark?: string
+  }) => http.post('/organs/update', data),
+
+  remove: (id: string) => http.post('/organs/delete', { id }),
+}

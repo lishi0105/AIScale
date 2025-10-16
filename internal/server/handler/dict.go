@@ -38,14 +38,16 @@ func (h *DictHandler) Register(rg *gin.RouterGroup) {
 
 // 通用请求体
 type dict_createReq struct {
-	Name string `json:"name" binding:"required,min=1,max=64"`
-	Sort int    `json:"sort" binding:"gte=0"`
+	Name string  `json:"name" binding:"required,min=1,max=32"`
+	Code *string `json:"code" binding:"omitempty,max=32"`
+	Sort int     `json:"sort" binding:"gte=0"`
 }
 
 type dict_updateReq struct {
-	ID   string `json:"id"   binding:"required,uuid4"`
-	Name string `json:"name" binding:"required,name,max=128"`
-	Sort int    `json:"sort" binding:"gte=0"`
+	ID   string  `json:"id"   binding:"required,uuid4"`
+	Name string  `json:"name" binding:"required,min=1,max=32"`
+	Code *string `json:"code" binding:"omitempty,max=32"`
+	Sort int     `json:"sort" binding:"gte=0"`
 }
 
 // ---------- Unit ----------
@@ -66,7 +68,7 @@ func (h *DictHandler) CreateUnit(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateUnit(c, req.Name, req.Sort)
+	m, err := h.s.CreateUnit(c, req.Name, req.Code, req.Sort)
 	if err != nil {
 		ConflictError(c, err_title, "添加单位失败:"+err.Error())
 		return
@@ -125,7 +127,7 @@ func (h *DictHandler) UpdateUnit(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.UpdateUnit(c, req.ID, req.Name, req.Sort); err != nil {
+	if err := h.s.UpdateUnit(c, req.ID, req.Name, req.Code, req.Sort); err != nil {
 		ConflictError(c, err_title, "更新单位失败:"+err.Error())
 		return
 	}
@@ -167,7 +169,7 @@ func (h *DictHandler) CreateSpec(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateSpec(c, req.Name, req.Sort)
+	m, err := h.s.CreateSpec(c, req.Name, req.Code, req.Sort)
 	if err != nil {
 		ConflictError(c, err_title, "添加规格失败:"+err.Error())
 		return
@@ -222,7 +224,7 @@ func (h *DictHandler) UpdateSpec(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.UpdateSpec(c, req.ID, req.Name, req.Sort); err != nil {
+	if err := h.s.UpdateSpec(c, req.ID, req.Name, req.Code, req.Sort); err != nil {
 		ConflictError(c, err_title, "更新规格失败:"+err.Error())
 		return
 	}
@@ -264,7 +266,7 @@ func (h *DictHandler) CreateMealTime(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateMealTime(c, req.Name, req.Sort)
+	m, err := h.s.CreateMealTime(c, req.Name, req.Code, req.Sort)
 	if err != nil {
 		ConflictError(c, err_title, "添加就餐时段失败:"+err.Error())
 		return
@@ -319,7 +321,7 @@ func (h *DictHandler) UpdateMealTime(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.UpdateMealTime(c, req.ID, req.Name, req.Sort); err != nil {
+	if err := h.s.UpdateMealTime(c, req.ID, req.Name, req.Code, req.Sort); err != nil {
 		ConflictError(c, err_title, "更新就餐时段失败:"+err.Error())
 		return
 	}

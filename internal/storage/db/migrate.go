@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 	acc "hdzk.cn/foodapp/internal/domain/account"
 	dict "hdzk.cn/foodapp/internal/domain/dict"
+	organ "hdzk.cn/foodapp/internal/domain/organ"
 )
 
 func AutoMigrate(gdb *gorm.DB) error {
@@ -13,6 +14,7 @@ func AutoMigrate(gdb *gorm.DB) error {
 		&dict.Unit{},
 		&dict.Spec{},
 		&dict.MealTime{},
+		&organ.Organ{},
 		// 其他模型
 		// 以后新增模型都放这里
 	)

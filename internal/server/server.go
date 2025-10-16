@@ -9,11 +9,14 @@ import (
 	"hdzk.cn/foodapp/configs"
 	accrepo "hdzk.cn/foodapp/internal/repository/account"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
+	organrepo "hdzk.cn/foodapp/internal/repository/organ"
 	acchandler "hdzk.cn/foodapp/internal/server/handler"
 	dicthandler "hdzk.cn/foodapp/internal/server/handler"
+	organhandler "hdzk.cn/foodapp/internal/server/handler"
 	"hdzk.cn/foodapp/internal/server/middleware"
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
+	organsvc "hdzk.cn/foodapp/internal/service/organ"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -23,6 +26,8 @@ func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 	accService := accsvc.New(accrepo.NewGorm(gdb))
 	accH := acchandler.NewAccountHandler(accService)
 	authH := acchandler.NewAuthHandler(accService, authCfg.JWTSecret, authCfg.AccessTokenTTLMinute)
+	organService := organsvc.New(organrepo.New(gdb))
+	organH := organhandler.NewOrganHandler(organService)
 
 	v1 := r.Group("/api/v1")
 
@@ -45,6 +50,7 @@ func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 		middleware.ActiveGuard(),
 	)
 	accH.Register(protected)
+	organH.Register(protected)
 }
 
 func registerDictRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {

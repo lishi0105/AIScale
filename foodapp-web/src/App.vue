@@ -11,7 +11,7 @@
     <aside class="sider" :class="{ collapsed }">
       <div class="logo">
         <span v-if="!collapsed">食品品控管理系统</span>
-        <el-icon v-else><Menu /></el-icon>
+        <span v-else class="logo-icon">🍱</span>
       </div>
       <el-menu
         class="menu"
@@ -24,29 +24,33 @@
       >
         <el-sub-menu index="acl">
           <template #title>
-            <el-icon><Collection /></el-icon>
+            <span class="menu-icon">🔐</span>
             <span>权限管理</span>
           </template>
           <el-menu-item index="/acl/accounts">
-            <el-icon><Document /></el-icon>
+            <span class="menu-icon">👤</span>
             <span>账户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/acl/organs">
+            <span class="menu-icon">🏢</span>
+            <span>中队管理</span>
           </el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="dict">
           <template #title>
-            <el-icon><Collection /></el-icon>
+            <span class="menu-icon">📚</span>
             <span>字典数据管理</span>
           </template>
           <el-menu-item index="/dict/units">
-            <el-icon><Document /></el-icon>
+            <span class="menu-icon">⚖️</span>
             <span>商品单位</span>
           </el-menu-item>
           <el-menu-item index="/dict/specs">
-            <el-icon><Document /></el-icon>
+            <span class="menu-icon">📦</span>
             <span>商品规格</span>
           </el-menu-item>
           <el-menu-item index="/dict/mealtimes">
-            <el-icon><Document /></el-icon>
+            <span class="menu-icon">🍽️</span>
             <span>菜单餐次</span>
           </el-menu-item>
         </el-sub-menu>
@@ -54,8 +58,7 @@
 
       <div class="sider-bottom">
         <el-button size="small" text @click="toggleCollapse">
-          <el-icon v-if="collapsed"><Expand /></el-icon>
-          <el-icon v-else><Fold /></el-icon>
+          <span class="menu-icon">{{ collapsed ? '➕' : '➖' }}</span>
           {{ collapsed ? '展开' : '收起' }}
         </el-button>
       </div>
@@ -88,7 +91,6 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { clearAuth, getToken } from '@/api/http'
-import { Menu, Collection, Document, Expand, Fold } from '@element-plus/icons-vue'
 import { roleLabel } from '@/utils/role'
 import { parseJwt} from '@/utils/jwt'
 import type { JwtPayload } from '@/utils/jwt'
@@ -116,8 +118,9 @@ const jwtPayload = computed<JwtPayload | null>(() => {
 // 显示的用户名（来自 token 的 usr 字段）
 const usernameDisplay = computed(() => {
   if (!jwtPayload.value) return '未登录'
-  const role = roleLabel(jwtPayload.value?.role || 1)
-  return role + jwtPayload.value?.usr || '用户'
+  const role = roleLabel(jwtPayload.value.role ?? 1)
+  const username = jwtPayload.value.usr || '用户'
+  return `${role} · ${username}`
 })
 
 // 菜单折叠状态
@@ -187,10 +190,23 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+.logo-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
 .menu {
   border-right: none;
   flex: 1;
   padding-top: 4px;
+}
+
+.menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  margin-right: 6px;
 }
 
 .sider-bottom {
