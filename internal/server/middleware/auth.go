@@ -9,34 +9,37 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+/************* 常量 & 上下文键 *************/
 const (
-	// context keys
+	// gin.Context keys
 	ContextUserIDKey   = "uid"
 	ContextUsernameKey = "usr"
 	ContextRoleKey     = "role"
-	ContextStatusKey   = "status"
+	ContextDeletedKey  = "deleted"
 
-	// roles
+	// roles（与 account.Account.Role 一致：0=用户 1=管理员）
 	RoleUser  = 0
 	RoleAdmin = 1
 
-	// status（与数据库 account.status 保持一致：0=禁用 1=启用）
-	StatusDisabled = 0
-	StatusEnabled  = 1
+	// deleted（与 account.Account.IsDeleted 一致：0=未删除 1=已删除/停用）
+	DeletedNo  = 0
+	DeletedYes = 1
 )
 
-// Actor 注入到 gin.Context 的登录用户快照
+/************* 数据结构 *************/
 type Actor struct {
 	ID       string
 	Username string
 	Role     int
-	Status   int
+	Deleted  int
 }
 
-// AccountLookup 按 uid 实时查询 role/status（可选，传 nil 则不查库）
-type AccountLookup func(ctx context.Context, uid string) (role int, status int, err error)
+// AccountLookup：按 uid 实时查询 role / deleted（可选，传 nil 则不查库）
+type AccountLookup func(ctx context.Context, uid string) (role int, deleted int, err error)
 
-// RequireAuth 校验 Bearer JWT，注入 uid/usr/role/status/actor；可选查库刷新 role/status
+/************* 中间件 *************/
+
+// RequireAuth：校验 Bearer JWT，注入 uid/usr/role/deleted/actor；可选查库刷新 role/deleted
 func RequireAuth(secret string, lookup AccountLookup) gin.HandlerFunc {
 	sec := []byte(secret)
 
@@ -63,10 +66,10 @@ func RequireAuth(secret string, lookup AccountLookup) gin.HandlerFunc {
 		var (
 			uid, username string
 			role          = RoleUser
-			status        = StatusEnabled
+			deleted       = DeletedNo
 		)
 
-		// 从 claims 读 sub/usr/role/status
+		// 从 claims 读 sub/usr/role/deleted（兼容旧 status）
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			if v, ok := claims["sub"].(string); ok {
 				uid = v
@@ -82,20 +85,37 @@ func RequireAuth(secret string, lookup AccountLookup) gin.HandlerFunc {
 					role = vv
 				}
 			}
-			if v, ok := claims["status"]; ok {
+			// 新字段：deleted（0/1）
+			if v, ok := claims["deleted"]; ok {
 				switch vv := v.(type) {
 				case float64:
-					status = int(vv)
+					deleted = int(vv)
 				case int:
-					status = vv
+					deleted = vv
+				}
+			} else if v, ok := claims["status"]; ok {
+				// 兼容旧 token：status(0=禁用,1=启用) -> deleted(1/0)
+				switch vv := v.(type) {
+				case float64:
+					if int(vv) == 0 {
+						deleted = DeletedYes
+					} else {
+						deleted = DeletedNo
+					}
+				case int:
+					if vv == 0 {
+						deleted = DeletedYes
+					} else {
+						deleted = DeletedNo
+					}
 				}
 			}
 		}
 
-		// 可选：每次请求实时刷新 role/status，停用立刻生效
+		// 可选：每次请求到库里刷新 role/deleted（即刻生效）
 		if lookup != nil && uid != "" {
-			if r, s, err := lookup(c.Request.Context(), uid); err == nil {
-				role, status = r, s
+			if r, d, err := lookup(c.Request.Context(), uid); err == nil {
+				role, deleted = r, d
 			}
 		}
 
@@ -107,21 +127,21 @@ func RequireAuth(secret string, lookup AccountLookup) gin.HandlerFunc {
 			c.Set(ContextUsernameKey, username)
 		}
 		c.Set(ContextRoleKey, role)
-		c.Set(ContextStatusKey, status)
-		c.Set("actor", &Actor{ID: uid, Username: username, Role: role, Status: status})
+		c.Set(ContextDeletedKey, deleted)
+		c.Set("actor", &Actor{ID: uid, Username: username, Role: role, Deleted: deleted})
 
 		c.Next()
 	}
 }
 
-// ActiveGuard 停用账户一律拦截（需放在 RequireAuth 之后）
+// ActiveGuard：若账户已删除/停用则拦截（需放在 RequireAuth 之后）
 func ActiveGuard() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if v, ok := c.Get(ContextStatusKey); ok {
-			if st, ok := v.(int); ok && st == StatusDisabled {
+		if v, ok := c.Get(ContextDeletedKey); ok {
+			if del, ok := v.(int); ok && del == DeletedYes {
 				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 					"error":   "禁止操作",
-					"details": "账户已停用",
+					"details": "账户已停用或删除",
 				})
 				return
 			}
@@ -130,7 +150,7 @@ func ActiveGuard() gin.HandlerFunc {
 	}
 }
 
-// —— 便捷取值（可给 handler 使用）——
+/************* 便捷函数 *************/
 
 func GetActor(c *gin.Context) *Actor {
 	a := &Actor{}
@@ -149,9 +169,9 @@ func GetActor(c *gin.Context) *Actor {
 			a.Role = i
 		}
 	}
-	if v, ok := c.Get(ContextStatusKey); ok {
+	if v, ok := c.Get(ContextDeletedKey); ok {
 		if i, ok := v.(int); ok {
-			a.Status = i
+			a.Deleted = i
 		}
 	}
 	return a

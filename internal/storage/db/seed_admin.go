@@ -42,7 +42,7 @@ func EnsureDefaultAdmin(ctx context.Context, gdb *gorm.DB) error {
 	a := &domain.Account{
 		Username:     defaultAdminUsername,
 		PasswordHash: hash,
-		Status:       middleware.StatusEnabled,
+		IsDeleted:    middleware.DeletedNo,
 		Role:         int(defaultAdminRole),
 	}
 	logger.L().Info("RoleAdmin value",
@@ -56,7 +56,7 @@ func EnsureDefaultAdmin(ctx context.Context, gdb *gorm.DB) error {
 		zap.String("id", a.ID),
 		zap.Int("role", a.Role),
 		zap.Int("defaultAdminRole", defaultAdminRole),
-		zap.Int("status", a.Status),
+		zap.Int("is_deleted", a.IsDeleted),
 	)
 	if err := repo.Create(ctx, a); err != nil {
 		return err

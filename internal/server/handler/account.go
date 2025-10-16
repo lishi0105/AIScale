@@ -5,14 +5,12 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	domain "hdzk.cn/foodapp/internal/domain/account"
 	"hdzk.cn/foodapp/internal/security"
 	"hdzk.cn/foodapp/internal/server/middleware"
 	svc "hdzk.cn/foodapp/internal/service/account"
 	types "hdzk.cn/foodapp/internal/transport"
 	"hdzk.cn/foodapp/pkg/crypto"
-	"hdzk.cn/foodapp/pkg/logger"
 )
 
 type AccountHandler struct{ s *svc.Service }
@@ -29,7 +27,6 @@ func (h *AccountHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/list", h.list)                     // 可按需收紧为仅管理员
 
 	g.POST("/update_password", h.updatePassword) // 仅管理员重置他人（不可给自己）
-	g.POST("/update_status", h.updateStatus)     // 仅管理员
 	g.POST("/delete", h.softDelete)              // 仅管理员；不可删自己&管理员
 	g.POST("/hard_delete", h.hardDelete)         // 同上
 	g.POST("/change_password", h.changePassword) // 本人；需旧密码
@@ -47,7 +44,7 @@ type getByUsernameReq struct {
 }
 type acc_listReq struct {
 	UsernameLike string `json:"username_like"`
-	Status       *int   `json:"status"`
+	Deleted      *int   `json:"is_deleted"`
 	Role         *int   `json:"role"`
 	Limit        int    `json:"limit"  binding:"omitempty,min=1,max=200"`
 	Offset       int    `json:"offset" binding:"omitempty,min=0"`
@@ -56,10 +53,7 @@ type updatePasswordReq struct {
 	ID       string `json:"id"       binding:"required,uuid4"`
 	Password string `json:"password" binding:"required,max=128"`
 }
-type updateStatusReq struct {
-	ID     string `json:"id"     binding:"required,uuid4"`
-	Status *int   `json:"status" binding:"required"`
-}
+
 type changePasswordReq struct {
 	Username    string `json:"username"     binding:"required"`
 	OldPassword string `json:"old_password" binding:"required,min=6,max=128"`
@@ -70,7 +64,7 @@ type changePasswordReq struct {
 func (h *AccountHandler) create(c *gin.Context) {
 	const errTitle = "创建用户失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -103,14 +97,11 @@ func (h *AccountHandler) create(c *gin.Context) {
 		InternalError(c, errTitle, "hash 密码失败: "+err.Error())
 		return
 	}
-	status := req.Status
-	if status != middleware.StatusDisabled && status != middleware.StatusEnabled {
-		status = middleware.StatusEnabled
-	}
+	is_deleted := middleware.DeletedNo
 	a := &domain.Account{
 		Username:     req.Username,
 		PasswordHash: hash,
-		Status:       status,
+		IsDeleted:    is_deleted,
 		Role:         role,
 	}
 	if err := h.s.Create(c, a); err != nil {
@@ -123,7 +114,7 @@ func (h *AccountHandler) create(c *gin.Context) {
 func (h *AccountHandler) get(c *gin.Context) {
 	const errTitle = "获取用户失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -151,7 +142,7 @@ func (h *AccountHandler) get(c *gin.Context) {
 func (h *AccountHandler) getByUsername(c *gin.Context) {
 	const errTitle = "用户名获取用户失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -176,7 +167,7 @@ func (h *AccountHandler) getByUsername(c *gin.Context) {
 func (h *AccountHandler) list(c *gin.Context) {
 	const errTitle = "获取用户列表失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -204,7 +195,7 @@ func (h *AccountHandler) list(c *gin.Context) {
 	}
 	items, total, err := h.s.List(c, domain.ListQuery{
 		UsernameLike: req.UsernameLike,
-		Status:       req.Status,
+		Deleted:      req.Deleted,
 		Role:         req.Role,
 		Limit:        req.Limit,
 		Offset:       req.Offset,
@@ -219,7 +210,7 @@ func (h *AccountHandler) list(c *gin.Context) {
 func (h *AccountHandler) updatePassword(c *gin.Context) {
 	const errTitle = "重置密码失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -255,43 +246,10 @@ func (h *AccountHandler) updatePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-func (h *AccountHandler) updateStatus(c *gin.Context) {
-	const errTitle = "更新用户状态失败"
-	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
-		return
-	}
-	// 仅管理员
-	if act.Role != middleware.RoleAdmin {
-		ForbiddenError(c, errTitle, "仅管理员可更新用户状态")
-		return
-	}
-	var req updateStatusReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.L().Error(errTitle,
-			zap.Error(err),
-		)
-		BadRequest(c, errTitle, "输入格式非法"+err.Error())
-		return
-	}
-	status := *req.Status
-	// 如需禁止把自己停用，打开：
-	if act.ID == req.ID && status == middleware.StatusDisabled {
-		BadRequest(c, errTitle, "不允许停用自身账号")
-		return
-	}
-	if err := h.s.UpdateStatus(c, req.ID, status); err != nil {
-		InternalError(c, errTitle, err.Error())
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
-
 func (h *AccountHandler) softDelete(c *gin.Context) {
 	const errTitle = "删除用户失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -325,7 +283,7 @@ func (h *AccountHandler) softDelete(c *gin.Context) {
 func (h *AccountHandler) hardDelete(c *gin.Context) {
 	const errTitle = "删除用户失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}
@@ -359,7 +317,7 @@ func (h *AccountHandler) hardDelete(c *gin.Context) {
 func (h *AccountHandler) changePassword(c *gin.Context) {
 	const errTitle = "修改密码失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
+	if act.Deleted != middleware.DeletedNo {
 		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
 		return
 	}

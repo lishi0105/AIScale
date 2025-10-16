@@ -55,8 +55,8 @@ func (h *DictHandler) CreateUnit(c *gin.Context) {
 	var req dict_createReq
 	err_title := "创建单位失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -80,8 +80,8 @@ func (h *DictHandler) GetUnit(c *gin.Context) {
 	err_title := "获取单位失败"
 
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	m, err := h.s.GetUnit(c, req.ID)
@@ -96,8 +96,8 @@ func (h *DictHandler) ListUnits(c *gin.Context) {
 
 	err_title := "获取单位列表失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 
@@ -115,8 +115,8 @@ func (h *DictHandler) UpdateUnit(c *gin.Context) {
 	var req dict_updateReq
 	err_title := "更新单位失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -137,8 +137,8 @@ func (h *DictHandler) DeleteUnit(c *gin.Context) {
 	var req types.IDReq
 	err_title := "删除单位失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -157,8 +157,8 @@ func (h *DictHandler) CreateSpec(c *gin.Context) {
 	var req dict_createReq
 	err_title := "创建规格失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -180,8 +180,8 @@ func (h *DictHandler) GetSpec(c *gin.Context) {
 	var req types.IDReq
 	err_title := "获取规格失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	m, err := h.s.GetSpec(c, req.ID)
@@ -195,8 +195,8 @@ func (h *DictHandler) ListSpecs(c *gin.Context) {
 	kw := c.Query("keyword")
 	err_title := "获取规格列表失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -212,8 +212,8 @@ func (h *DictHandler) UpdateSpec(c *gin.Context) {
 	var req dict_updateReq
 	err_title := "更新规格失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -234,8 +234,8 @@ func (h *DictHandler) DeleteSpec(c *gin.Context) {
 	var req types.IDReq
 	err_title := "删除规格失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -254,8 +254,8 @@ func (h *DictHandler) CreateMealTime(c *gin.Context) {
 	var req dict_createReq
 	err_title := "创建就餐时段失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -277,8 +277,8 @@ func (h *DictHandler) GetMealTime(c *gin.Context) {
 	var req types.IDReq
 	err_title := "获取就餐时段失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	m, err := h.s.GetMealTime(c, req.ID)
@@ -292,8 +292,8 @@ func (h *DictHandler) ListMealTimes(c *gin.Context) {
 	kw := c.Query("keyword")
 	err_title := "获取就餐时段列表失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -309,8 +309,8 @@ func (h *DictHandler) UpdateMealTime(c *gin.Context) {
 	var req dict_updateReq
 	err_title := "更新就餐时段失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {
@@ -331,8 +331,8 @@ func (h *DictHandler) DeleteMealTime(c *gin.Context) {
 	var req types.IDReq
 	err_title := "删除就餐时段失败"
 	act := middleware.GetActor(c)
-	if act.Status != middleware.StatusEnabled {
-		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 	if act.Role != middleware.RoleAdmin {

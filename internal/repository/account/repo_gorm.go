@@ -20,7 +20,7 @@ func (r *GormRepo) Create(ctx context.Context, a *domain.Account) error {
 	logger.L().Info("created default admin user",
 		zap.String("id", a.ID),
 		zap.Int("role", a.Role),
-		zap.Int("status", a.Status),
+		zap.Int("is_deleted:", a.IsDeleted),
 	)
 	return r.db.WithContext(ctx).
 		Select("ID", "Username", "PasswordHash", "Role", "Status", "IsDeleted").
@@ -28,7 +28,6 @@ func (r *GormRepo) Create(ctx context.Context, a *domain.Account) error {
 			Columns: []clause.Column{{Name: "username"}},
 			DoUpdates: clause.Assignments(map[string]any{
 				"password_hash": a.PasswordHash,
-				"status":        a.Status,
 				"role":          a.Role,
 				"is_deleted":    0,
 				"updated_at":    gorm.Expr("NOW()"),
@@ -65,8 +64,8 @@ func (r *GormRepo) List(ctx context.Context, q domain.ListQuery) ([]domain.Accou
 	if q.UsernameLike != "" {
 		tx = tx.Where("username LIKE ?", "%"+q.UsernameLike+"%")
 	}
-	if q.Status != nil {
-		tx = tx.Where("status = ?", *q.Status)
+	if q.Deleted != nil {
+		tx = tx.Where("is_deleted = ?", *q.Deleted)
 	}
 	if q.Role != nil {
 		tx = tx.Where("role = ?", *q.Role)

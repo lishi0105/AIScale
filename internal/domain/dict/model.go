@@ -123,5 +123,5 @@ func nextDictionaryCode(tx *gorm.DB, tableName, base string) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("%s%02d", base, expected), nil
+	return fmt.Sprintf("%s%03d", base, expected), nil
 }

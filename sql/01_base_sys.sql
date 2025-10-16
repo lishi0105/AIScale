@@ -9,7 +9,6 @@ USE main;
 /* =======================================================================
    字典：计量单位 / 规格 / 餐次
    ======================================================================= */
-
 /* ---------- 计量单位（如 斤/公斤/包/瓶/袋/条） ---------- */
 CREATE TABLE IF NOT EXISTS base_unit (
   id          CHAR(36)     NOT NULL COMMENT '主键UUID',
@@ -80,25 +79,6 @@ CREATE TABLE IF NOT EXISTS base_org (
   KEY idx_org_del  (is_deleted)
 ) ENGINE=InnoDB
   COMMENT='Base_组织机构表';
-
-/* ---------- 用户表（与组织关联） ---------- */
-CREATE TABLE IF NOT EXISTS base_user (
-  id             CHAR(36)     NOT NULL COMMENT '用户Id(UUID)',
-  org_id         CHAR(36)         NULL COMMENT '组织机构Id（base_org.id）',
-  username       VARCHAR(64)  NOT NULL COMMENT '用户名',
-  password_hash  VARCHAR(255) NOT NULL COMMENT '密码Hash（建议BCrypt/Argon2）',
-  is_deleted     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否删除：0=否 1=是',
-  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  last_login_at  DATETIME         NULL COMMENT '最后登录时间',
-  login_ip       VARCHAR(45)      NULL COMMENT '登录IP（IPv4/IPv6）',
-  updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_user_org_username (org_id, username),
-  KEY idx_user_org   (org_id),
-  KEY idx_user_login (last_login_at),
-  CONSTRAINT fk_user_org FOREIGN KEY (org_id) REFERENCES base_org(id)
-) ENGINE=InnoDB
-  COMMENT='Base_用户表';
 
 /* ---------- 智能秤表 ---------- */
 CREATE TABLE IF NOT EXISTS base_smart_scale (

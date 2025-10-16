@@ -33,9 +33,9 @@ func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 	lookup := func(ctx context.Context, uid string) (int, int, error) {
 		a, err := accService.GetByID(ctx, uid)
 		if err != nil {
-			return middleware.RoleUser, middleware.StatusDisabled, nil
+			return middleware.RoleUser, middleware.DeletedYes, nil
 		}
-		return a.Role, a.Status, nil
+		return a.Role, a.IsDeleted, nil
 	}
 
 	// —— 受保护路由：一次挂载（鉴权 + 停用拦截）——
