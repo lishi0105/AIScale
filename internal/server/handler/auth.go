@@ -39,7 +39,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	uid, role, err := h.s.Authenticate(c, req.Username, req.Password)
+	uid, role, deleted, err := h.s.Authenticate(c, req.Username, req.Password)
 	if err != nil {
 		UnauthorizedError(c, err_title, "用户名或密码错误")
 		return
@@ -52,6 +52,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 		"sub":  uid,
 		"usr":  req.Username,
 		"role": role,
+		"del":  deleted,
 		"iat":  now.Unix(),
 		"exp":  exp.Unix(),
 		"iss":  "foodapp",

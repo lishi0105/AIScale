@@ -16,21 +16,21 @@ type Service struct{ r repo.Repository }
 
 func NewService(r repo.Repository) *Service { return &Service{r: r} }
 
-func (s *Service) Authenticate(ctx context.Context, username, plain string) (string, int, error) {
+func (s *Service) Authenticate(ctx context.Context, username, plain string) (string, int, int, error) {
 	u, err := s.r.GetByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", int(middleware.RoleUser), errors.New("用户名或密码错误")
+			return "", int(middleware.RoleUser), int(middleware.DeletedYes), errors.New("用户名或密码错误")
 		}
-		return "", int(middleware.RoleUser), err
+		return "", int(middleware.RoleUser), int(middleware.DeletedYes), err
 	}
 	if !crypto.VerifyPassword(u.PasswordHash, plain) {
-		return "", int(middleware.RoleUser), errors.New("用户名或密码错误")
+		return "", int(middleware.RoleUser), int(middleware.DeletedYes), errors.New("用户名或密码错误")
 	}
 	if u.IsDeleted == 1 {
-		return "", int(u.Role), errors.New("账户已停用")
+		return "", int(u.Role), int(middleware.DeletedYes), errors.New("账户已停用")
 	}
-	return u.ID, int(u.Role), nil
+	return u.ID, int(u.Role), int(middleware.DeletedNo), nil
 }
 
 func (s *Service) Create(ctx context.Context, a *domain.Account) error {

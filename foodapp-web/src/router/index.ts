@@ -5,6 +5,7 @@ import Specs from '@/pages/Specs.vue'
 import MealTimes from '@/pages/MealTimes.vue'
 import Login from '@/pages/Login.vue'
 import { getToken } from '@/api/http'
+import Organs from '@/pages/Organs.vue'
 import Accounts from '@/pages/Accounts.vue'
 
 const routes = [
@@ -21,6 +22,10 @@ const routes = [
   { path: '/dict/mealtimes',
     component: MealTimes,
     meta: { requiresAuth: true, section: '字典数据管理', title: '菜单餐次' }
+  }, 
+  { path: '/acl/orgs',
+    component: Organs,
+    meta: { requiresAuth: true, section: '权限管理', title: '中队管理' }
   },
   { path: '/acl/accounts',
     component: Accounts,

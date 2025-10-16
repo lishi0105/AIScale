@@ -27,6 +27,10 @@
             <el-icon><Collection /></el-icon>
             <span>权限管理</span>
           </template>
+          <el-menu-item index="/acl/orgs">
+            <el-icon><Document /></el-icon>
+            <span>中队管理</span>
+          </el-menu-item>
           <el-menu-item index="/acl/accounts">
             <el-icon><Document /></el-icon>
             <span>账户管理</span>

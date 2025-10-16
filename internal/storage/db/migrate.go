@@ -10,11 +10,11 @@ import (
 
 func AutoMigrate(gdb *gorm.DB) error {
 	return gdb.AutoMigrate(
+		&organ.Organ{},
 		&acc.Account{},
 		&dict.Unit{},
 		&dict.Spec{},
 		&dict.MealTime{},
-		&organ.Organ{},
 		// 其他模型
 		// 以后新增模型都放这里
 	)

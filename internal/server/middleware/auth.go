@@ -86,28 +86,12 @@ func RequireAuth(secret string, lookup AccountLookup) gin.HandlerFunc {
 				}
 			}
 			// 新字段：deleted（0/1）
-			if v, ok := claims["deleted"]; ok {
+			if v, ok := claims["del"]; ok {
 				switch vv := v.(type) {
 				case float64:
 					deleted = int(vv)
 				case int:
 					deleted = vv
-				}
-			} else if v, ok := claims["status"]; ok {
-				// 兼容旧 token：status(0=禁用,1=启用) -> deleted(1/0)
-				switch vv := v.(type) {
-				case float64:
-					if int(vv) == 0 {
-						deleted = DeletedYes
-					} else {
-						deleted = DeletedNo
-					}
-				case int:
-					if vv == 0 {
-						deleted = DeletedYes
-					} else {
-						deleted = DeletedNo
-					}
 				}
 			}
 		}
