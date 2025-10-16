@@ -12,7 +12,6 @@ const (
 	DefaultOrgID          = "6f1a9b16-8e3a-4c7f-b2d3-9c0f5b8a12e4" // 你指定的固定 UUID
 	DefaultOrgName        = "默认机构"
 	DefaultOrgCode        = "00"
-	DefaultParentID       = ""
 	DefaultOrgDescription = "系统初始组织（种子数据）"
 )
 
@@ -34,7 +33,7 @@ func EnsureDefaultOrganization(ctx context.Context, db *gorm.DB) error {
 	// 1) 先按固定 ID 查
 	var got seedOrg
 	if err := db.WithContext(ctx).First(&got, "id = ?", DefaultOrgID).Error; err == nil {
-		logger.L().Info("default organization exists(by id)",
+		logger.L().Info("default organization exists",
 			zap.String("id", got.ID), zap.String("name", got.Name), zap.String("code", got.Code))
 		return nil
 	}
@@ -52,7 +51,7 @@ func EnsureDefaultOrganization(ctx context.Context, db *gorm.DB) error {
 		Name:        DefaultOrgName,
 		Code:        DefaultOrgCode,
 		Sort:        -1,
-		ParentID:    DefaultParentID,
+		ParentID:    DefaultOrgID,
 		Description: DefaultOrgDescription,
 		IsDeleted:   0,
 	}

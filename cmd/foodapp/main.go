@@ -57,17 +57,18 @@ func main() {
 		log.Fatal("auto migrate failed", zap.Error(err))
 	}
 
-	// 3.2 确保默认管理员（admin/admin123456）
+	// 3.2 创建默认组织、账户、字典
+
+	if err := foodDB.EnsureDefaultOrganization(context.Background(), food_db); err != nil {
+		log.Fatal("ensure default org failed", zap.Error(err))
+	}
+
 	if err := foodDB.EnsureDefaultAccount(context.Background(), food_db); err != nil {
 		log.Fatal("ensure default admin failed", zap.Error(err))
 	}
 
 	if err := foodDB.EnsureDefaultDicts(context.Background(), food_db); err != nil {
 		log.Fatal("seed dicts failed", zap.Error(err))
-	}
-
-	if err := foodDB.EnsureDefaultOrganization(context.Background(), food_db); err != nil {
-		log.Fatal("ensure default org failed", zap.Error(err))
 	}
 
 	engine := server.New(food_db, cfg.Auth, cfg.Server.WebRoot)

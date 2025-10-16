@@ -9,11 +9,12 @@ import (
 	"hdzk.cn/foodapp/configs"
 	accrepo "hdzk.cn/foodapp/internal/repository/account"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
-	acchandler "hdzk.cn/foodapp/internal/server/handler"
-	dicthandler "hdzk.cn/foodapp/internal/server/handler"
+	organrepo "hdzk.cn/foodapp/internal/repository/organ"
+	handler "hdzk.cn/foodapp/internal/server/handler"
 	"hdzk.cn/foodapp/internal/server/middleware"
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
+	organsvc "hdzk.cn/foodapp/internal/service/organ"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,8 +22,8 @@ import (
 
 func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
 	accService := accsvc.NewService(accrepo.NewRepository(gdb))
-	accH := acchandler.NewAccountHandler(accService)
-	authH := acchandler.NewAuthHandler(accService, authCfg.JWTSecret, authCfg.AccessTokenTTLMinute)
+	accH := handler.NewAccountHandler(accService)
+	authH := handler.NewAuthHandler(accService, authCfg.JWTSecret, authCfg.AccessTokenTTLMinute)
 
 	v1 := r.Group("/api/v1")
 
@@ -50,7 +51,7 @@ func registerAccountRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 func registerDictRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
 	dictRepo := dictrepo.NewRepository(gdb)
 	dictSvc := dictsvc.NewService(dictRepo)
-	dictH := dicthandler.NewDictHandler(dictSvc)
+	dictH := handler.NewDictHandler(dictSvc)
 
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -59,6 +60,19 @@ func registerDictRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig)
 		middleware.ActiveGuard(),
 	)
 	dictH.Register(protected)
+}
+
+func registerOrganRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	organRepo := organrepo.NewRepository(gdb)
+	organSvc := organsvc.NewService(organRepo)
+	organH := handler.NewOrganHandler(organSvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil), // 字典不强制每次刷新
+		middleware.ActiveGuard(),
+	)
+	organH.Register(protected)
 }
 
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
@@ -90,6 +104,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	// API
 	registerAccountRoutes(r, gdb, authCfg)
 	registerDictRoutes(r, gdb, authCfg)
+	registerOrganRoutes(r, gdb, authCfg)
 
 	return r
 }

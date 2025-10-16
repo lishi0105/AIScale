@@ -10,8 +10,6 @@ services:
       TZ: Asia/Shanghai
       # 可选：首次初始化就自动建库与应用账户（若你改为用 00_db_and_users.sql，也可删掉下面两行）
       MARIADB_DATABASE: main
-      # MARIADB_USER: food_user
-      # MARIADB_PASSWORD: StrongPassw0rd!
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci

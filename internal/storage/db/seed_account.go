@@ -75,15 +75,15 @@ func EnsureDefaultAccount(ctx context.Context, gdb *gorm.DB) error {
 			IsDeleted:    middleware.DeletedNo,
 			Role:         int(defaultAdminRole),
 		}
-		if cerr := repo.Create(ctx, a); cerr != nil {
-			return cerr
-		}
 		logger.L().Info("created default admin user",
 			zap.String("username", defaultAdminUsername),
 			zap.String("id", a.ID),
 			zap.String("org_id", a.OrgID),
 			zap.Int("role", a.Role),
 		)
+		if cerr := repo.Create(ctx, a); cerr != nil {
+			return cerr
+		}
 		return nil
 
 	default:
