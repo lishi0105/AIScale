@@ -20,16 +20,19 @@
     <el-table :data="rows" stripe v-loading="tableLoading">
       <el-table-column type="index" label="序号" width="80" />
       <el-table-column prop="Username" label="用户名" min-width="160" />
+      <el-table-column label="所属中队" width="160">
+        <template #default="{ row }">
+          {{ getOrgName(row.OrgID) }}
+        </template>
+      </el-table-column>
       <el-table-column label="角色" width="140" align="center">
         <template #default="{ row }">
           <el-tag>{{ roleLabel(row.Role) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="140" align="center">
+      <el-table-column label="描述" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-tag :type="row.Status === 0 ? 'success' : 'info'">
-            {{ statusLabel(row.Status) }}
-          </el-tag>
+          {{ row.Description || '-' }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="360" align="center">
@@ -85,16 +88,30 @@
           </el-form-item>
         </template>
 
+        <el-form-item label="所属中队" required>
+          <el-select v-model="form.OrgID" placeholder="请选择所属中队" style="width: 100%">
+            <el-option 
+              v-for="org in allOrgs" 
+              :key="org.ID" 
+              :label="org.Name" 
+              :value="org.ID"
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="角色">
           <el-select v-model="form.Role" style="width: 220px">
             <el-option v-for="opt in roleOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="dialogMode==='edit'" label="状态">
-          <el-select v-model="form.Status" style="width: 220px">
-            <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
+        <el-form-item label="描述">
+          <el-input 
+            v-model="form.Description" 
+            type="textarea" 
+            :rows="3"
+            placeholder="请输入描述"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -129,11 +146,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { AccountAPI } from '@/api/acl'
+import { AccountAPI, OrganAPI } from '@/api/acl'
 import { notifyError } from '@/utils/notify'
 import {
-  ROLE_ADMIN, ROLE_USER, ROLE_LABELS, roleLabel,
-  STATUS_ENABLED, STATUS_DISABLED, STATUS_LABELS, statusLabel
+  ROLE_ADMIN, ROLE_USER, ROLE_LABELS, roleLabel
 } from '@/utils/role'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { getToken } from '@/api/http'
@@ -142,11 +158,23 @@ import { getToken } from '@/api/http'
 interface Row {
   ID: string
   Username: string
-  Status: number   // 0启用 1停用
-  Role: number     // 0管理员 1普通用户
+  OrgID: string        // 所属组织ID
+  Role: number         // 0管理员 1普通用户
+  Description?: string // 描述
+  IsDeleted: number    // 0未删除 1已删除
   LastLoginAt?: string | null
   CreatedAt?: string
   UpdatedAt?: string
+}
+
+interface Organ {
+  ID: string
+  Name: string
+  Code?: string | null
+  Parent: string
+  Description?: string
+  Sort: number
+  IsDeleted: number
 }
 
 // ====== 当前登录用户（示例：替换为你的实际用户来源）======
@@ -173,10 +201,6 @@ const roleOptions = [
   { value: ROLE_ADMIN, label: ROLE_LABELS[ROLE_ADMIN] },
   { value: ROLE_USER,  label: ROLE_LABELS[ROLE_USER]  },
 ]
-const statusOptions = [
-  { value: STATUS_ENABLED,  label: STATUS_LABELS[STATUS_ENABLED]  },
-  { value: STATUS_DISABLED, label: STATUS_LABELS[STATUS_DISABLED] },
-]
 
 // ====== 列表/分页 ======
 const rows = ref<Row[]>([])
@@ -186,6 +210,15 @@ const pageSize = ref(15)
 const keyword = ref('')
 
 const tableLoading = ref(false)
+
+// 组织列表（用于下拉和显示）
+const allOrgs = ref<Organ[]>([])
+
+// 根据ID获取组织名称
+const getOrgName = (orgId: string) => {
+  const org = allOrgs.value.find(o => o.ID === orgId)
+  return org ? org.Name : orgId
+}
 
 const fetchList = async () => {
   try {
@@ -215,7 +248,8 @@ const submitLoading = ref(false)
 
 const form = ref<Partial<Row> & { password?: string; confirmPassword?: string }>({
   Role: ROLE_USER,
-  Status: STATUS_ENABLED,
+  OrgID: '',
+  Description: '',
 })
 
 const openCreate = () => {
@@ -230,8 +264,10 @@ const openCreate = () => {
     password: '',
     confirmPassword: '',
     Role: ROLE_USER,
-    Status: STATUS_ENABLED
+    OrgID: allOrgs.value.length > 0 ? allOrgs.value[0].ID : '',
+    Description: '',
   }
+  fetchAllOrgs()
   dialogVisible.value = true
 }
 const openEdit = (row: Row) => {
@@ -240,8 +276,10 @@ const openEdit = (row: Row) => {
     ID: row.ID,
     Username: row.Username,
     Role: row.Role,
-    Status: row.Status
+    OrgID: row.OrgID,
+    Description: row.Description || '',
   }
+  fetchAllOrgs()
   dialogVisible.value = true
 }
 const onSubmit = async () => {
@@ -258,6 +296,9 @@ const onSubmit = async () => {
       if (!confirmPassword) {
         ElMessage.warning('请输入确认密码'); return
       }
+      if (!form.value.OrgID) {
+        ElMessage.warning('请选择所属中队'); return
+      }
       if (password.length < 8) {
         ElMessage.error('密码至少8位'); return
       }
@@ -268,13 +309,20 @@ const onSubmit = async () => {
       await AccountAPI.create({
         username: Username.trim(),
         password,
+        org_id: form.value.OrgID!,
         role: Number(form.value.Role ?? ROLE_USER),
-        status: Number(form.value.Status ?? STATUS_ENABLED)
+        description: form.value.Description || undefined,
       })
       ElMessage.success('创建成功')
     } else {
       const id = form.value.ID!
-      await AccountAPI.update_status({ id, status: Number(form.value.Status ?? STATUS_ENABLED) })
+      await AccountAPI.update({
+        id,
+        username: form.value.Username,
+        org_id: form.value.OrgID,
+        role: Number(form.value.Role),
+        description: form.value.Description || undefined,
+      })
       ElMessage.success('保存成功')
     }
     dialogVisible.value = false
@@ -401,7 +449,20 @@ const onDelete = async (row: Row) => {
   }
 }
 
-onMounted(fetchList)
+// 获取所有组织（用于下拉和显示）
+const fetchAllOrgs = async () => {
+  try {
+    const { data } = await OrganAPI.list({ limit: 1000, offset: 0, is_deleted: 0 })
+    allOrgs.value = data.items || []
+  } catch (e) {
+    notifyError(e)
+  }
+}
+
+onMounted(() => {
+  fetchList()
+  fetchAllOrgs()
+})
 </script>
 
 <style scoped>
