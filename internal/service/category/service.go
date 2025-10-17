@@ -36,10 +36,11 @@ func (s *Service) ListCategories(ctx context.Context, keyword string, team_id st
 	return s.r.ListCategories(ctx, keyword, team_id, page, pageSize)
 }
 
-func (s *Service) UpdateCategory(ctx context.Context, id, name string, code *string, pinyin *string) error {
+func (s *Service) UpdateCategory(ctx context.Context, id, name string, code *string, pinyin *string, sort *int) error {
 	normalizedCode, updateCode := normalizeString(code)
 	normalizedPinyin, updatePinyin := normalizeString(pinyin)
-	return s.r.UpdateCategory(ctx, id, name, normalizedCode, normalizedPinyin, updateCode, updatePinyin)
+	updateSort := sort != nil
+	return s.r.UpdateCategory(ctx, id, name, normalizedCode, normalizedPinyin, sort, updateCode, updatePinyin, updateSort)
 }
 
 func (s *Service) DeleteCategory(ctx context.Context, id string) error {

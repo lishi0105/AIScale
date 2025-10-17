@@ -54,6 +54,16 @@
             <span>菜单餐次</span>
           </el-menu-item>
         </el-sub-menu>
+        <el-sub-menu index="base">
+          <template #title>
+            <el-icon><Collection /></el-icon>
+            <span>基础数据管理</span>
+          </template>
+          <el-menu-item index="/base/products">
+            <el-icon><Document /></el-icon>
+            <span>商品库管理</span>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
 
       <div class="sider-bottom">
@@ -75,6 +85,7 @@
           </el-breadcrumb>
         </div>
         <div class="topbar-right">
+          <span v-if="teamNameDisplay" class="team">当前中队：{{ teamNameDisplay }}</span>
           <span class="user">欢迎，{{ usernameDisplay }}</span>
           <el-button size="small" @click="onLogout">退出登录</el-button>
         </div>
@@ -89,13 +100,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { clearAuth, getToken } from '@/api/http'
 import { Menu, Collection, Document, Expand, Fold } from '@element-plus/icons-vue'
 import { roleLabel } from '@/utils/role'
-import { parseJwt} from '@/utils/jwt'
+import { parseJwt } from '@/utils/jwt'
 import type { JwtPayload } from '@/utils/jwt'
+import { OrganAPI } from '@/api/organ'
+import { notifyError } from '@/utils/notify'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,9 +133,39 @@ const jwtPayload = computed<JwtPayload | null>(() => {
 // 显示的用户名（来自 token 的 usr 字段）
 const usernameDisplay = computed(() => {
   if (!jwtPayload.value) return '未登录'
-  const role = roleLabel(jwtPayload.value?.role || 1)
-  return role + jwtPayload.value?.usr || '用户'
+  const role = roleLabel(jwtPayload.value?.role ?? 0)
+  const username = jwtPayload.value?.usr || '用户'
+  return `${role}·${username}`
 })
+
+// 当前用户所属中队 ID
+const currentTeamId = computed(() => jwtPayload.value?.team_id || '')
+
+// 顶部展示的中队名称
+const teamName = ref('')
+const teamNameDisplay = computed(() => teamName.value || (currentTeamId.value ? currentTeamId.value : ''))
+
+const fetchTeamName = async (teamId: string) => {
+  if (!teamId) {
+    teamName.value = ''
+    return
+  }
+  try {
+    const { data } = await OrganAPI.get(teamId)
+    teamName.value = data?.Name || ''
+  } catch (error) {
+    teamName.value = ''
+    notifyError(error)
+  }
+}
+
+watch(
+  () => currentTeamId.value,
+  (teamId) => {
+    fetchTeamName(teamId)
+  },
+  { immediate: true }
+)
 
 // 菜单折叠状态
 const collapsed = ref(false)
@@ -135,6 +178,7 @@ const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/acl/')) return path
   if (path.startsWith('/dict/')) return path
+  if (path.startsWith('/base/')) return path
   return '/dict/units' // 默认高亮
 })
 
@@ -228,6 +272,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.team {
+  color: #333;
+  font-size: 13px;
 }
 
 .user {

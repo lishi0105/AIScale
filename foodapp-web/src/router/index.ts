@@ -7,6 +7,7 @@ import Login from '@/pages/Login.vue'
 import { getToken } from '@/api/http'
 import Organs from '@/pages/Organs.vue'
 import Accounts from '@/pages/Accounts.vue'
+import ProductLibrary from '@/pages/ProductLibrary.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -22,7 +23,11 @@ const routes = [
   { path: '/dict/mealtimes',
     component: MealTimes,
     meta: { requiresAuth: true, section: '字典数据管理', title: '菜单餐次' }
-  }, 
+  },
+  { path: '/base/products',
+    component: ProductLibrary,
+    meta: { requiresAuth: true, section: '基础数据管理', title: '商品库管理' }
+  },
   { path: '/acl/orgs',
     component: Organs,
     meta: { requiresAuth: true, section: '权限管理', title: '中队管理' }

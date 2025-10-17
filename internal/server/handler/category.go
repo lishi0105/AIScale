@@ -41,6 +41,7 @@ type category_updateReq struct {
 	Name   string  `json:"name" binding:"required,min=1,max=64"`
 	Code   *string `json:"code" binding:"omitempty,max=64"`
 	Pinyin *string `json:"pinyin" binding:"omitempty,max=64"`
+	Sort   *int    `json:"sort" binding:"omitempty,min=0"`
 }
 
 // ---------- Category ----------
@@ -133,7 +134,7 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.UpdateCategory(c, req.ID, req.Name, req.Code, req.Pinyin); err != nil {
+	if err := h.s.UpdateCategory(c, req.ID, req.Name, req.Code, req.Pinyin, req.Sort); err != nil {
 		ConflictError(c, err_title, "更新品类失败:"+err.Error())
 		return
 	}

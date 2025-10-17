@@ -46,7 +46,7 @@ func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, team_
 	return list, total, err
 }
 
-func (r *categoryRepo) UpdateCategory(ctx context.Context, id string, name string, code *string, pinyin *string, updateCode bool, updatePinyin bool) error {
+func (r *categoryRepo) UpdateCategory(ctx context.Context, id string, name string, code *string, pinyin *string, sort *int, updateCode bool, updatePinyin bool, updateSort bool) error {
 	updates := map[string]any{
 		"name": name,
 	}
@@ -62,6 +62,11 @@ func (r *categoryRepo) UpdateCategory(ctx context.Context, id string, name strin
 			updates["pinyin"] = *pinyin
 		} else {
 			updates["pinyin"] = nil
+		}
+	}
+	if updateSort {
+		if sort != nil {
+			updates["sort"] = *sort
 		}
 	}
 	return r.db.WithContext(ctx).Model(&category.Category{}).
