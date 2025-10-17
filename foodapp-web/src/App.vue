@@ -22,6 +22,16 @@
         text-color="#d9d9d9"
         active-text-color="#fff"
       >
+        <el-sub-menu index="base">
+          <template #title>
+            <el-icon><Collection /></el-icon>
+            <span>基础数据管理</span>
+          </template>
+          <el-menu-item index="/base/category">
+            <el-icon><Document /></el-icon>
+            <span>商品库管理</span>
+          </el-menu-item>
+        </el-sub-menu>
         <el-sub-menu index="acl">
           <template #title>
             <el-icon><Collection /></el-icon>
@@ -52,16 +62,6 @@
           <el-menu-item index="/dict/mealtimes">
             <el-icon><Document /></el-icon>
             <span>菜单餐次</span>
-          </el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="base">
-          <template #title>
-            <el-icon><Collection /></el-icon>
-            <span>基础数据管理</span>
-          </template>
-          <el-menu-item index="/base/products">
-            <el-icon><Document /></el-icon>
-            <span>商品库管理</span>
           </el-menu-item>
         </el-sub-menu>
       </el-menu>

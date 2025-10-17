@@ -1,5 +1,5 @@
 <template>
-  <div class="page-product-library">
+  <div class="page-category">
     <aside class="category-panel">
       <div class="panel-header">
         <h2>商品品类</h2>
@@ -404,7 +404,7 @@ const confirmDelete = async (row: CategoryRow) => {
 </script>
 
 <style scoped>
-.page-product-library {
+.page-category {
   display: flex;
   gap: 16px;
   height: calc(100vh - 120px);

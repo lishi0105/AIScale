@@ -32,10 +32,6 @@ type category_createReq struct {
 	Pinyin *string `json:"pinyin" binding:"omitempty,max=64"`
 }
 
-type category_listReq struct {
-	TeamId string `json:"team_id" binding:"required,uuid4"`
-}
-
 type category_updateReq struct {
 	ID     string  `json:"id"   binding:"required,uuid4"`
 	Name   string  `json:"name" binding:"required,min=1,max=64"`
@@ -102,15 +98,14 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
-	var req category_listReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		BadRequest(c, err_title, "参数错误：需要 team_id(UUID4)")
+	teamID := c.Query("team_id")
+	if teamID == "" {
+		BadRequest(c, err_title, "参数错误：缺少 team_id")
 		return
 	}
-
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	list, total, err := h.s.ListCategories(c, kw, req.TeamId, page, ps)
+	list, total, err := h.s.ListCategories(c, kw, teamID, page, ps)
 	if err != nil {
 		InternalError(c, err_title, err.Error())
 		return
