@@ -20,16 +20,19 @@
     <el-table :data="rows" stripe v-loading="tableLoading">
       <el-table-column type="index" label="序号" width="80" />
       <el-table-column prop="Username" label="用户名" min-width="160" />
+      <el-table-column label="所属机构" min-width="180">
+        <template #default="{ row }">
+          {{ orgName(row.OrgID) }}
+        </template>
+      </el-table-column>
       <el-table-column label="角色" width="140" align="center">
         <template #default="{ row }">
           <el-tag>{{ roleLabel(row.Role) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="140" align="center">
+      <el-table-column label="描述" min-width="220">
         <template #default="{ row }">
-          <el-tag :type="row.Status === 0 ? 'success' : 'info'">
-            {{ statusLabel(row.Status) }}
-          </el-tag>
+          {{ row.Description || '-' }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="360" align="center">
@@ -72,7 +75,7 @@
     <el-dialog v-model="dialogVisible" :title="dialogMode==='create'?'新增账户':'编辑账户'" width="480px">
       <el-form :model="form" label-width="100px" v-loading="submitLoading">
         <el-form-item label="用户名">
-          <el-input v-model="form.Username" :disabled="dialogMode==='edit'" />
+          <el-input v-model="form.Username" />
         </el-form-item>
 
         <!-- 仅创建时显示密码和确认密码 -->
@@ -85,16 +88,20 @@
           </el-form-item>
         </template>
 
+        <el-form-item label="所属机构">
+          <el-select v-model="form.OrgID" filterable placeholder="请选择机构" style="width: 220px">
+            <el-option v-for="opt in orgOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="角色">
           <el-select v-model="form.Role" style="width: 220px">
             <el-option v-for="opt in roleOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="dialogMode==='edit'" label="状态">
-          <el-select v-model="form.Status" style="width: 220px">
-            <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
+        <el-form-item label="描述">
+          <el-input v-model="form.Description" type="textarea" :rows="3" placeholder="可选" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -132,18 +139,19 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { AccountAPI } from '@/api/acl'
 import { notifyError } from '@/utils/notify'
 import {
-  ROLE_ADMIN, ROLE_USER, ROLE_LABELS, roleLabel,
-  STATUS_ENABLED, STATUS_DISABLED, STATUS_LABELS, statusLabel
+  ROLE_ADMIN, ROLE_USER, ROLE_LABELS, roleLabel
 } from '@/utils/role'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { getToken } from '@/api/http'
+import { OrganAPI } from '@/api/organ'
 
 // ====== 类型定义（与后端 JSON 对齐）======
 interface Row {
   ID: string
   Username: string
-  Status: number   // 0启用 1停用
-  Role: number     // 0管理员 1普通用户
+  OrgID: string
+  Description?: string | null
+  Role: number     // 0用户 1管理员
   LastLoginAt?: string | null
   CreatedAt?: string
   UpdatedAt?: string
@@ -173,10 +181,9 @@ const roleOptions = [
   { value: ROLE_ADMIN, label: ROLE_LABELS[ROLE_ADMIN] },
   { value: ROLE_USER,  label: ROLE_LABELS[ROLE_USER]  },
 ]
-const statusOptions = [
-  { value: STATUS_ENABLED,  label: STATUS_LABELS[STATUS_ENABLED]  },
-  { value: STATUS_DISABLED, label: STATUS_LABELS[STATUS_DISABLED] },
-]
+// 机构选项
+const orgOptions = ref<Array<{ value: string; label: string }>>([])
+const orgNameMap = ref<Record<string, string>>({})
 
 // ====== 列表/分页 ======
 const rows = ref<Row[]>([])
@@ -215,7 +222,6 @@ const submitLoading = ref(false)
 
 const form = ref<Partial<Row> & { password?: string; confirmPassword?: string }>({
   Role: ROLE_USER,
-  Status: STATUS_ENABLED,
 })
 
 const openCreate = () => {
@@ -227,10 +233,11 @@ const openCreate = () => {
   dialogMode.value = 'create'
   form.value = {
     Username: '',
+    OrgID: '',
+    Description: '',
     password: '',
     confirmPassword: '',
     Role: ROLE_USER,
-    Status: STATUS_ENABLED
   }
   dialogVisible.value = true
 }
@@ -239,8 +246,9 @@ const openEdit = (row: Row) => {
   form.value = {
     ID: row.ID,
     Username: row.Username,
+    OrgID: row.OrgID,
+    Description: row.Description || '',
     Role: row.Role,
-    Status: row.Status
   }
   dialogVisible.value = true
 }
@@ -264,17 +272,32 @@ const onSubmit = async () => {
       if (password !== confirmPassword) {
         ElMessage.error('两次输入的密码不一致'); return
       }
+      if (!form.value.OrgID) {
+        ElMessage.error('请选择所属机构'); return
+      }
 
       await AccountAPI.create({
         username: Username.trim(),
         password,
+        org_id: form.value.OrgID!,
         role: Number(form.value.Role ?? ROLE_USER),
-        status: Number(form.value.Status ?? STATUS_ENABLED)
+        description: (form.value.Description || '').trim() || undefined,
       })
       ElMessage.success('创建成功')
     } else {
       const id = form.value.ID!
-      await AccountAPI.update_status({ id, status: Number(form.value.Status ?? STATUS_ENABLED) })
+      const payload: any = { id }
+      if (form.value.Username && form.value.Username.trim()) {
+        payload.username = form.value.Username.trim()
+      }
+      if (form.value.OrgID) {
+        payload.org_id = form.value.OrgID
+      }
+      payload.description = (form.value.Description || '').trim() || null
+      if (isAdminRef.value && typeof form.value.Role === 'number') {
+        payload.role = Number(form.value.Role)
+      }
+      await AccountAPI.update(payload)
       ElMessage.success('保存成功')
     }
     dialogVisible.value = false
@@ -402,6 +425,26 @@ const onDelete = async (row: Row) => {
 }
 
 onMounted(fetchList)
+
+// 初始化载入机构
+const loadOrgs = async () => {
+  try {
+    const { data } = await OrganAPI.list({ limit: 500, offset: 0, is_deleted: 0 })
+    const opts = (data.items || []).map((it: any) => ({ value: it.ID, label: it.Name }))
+    orgOptions.value = opts
+    const map: Record<string, string> = {}
+    for (const o of opts) map[o.value] = o.label
+    orgNameMap.value = map
+  } catch (e) {
+    // 静默失败，列表仍可用
+  }
+}
+
+const orgName = (id: string) => orgNameMap.value[id] || id || '-'
+
+onMounted(() => {
+  loadOrgs()
+})
 </script>
 
 <style scoped>

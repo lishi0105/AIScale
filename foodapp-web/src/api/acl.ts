@@ -3,19 +3,20 @@ import http from './http'
 
 export const AccountAPI = {
   // 后端 /accounts/list 接受 JSON Body：{ username_like, limit, offset, ... }
-  list: (params: { username_like?: string; limit?: number; offset?: number; status?: number; role?: number }) =>
+  list: (params: { username_like?: string; is_deleted?: number; role?: number; limit?: number; offset?: number }) =>
     http.post('/accounts/list', params || {}),
 
   get: (id: string) => http.post('/accounts/get', { id }),
 
   get_by_username: (username: string) => http.post('/accounts/get_by_username', { username }),
 
-  // create: 后端要求字段全小写：username / password / email? / role / status
-  create: (data: { username: string; password: string; role: number; status?: number }) =>
+  // create: 后端要求字段全小写：username / password / org_id / role? / description?
+  create: (data: { username: string; password: string; org_id: string; role?: number; description?: string | null }) =>
     http.post('/accounts/create', data),
 
-  update_status: (data: { id: string; status: number }) =>
-    http.post('/accounts/update_status', data),
+  // update: 更新通用字段（部分可选）
+  update: (data: { id: string; username?: string; org_id?: string; description?: string | null; role?: number }) =>
+    http.post('/accounts/update', data),
 
   update_password: (data: { id: string; password: string }) =>
     http.post('/accounts/update_password', data),
