@@ -20,6 +20,8 @@
     <el-table :data="rows" stripe v-loading="tableLoading">
       <el-table-column type="index" label="序号" width="80" />
       <el-table-column prop="Username" label="用户名" min-width="160" />
+      <el-table-column prop="OrgID" label="机构ID" min-width="200" />
+      <el-table-column prop="Description" label="描述" min-width="200" show-overflow-tooltip />
       <el-table-column label="角色" width="140" align="center">
         <template #default="{ row }">
           <el-tag>{{ roleLabel(row.Role) }}</el-tag>
@@ -27,8 +29,8 @@
       </el-table-column>
       <el-table-column label="状态" width="140" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.Status === 0 ? 'success' : 'info'">
-            {{ statusLabel(row.Status) }}
+          <el-tag :type="row.IsDeleted === 0 ? 'success' : 'info'">
+            {{ deletedLabel(row.IsDeleted) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -69,7 +71,7 @@
     </div>
 
     <!-- 新增/编辑 -->
-    <el-dialog v-model="dialogVisible" :title="dialogMode==='create'?'新增账户':'编辑账户'" width="480px">
+    <el-dialog v-model="dialogVisible" :title="dialogMode==='create'?'新增账户':'编辑账户'" width="520px">
       <el-form :model="form" label-width="100px" v-loading="submitLoading">
         <el-form-item label="用户名">
           <el-input v-model="form.Username" :disabled="dialogMode==='edit'" />
@@ -85,15 +87,24 @@
           </el-form-item>
         </template>
 
-        <el-form-item label="角色">
-          <el-select v-model="form.Role" style="width: 220px">
-            <el-option v-for="opt in roleOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+        <el-form-item label="所属机构">
+          <el-select v-model="form.OrgID" placeholder="请选择机构" style="width: 100%" filterable>
+            <el-option
+              v-for="org in orgList"
+              :key="org.ID"
+              :label="org.Name"
+              :value="org.ID"
+            />
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="dialogMode==='edit'" label="状态">
-          <el-select v-model="form.Status" style="width: 220px">
-            <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+        <el-form-item label="描述">
+          <el-input v-model="form.Description" type="textarea" placeholder="请输入描述信息" :rows="3" />
+        </el-form-item>
+
+        <el-form-item label="角色">
+          <el-select v-model="form.Role" style="width: 220px">
+            <el-option v-for="opt in roleOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -130,10 +141,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { AccountAPI } from '@/api/acl'
+import { OrganAPI, type OrganRow } from '@/api/organ'
 import { notifyError } from '@/utils/notify'
 import {
   ROLE_ADMIN, ROLE_USER, ROLE_LABELS, roleLabel,
-  STATUS_ENABLED, STATUS_DISABLED, STATUS_LABELS, statusLabel
+  deletedLabel
 } from '@/utils/role'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { getToken } from '@/api/http'
@@ -142,8 +154,10 @@ import { getToken } from '@/api/http'
 interface Row {
   ID: string
   Username: string
-  Status: number   // 0启用 1停用
-  Role: number     // 0管理员 1普通用户
+  OrgID: string
+  Description?: string | null
+  Role: number     // 0用户 1管理员
+  IsDeleted: number // 0未删除 1已删除
   LastLoginAt?: string | null
   CreatedAt?: string
   UpdatedAt?: string
@@ -173,10 +187,6 @@ const roleOptions = [
   { value: ROLE_ADMIN, label: ROLE_LABELS[ROLE_ADMIN] },
   { value: ROLE_USER,  label: ROLE_LABELS[ROLE_USER]  },
 ]
-const statusOptions = [
-  { value: STATUS_ENABLED,  label: STATUS_LABELS[STATUS_ENABLED]  },
-  { value: STATUS_DISABLED, label: STATUS_LABELS[STATUS_DISABLED] },
-]
 
 // ====== 列表/分页 ======
 const rows = ref<Row[]>([])
@@ -187,6 +197,18 @@ const keyword = ref('')
 
 const tableLoading = ref(false)
 
+// ====== 组织列表 ======
+const orgList = ref<OrganRow[]>([])
+
+const fetchOrgList = async () => {
+  try {
+    const { data } = await OrganAPI.list({ is_deleted: 0, limit: 1000 })
+    orgList.value = data.items || []
+  } catch (e) {
+    console.error('获取组织列表失败:', e)
+  }
+}
+
 const fetchList = async () => {
   try {
     tableLoading.value = true
@@ -194,6 +216,7 @@ const fetchList = async () => {
     const offset = (page.value - 1) * pageSize.value
     const body = {
       username_like: keyword.value || undefined,
+      is_deleted: 0, // 只显示未删除的账户
       limit,
       offset,
     }
@@ -215,7 +238,8 @@ const submitLoading = ref(false)
 
 const form = ref<Partial<Row> & { password?: string; confirmPassword?: string }>({
   Role: ROLE_USER,
-  Status: STATUS_ENABLED,
+  OrgID: '',
+  Description: undefined,
 })
 
 const openCreate = () => {
@@ -229,8 +253,9 @@ const openCreate = () => {
     Username: '',
     password: '',
     confirmPassword: '',
-    Role: ROLE_USER,
-    Status: STATUS_ENABLED
+    OrgID: '',
+    Description: '',
+    Role: ROLE_USER
   }
   dialogVisible.value = true
 }
@@ -239,8 +264,9 @@ const openEdit = (row: Row) => {
   form.value = {
     ID: row.ID,
     Username: row.Username,
-    Role: row.Role,
-    Status: row.Status
+    OrgID: row.OrgID,
+    Description: row.Description || undefined,
+    Role: row.Role
   }
   dialogVisible.value = true
 }
@@ -248,7 +274,7 @@ const onSubmit = async () => {
   try {
     submitLoading.value = true
     if (dialogMode.value === 'create') {
-      const { Username, password, confirmPassword } = form.value
+      const { Username, password, confirmPassword, OrgID } = form.value
       if (!Username?.trim()) {
         ElMessage.warning('请输入用户名'); return
       }
@@ -257,6 +283,9 @@ const onSubmit = async () => {
       }
       if (!confirmPassword) {
         ElMessage.warning('请输入确认密码'); return
+      }
+      if (!OrgID?.trim()) {
+        ElMessage.warning('请输入机构ID'); return
       }
       if (password.length < 8) {
         ElMessage.error('密码至少8位'); return
@@ -268,13 +297,20 @@ const onSubmit = async () => {
       await AccountAPI.create({
         username: Username.trim(),
         password,
+        org_id: OrgID.trim(),
         role: Number(form.value.Role ?? ROLE_USER),
-        status: Number(form.value.Status ?? STATUS_ENABLED)
+        description: form.value.Description || undefined
       })
       ElMessage.success('创建成功')
     } else {
       const id = form.value.ID!
-      await AccountAPI.update_status({ id, status: Number(form.value.Status ?? STATUS_ENABLED) })
+      await AccountAPI.update({
+        id,
+        username: form.value.Username,
+        org_id: form.value.OrgID,
+        description: form.value.Description || undefined,
+        role: form.value.Role
+      })
       ElMessage.success('保存成功')
     }
     dialogVisible.value = false
@@ -401,7 +437,10 @@ const onDelete = async (row: Row) => {
   }
 }
 
-onMounted(fetchList)
+onMounted(() => {
+  fetchList()
+  fetchOrgList()
+})
 </script>
 
 <style scoped>
