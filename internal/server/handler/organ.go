@@ -19,12 +19,12 @@ func NewOrganHandler(s *svc.Service) *OrganHandler { return &OrganHandler{s: s} 
 func (h *OrganHandler) Register(rg *gin.RouterGroup) {
 	g := rg.Group("/orgs")
 
-	g.POST("/create", h.create)          // 仅管理员
-	g.POST("/get", h.get)                // 所有人可查
-	g.POST("/list", h.list)              // 所有人可查
-	g.POST("/update", h.update)          // 仅管理员
-	g.POST("/delete", h.softDelete)      // 仅管理员（软删）
-	g.POST("/hard_delete", h.hardDelete) // 仅管理员（硬删）
+	g.POST("/create_organ", h.create)          // 仅管理员
+	g.POST("/get_organ", h.get)                // 所有人可查
+	g.POST("/list_organ", h.list)              // 所有人可查
+	g.POST("/update_organ", h.update)          // 仅管理员
+	g.POST("/soft_delete_organ", h.softDelete) // 仅管理员（软删）
+	g.POST("/hard_delete_organ", h.hardDelete) // 仅管理员（硬删）
 }
 
 /************* 请求体 *************/

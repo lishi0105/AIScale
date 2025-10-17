@@ -22,16 +22,16 @@ func NewAccountHandler(s *svc.Service) *AccountHandler { return &AccountHandler{
 func (h *AccountHandler) Register(rg *gin.RouterGroup) {
 	g := rg.Group("/accounts")
 
-	g.POST("/create", h.create)
-	g.POST("/get", h.get)
-	g.POST("/get_by_username", h.getByUsername)
-	g.POST("/list", h.list)
+	g.POST("/create_account", h.create)
+	g.POST("/get_account", h.get)
+	g.POST("/get_account_by_username", h.getByUsername)
+	g.POST("/list_account", h.list)
 
-	g.POST("/update_password", h.updatePassword)
-	g.POST("/update", h.update)          // 修复为调用 Service.Update
-	g.POST("/delete", h.softDelete)      // 调用 Service.SoftDelete
-	g.POST("/hard_delete", h.hardDelete) // 调用 Service.HardDelete
-	g.POST("/change_password", h.changePassword)
+	g.POST("/update_account_password", h.updatePassword)
+	g.POST("/update_account", h.update)          // 修复为调用 Service.Update
+	g.POST("/soft_delete_account", h.softDelete) // 调用 Service.SoftDelete
+	g.POST("/hard_delete_account", h.hardDelete) // 调用 Service.HardDelete
+	g.POST("/change_account_password", h.changePassword)
 }
 
 /************ 请求体 ************/

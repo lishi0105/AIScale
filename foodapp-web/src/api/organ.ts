@@ -25,12 +25,12 @@ export interface OrganUpdatePayload {
 }
 
 export const OrganAPI = {
-  create: (data: OrganCreatePayload) => http.post('/orgs/create', data),
-  get: (id: string) => http.post('/orgs/get', { id }),
-  list: (params: OrganListParams) => http.post('/orgs/list', params || {}),
-  update: (data: OrganUpdatePayload) => http.post('/orgs/update', data),
-  softDelete: (id: string) => http.post('/orgs/delete', { id }),
-  hardDelete: (id: string) => http.post('/orgs/hard_delete', { id }),
+  create: (data: OrganCreatePayload) => http.post('/orgs/create_organ', data),
+  get: (id: string) => http.post('/orgs/get_organ', { id }),
+  list: (params: OrganListParams) => http.post('/orgs/list_organ', params || {}),
+  update: (data: OrganUpdatePayload) => http.post('/orgs/update_organ', data),
+  softDelete: (id: string) => http.post('/orgs/soft_delete_organ', { id }),
+  hardDelete: (id: string) => http.post('/orgs/hard_delete_organ', { id }),
 }
 
 export type OrganRow = {
