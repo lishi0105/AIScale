@@ -15,12 +15,13 @@ type Service struct {
 
 func NewService(r repo.CategoryRepository) *Service { return &Service{r: r} }
 
-func (s *Service) CreateCategory(ctx context.Context, name string, code *string, pinyin *string) (*domain.Category, error) {
+func (s *Service) CreateCategory(ctx context.Context, name string, team_id string, code *string, pinyin *string) (*domain.Category, error) {
 	normalizedCode, _ := normalizeString(code)
 	normalizedPinyin, _ := normalizeString(pinyin)
 	m := &domain.Category{
 		ID:     uuid.NewString(),
 		Name:   name,
+		TeamID: team_id,
 		Code:   normalizedCode,
 		Pinyin: normalizedPinyin,
 	}

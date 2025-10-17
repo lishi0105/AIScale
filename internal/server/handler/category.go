@@ -27,6 +27,7 @@ func (h *CategoryHandler) Register(rg *gin.RouterGroup) {
 // 请求体
 type category_createReq struct {
 	Name   string  `json:"name" binding:"required,min=1,max=64"`
+	OrgID  string  `json:"org_id" binding:"required,uuid4"`
 	Code   *string `json:"code" binding:"omitempty,max=64"`
 	Pinyin *string `json:"pinyin" binding:"omitempty,max=64"`
 }
@@ -56,7 +57,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateCategory(c, req.Name, req.Code, req.Pinyin)
+	m, err := h.s.CreateCategory(c, req.Name, req.OrgID, req.Code, req.Pinyin)
 	if err != nil {
 		ConflictError(c, err_title, "添加品类失败:"+err.Error())
 		return
@@ -73,12 +74,12 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	
+
 	m, err := h.s.GetCategory(c, req.ID)
 	if err != nil {
 		NotFoundError(c, err_title, "品类不存在:"+err.Error())

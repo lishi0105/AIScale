@@ -50,7 +50,7 @@ func EnsureDefaultOrganization(ctx context.Context, db *gorm.DB) error {
 		ID:          DefaultOrgID,
 		Name:        DefaultOrgName,
 		Code:        DefaultOrgCode,
-		Sort:        -1,
+		Sort:        0,
 		ParentID:    DefaultOrgID,
 		Description: DefaultOrgDescription,
 		IsDeleted:   0,
