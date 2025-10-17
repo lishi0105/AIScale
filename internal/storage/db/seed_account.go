@@ -17,11 +17,11 @@ import (
 
 const (
 	defaultAdminUsername = "admin"
-	defaultAdminPassword = "admin123456"
+	defaultAdminPassword = "admin123"
 	defaultAdminRole     = middleware.RoleAdmin
 
 	// 默认组织固定 UUID（你刚刚要的那一个）
-	defaultOrgID = "6f1a9b16-8e3a-4c7f-b2d3-9c0f5b8a12e4"
+	defaultOrgID = DefaultOrgID
 )
 
 // EnsureDefaultAdminWithOrg 若 admin 不存在则创建并绑定默认组织；

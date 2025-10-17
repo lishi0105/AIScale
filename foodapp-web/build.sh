@@ -32,6 +32,7 @@ fi
 
 # 无论是否 rebuild，都复制构建产物
 echo "📦 部署前端资源到后端目录..."
-rm -rf /home/lishi/FoodInspection/golang/web/*
-cp -rf dist/* /home/lishi/FoodInspection/golang/web/
+mkdir -p /home/lishi/FoodInspection/foodapp/web/
+rm -rf /home/lishi/FoodInspection/foodapp/web/*
+cp -rf dist/* /home/lishi/FoodInspection/foodapp/web/
 echo "✅ 部署完成！"

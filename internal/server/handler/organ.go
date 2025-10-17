@@ -30,7 +30,7 @@ func (h *OrganHandler) Register(rg *gin.RouterGroup) {
 /************* 请求体 *************/
 type orgCreateReq struct {
 	Name        string  `json:"name"        binding:"required,min=1,max=64"`
-	Parent      *string `json:"parent"`      // 为空串表示根
+	ParentID    *string `json:"parent_id"`   // 为空串表示根
 	Code        *string `json:"code"`        // 可空；空串将被置为 NULL
 	Description *string `json:"description"` // 可空
 	Sort        *int    `json:"sort"`        // 可空
@@ -39,7 +39,7 @@ type orgCreateReq struct {
 type orgUpdateReq struct {
 	ID          string  `json:"id"          binding:"required,uuid4"`
 	Name        *string `json:"name"        binding:"min=1,max=64"`
-	Parent      *string `json:"parent"`
+	ParentID    *string `json:"parent_id"`
 	Code        *string `json:"code"` // 若传入空串，将置为 NULL
 	Description *string `json:"description"`
 }
@@ -76,8 +76,8 @@ func (h *OrganHandler) create(c *gin.Context) {
 		Name: req.Name,
 		// Parent: 若为 nil 不变；若为 "" 作为根；字段是 NOT NULL，空串合法
 	}
-	if req.Parent != nil {
-		m.Parent = *req.Parent
+	if req.ParentID != nil {
+		m.ParentID = req.ParentID
 	}
 	if req.Description != nil {
 		m.Description = *req.Description
@@ -162,8 +162,8 @@ func (h *OrganHandler) update(c *gin.Context) {
 	if req.Name != nil {
 		update_m.Name = req.Name
 	}
-	if req.Parent != nil {
-		update_m.Parent = req.Parent
+	if req.ParentID != nil {
+		update_m.Parent = req.ParentID
 	}
 	if req.Description != nil {
 		update_m.Description = req.Description

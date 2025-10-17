@@ -23,16 +23,16 @@ export function roleLabel(role: number): string {
 
 // ====== 其他字典（可选扩展）======
 
-export const STATUS_DISABLED = 0
-export const STATUS_ENABLED = 1
+export const DELETED_NO = 0
+export const DELETED_YES = 1
 
-export const STATUS_LABELS: Record<number, string> = {
-  [STATUS_ENABLED]: '启用',
-  [STATUS_DISABLED]: '停用',
+export const DELETED_LABELS: Record<number, string> = {
+  [DELETED_NO]: '启用',
+  [DELETED_YES]: '停用',
 }
 
-export function statusLabel(status: number): string {
-  return STATUS_LABELS[status] || `未知状态(${status})`
+export function DeletedLabel(deleted: number): string {
+  return DELETED_LABELS[deleted] || `未知状态(${deleted})`
 }
 
 export function isAdmin(role: number): boolean {

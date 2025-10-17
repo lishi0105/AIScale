@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 	domain "hdzk.cn/foodapp/internal/domain/organ"
+	foodDB "hdzk.cn/foodapp/internal/storage/db"
 )
 
 type gormRepo struct {
@@ -13,6 +14,10 @@ type gormRepo struct {
 }
 
 func (r *gormRepo) Create(ctx context.Context, m *domain.Organ) error {
+	if m.ParentID == nil {
+		tmp := foodDB.DefaultOrgID
+		m.ParentID = &tmp
+	}
 	return r.db.WithContext(ctx).Create(m).Error
 }
 

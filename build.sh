@@ -37,6 +37,6 @@ else
 fi
 
 echo "🔨 开始构建..."
-go build -o foodapp ./cmd/foodapp
+go build -buildvcs=false -o foodapp ./cmd/foodapp
 
 echo "✅ 编译成功！可执行文件: ./foodapp"
