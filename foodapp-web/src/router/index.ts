@@ -7,6 +7,7 @@ import Login from '@/pages/Login.vue'
 import { getToken } from '@/api/http'
 import Organs from '@/pages/Organs.vue'
 import Accounts from '@/pages/Accounts.vue'
+import Products from '@/pages/Products.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -30,6 +31,10 @@ const routes = [
   { path: '/acl/accounts',
     component: Accounts,
     meta: { requiresAuth: true, section: '权限管理', title: '账户管理' }
+  },
+  { path: '/base/products',
+    component: Products,
+    meta: { requiresAuth: true, section: '基础数据管理', title: '商品库管理' }
   },
 ]
 

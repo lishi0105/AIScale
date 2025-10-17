@@ -36,6 +36,16 @@
             <span>账户管理</span>
           </el-menu-item>
         </el-sub-menu>
+        <el-sub-menu index="base">
+          <template #title>
+            <el-icon><Collection /></el-icon>
+            <span>基础数据管理</span>
+          </template>
+          <el-menu-item index="/base/products">
+            <el-icon><Document /></el-icon>
+            <span>商品库管理</span>
+          </el-menu-item>
+        </el-sub-menu>
         <el-sub-menu index="dict">
           <template #title>
             <el-icon><Collection /></el-icon>
@@ -75,6 +85,7 @@
           </el-breadcrumb>
         </div>
         <div class="topbar-right">
+          <span class="team">{{ teamDisplay }}</span>
           <span class="user">欢迎，{{ usernameDisplay }}</span>
           <el-button size="small" @click="onLogout">退出登录</el-button>
         </div>
@@ -96,6 +107,7 @@ import { Menu, Collection, Document, Expand, Fold } from '@element-plus/icons-vu
 import { roleLabel } from '@/utils/role'
 import { parseJwt} from '@/utils/jwt'
 import type { JwtPayload } from '@/utils/jwt'
+import { OrganAPI, type OrganRow } from '@/api/organ'
 
 const route = useRoute()
 const router = useRouter()
@@ -124,6 +136,22 @@ const usernameDisplay = computed(() => {
   return role + jwtPayload.value?.usr || '用户'
 })
 
+// 团队名称
+const teamName = ref<string>('')
+const teamDisplay = computed(() => teamName.value ? `中队：${teamName.value}` : '')
+
+// 获取团队信息
+const fetchTeamInfo = async () => {
+  if (!jwtPayload.value?.team_id) return
+  try {
+    const { data } = await OrganAPI.get(jwtPayload.value.team_id)
+    const organ = data as OrganRow
+    teamName.value = organ.Name || ''
+  } catch (err) {
+    console.error('获取团队信息失败', err)
+  }
+}
+
 // 菜单折叠状态
 const collapsed = ref(false)
 const toggleCollapse = () => {
@@ -134,6 +162,7 @@ const toggleCollapse = () => {
 const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/acl/')) return path
+  if (path.startsWith('/base/')) return path
   if (path.startsWith('/dict/')) return path
   return '/dict/units' // 默认高亮
 })
@@ -144,10 +173,12 @@ const onLogout = () => {
   router.replace('/login')
 }
 
-// 页面加载时检查登录状态
+// 页面加载时检查登录状态并获取团队信息
 onMounted(() => {
   if (!getToken() && !isLoginRoute.value) {
     router.replace({ path: '/login', query: { redirect: route.fullPath } })
+  } else if (getToken() && !isLoginRoute.value) {
+    fetchTeamInfo()
   }
 })
 </script>
@@ -233,6 +264,12 @@ onMounted(() => {
 .user {
   color: #666;
   font-size: 13px;
+}
+
+.team {
+  color: #1890ff;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .page {

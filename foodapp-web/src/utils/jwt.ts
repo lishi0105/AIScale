@@ -4,6 +4,7 @@ export interface JwtPayload {
   sub: string      // user ID
   usr: string      // username
   role: number     // role
+  team_id: string  // organization/team ID
   iat: number      // issued at
   exp: number      // expire at
   iss: string      // issuer
