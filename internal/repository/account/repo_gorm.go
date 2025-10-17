@@ -110,6 +110,7 @@ func (r *GormRepo) List(ctx context.Context, q domain.ListQuery) ([]domain.Accou
 
 	var items []domain.Account
 	if err := tx.
+		Order("sort ASC").
 		Order("created_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&items).Error; err != nil {

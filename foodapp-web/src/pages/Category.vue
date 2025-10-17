@@ -2,70 +2,65 @@
   <div class="page-category">
     <aside class="category-panel">
       <div class="panel-header">
-        <h2>商品品类</h2>
-        <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增商品</el-button>
+        <div class="panel-title">
+          <h2>商品品类</h2>
+          <p class="panel-sub">点击左侧分类查看详情</p>
+        </div>
+        <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增品类</el-button>
       </div>
       <div class="panel-search">
         <el-input
           v-model="keyword"
           size="small"
           clearable
-          placeholder="请输入"
+          placeholder="搜索品类名称/编码/拼音"
           @clear="onSearch"
           @keyup.enter="onSearch"
-        >
-          <template #suffix>
-            <el-button link @click="onSearch">查询</el-button>
-          </template>
-        </el-input>
+        />
+        <el-button size="small" @click="onSearch">搜索</el-button>
       </div>
-      <div class="panel-list" v-loading="treeLoading">
-        <!-- 全部商品选项 -->
-        <div 
-          class="category-item all-item"
-          :class="{ active: selectedId === '' }"
-          @click="onSelectAll"
-        >
-          <span class="item-name">全部商品</span>
-        </div>
-        <!-- 品类列表 -->
-        <div
-          v-for="item in categories"
-          :key="item.ID"
-          class="category-item"
-          :class="{ active: item.ID === selectedId }"
-          @click="onNodeClick(item)"
-        >
-          <span class="item-name">{{ item.Name }}</span>
-          <el-dropdown
-            v-if="isAdmin"
-            trigger="click"
-            @command="(command: DropdownCommand) => onNodeCommand(command, item)"
-            @click.stop
+      <div class="category-list" v-loading="treeLoading">
+        <el-empty v-if="!treeLoading && !categories.length" description="暂无品类" />
+        <el-scrollbar v-else>
+          <div
+            v-for="item in cardCategories"
+            :key="item.id"
+            class="category-item"
+            :class="{ active: item.id === selectedId }"
+            @click="selectCategory(item.id)"
           >
-            <el-button link class="item-more">
-              <el-icon><MoreFilled /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                <el-dropdown-item command="delete">删除</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-        <el-empty v-if="!categories.length && !treeLoading" description="暂无品类" :image-size="80" />
+            <div class="item-info">
+              <div class="item-avatar">{{ item.avatar }}</div>
+              <div class="item-text">
+                <div class="item-name" :title="item.name">{{ item.name }}</div>
+                <div class="item-sub" :title="item.subTitle">{{ item.subTitle }}</div>
+              </div>
+            </div>
+            <div class="item-meta">
+              <span class="item-sort" v-if="item.sortText">{{ item.sortText }}</span>
+              <el-dropdown
+                trigger="click"
+                placement="bottom-end"
+                @command="(command: DropdownCommand) => onCardCommand(command, item.raw)"
+              >
+                <span class="item-actions" @click.stop>
+                  <el-icon><MoreFilled /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="edit" :disabled="!isAdmin">编辑</el-dropdown-item>
+                    <el-dropdown-item command="delete" :disabled="!isAdmin">删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </div>
+        </el-scrollbar>
       </div>
     </aside>
 
     <section class="category-content">
-      <div v-if="!selectedId" class="detail-card">
-        <h3 class="detail-title">全部商品</h3>
-        <div class="all-products-info">
-          <p>当前共有 <strong>{{ categories.length }}</strong> 个商品品类</p>
-        </div>
-      </div>
-      <div v-else-if="selectedCategory" class="detail-card">
+      <div v-if="selectedCategory" class="detail-card">
         <h3 class="detail-title">品类详情</h3>
         <el-descriptions :column="1" border size="small">
           <el-descriptions-item label="品类名称">{{ selectedCategory.Name }}</el-descriptions-item>
@@ -134,13 +129,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { MoreFilled } from '@element-plus/icons-vue'
 import { CategoryAPI } from '@/api/category'
 import type { CategoryListParams, CategoryRow, CategoryUpdatePayload } from '@/api/category'
 import { notifyError } from '@/utils/notify'
 import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
+import { MoreFilled } from '@element-plus/icons-vue'
 
 const keyword = ref('')
 const categories = ref<CategoryRow[]>([])
@@ -180,6 +175,17 @@ const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
 const selectedCategory = computed(() =>
   categories.value.find(item => item.ID === selectedId.value) || null
+)
+
+const cardCategories = computed(() =>
+  categories.value.map(item => ({
+    id: item.ID,
+    name: item.Name,
+    avatar: item.Name?.charAt(0)?.toUpperCase() || '#',
+    subTitle: item.Code || item.Pinyin || '暂无编码信息',
+    sortText: Number.isFinite(item.Sort) ? `排序 ${item.Sort}` : '',
+    raw: item,
+  }))
 )
 
 const namePlaceholder = computed(() =>
@@ -256,23 +262,21 @@ watch(
       selectedId.value = ''
       return
     }
-    // 如果当前选中的品类不在列表中，默认选中"全部商品"
-    if (selectedId.value && !list.some(item => item.ID === selectedId.value)) {
-      selectedId.value = ''
+    if (!list.some(item => item.ID === selectedId.value)) {
+      const first = list[0]
+      if (first) {
+        selectedId.value = first.ID
+      }
     }
   },
   { deep: true }
 )
 
-const onSelectAll = () => {
-  selectedId.value = ''
+const selectCategory = (id: string) => {
+  selectedId.value = id
 }
 
-const onNodeClick = (item: CategoryRow) => {
-  selectedId.value = item.ID
-}
-
-const onNodeCommand = (command: DropdownCommand, row: CategoryRow) => {
+const onCardCommand = (command: DropdownCommand, row: CategoryRow) => {
   selectedId.value = row.ID
   if (command === 'edit') {
     openEdit(row)
@@ -400,124 +404,153 @@ const confirmDelete = async (row: CategoryRow) => {
 }
 
 .category-panel {
-  width: 320px;
+  width: 280px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  padding: 0;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  gap: 12px;
 }
+
 
 .panel-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
 }
 
-.panel-header h2 {
-  font-size: 16px;
-  font-weight: 600;
+.panel-title h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.panel-sub {
   margin: 0;
-  color: #1f2937;
+  font-size: 12px;
+  color: #909399;
 }
 
 .panel-search {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 8px;
 }
 
-.panel-search :deep(.el-input) {
-  width: 100%;
-}
-
-.panel-search :deep(.el-input__suffix) {
-  padding-right: 4px;
-}
-
-.panel-search :deep(.el-button) {
-  font-size: 13px;
-  padding: 0 8px;
-  color: #409eff;
-}
-
-.panel-list {
+.category-list {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  padding: 8px 0;
 }
 
 .category-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  margin: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   transition: all 0.2s ease;
-  position: relative;
+  cursor: pointer;
+  background: #f8fafc;
+  margin-bottom: 10px;
 }
 
-.category-item:hover {
-  background: #f3f4f6;
+.category-item:last-child {
+  margin-bottom: 0;
 }
 
+.category-item:hover,
 .category-item.active {
-  background: #3b82f6;
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.12);
+}
+
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.item-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #409eff, #66b1ff);
   color: #fff;
-  font-weight: 500;
-}
-
-.category-item.active .item-name {
-  color: #fff;
-}
-
-.category-item .item-name {
-  flex: 1;
-  font-size: 14px;
-  color: #374151;
-  transition: color 0.2s ease;
-}
-
-.category-item.active:hover {
-  background: #2563eb;
-}
-
-.category-item .item-more {
-  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
   font-size: 16px;
-  color: #9ca3af;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  box-shadow: 0 4px 10px rgba(64, 158, 255, 0.35);
+  flex-shrink: 0;
 }
 
-.category-item:hover .item-more {
-  opacity: 1;
+.item-text {
+  min-width: 0;
 }
 
-.category-item.active .item-more {
-  color: #fff;
-  opacity: 1;
-}
-
-.category-item.all-item {
+.item-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-sub {
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.item-sort {
+  font-size: 12px;
+  color: #409eff;
+  background: rgba(64, 158, 255, 0.12);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.item-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: background 0.2s;
+  color: #606266;
+}
+
+.item-actions:hover {
+  background: rgba(64, 158, 255, 0.15);
+  color: #409eff;
 }
 
 .category-content {
   flex: 1;
   min-width: 0;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .detail-card {
@@ -525,45 +558,8 @@ const confirmDelete = async (row: CategoryRow) => {
 }
 
 .detail-title {
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
-}
-
-.all-products-info {
-  padding: 20px;
-  background: #f9fafb;
-  border-radius: 4px;
-  border: 1px solid #e5e7eb;
-}
-
-.all-products-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.all-products-info strong {
-  color: #3b82f6;
-  font-size: 16px;
-}
-
-/* 滚动条样式 */
-.panel-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.panel-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.panel-list::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.panel-list::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
 }
 </style>

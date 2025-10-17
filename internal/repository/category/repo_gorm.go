@@ -40,7 +40,9 @@ func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, team_
 	if pageSize <= 0 || pageSize > 1000 {
 		pageSize = 20
 	}
-	err := q.Order("name asc").
+	err := q.
+		Order("sort ASC").
+		Order("name asc").
 		Limit(pageSize).Offset((page - 1) * pageSize).
 		Find(&list).Error
 	return list, total, err
