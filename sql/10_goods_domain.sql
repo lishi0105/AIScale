@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS base_category (
   team_id     CHAR(36)     NOT NULL COMMENT '中队ID',
   code        VARCHAR(64)      NULL COMMENT '品类编码（可选，建议全局唯一）',
   pinyin      VARCHAR(64)      NULL COMMENT '拼音（可选，用于搜索）',
+  sort        INT          NOT NULL DEFAULT 0 COMMENT '排序码',
   is_deleted  TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

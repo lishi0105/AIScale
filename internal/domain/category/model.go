@@ -40,7 +40,7 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 	if orgCode == "" {
 		return errors.New("org.code 为空，无法派生 category.code")
 	}
-	if orgSort <= 0 {
+	if orgSort < 0 {
 		return fmt.Errorf("org.sort 非法: %d", orgSort)
 	}
 

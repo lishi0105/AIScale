@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS base_unit (
   id          CHAR(36)     NOT NULL COMMENT '主键UUID',
   name        VARCHAR(32)  NOT NULL COMMENT '单位名称',
   code        VARCHAR(32)      NULL COMMENT '单位编码（可选）',
-  sort        INT          NOT NULL DEFAULT 0 COMMENT '排序码',
   is_deleted  TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否已删除：0=否 1=是',
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
