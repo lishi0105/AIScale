@@ -2,7 +2,10 @@
   <div class="page-category">
     <aside class="category-panel">
       <div class="panel-header">
-        <h2>商品品类</h2>
+        <div class="panel-title">
+          <h2>商品品类</h2>
+          <p class="panel-sub">点击左侧分类查看详情</p>
+        </div>
         <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增品类</el-button>
       </div>
       <div class="panel-search">
@@ -16,37 +19,43 @@
         />
         <el-button size="small" @click="onSearch">搜索</el-button>
       </div>
-      <div class="panel-tree" v-loading="treeLoading">
-        <el-tree
-          ref="treeRef"
-          :data="treeNodes"
-          node-key="id"
-          :props="treeProps"
-          highlight-current
-          :current-node-key="selectedId"
-          @node-click="onNodeClick"
-          empty-text="暂无品类"
-        >
-          <template #default="{ data }">
-            <el-dropdown
-              trigger="contextmenu"
-              @command="(command: DropdownCommand) => onNodeCommand(command, data.raw)"
-            >
-              <span
-                class="tree-node-label"
-                :class="{ selected: data.raw.ID === selectedId }"
+      <div class="category-list" v-loading="treeLoading">
+        <el-empty v-if="!treeLoading && !categories.length" description="暂无品类" />
+        <el-scrollbar v-else>
+          <div
+            v-for="item in cardCategories"
+            :key="item.id"
+            class="category-item"
+            :class="{ active: item.id === selectedId }"
+            @click="selectCategory(item.id)"
+          >
+            <div class="item-info">
+              <div class="item-avatar">{{ item.avatar }}</div>
+              <div class="item-text">
+                <div class="item-name" :title="item.name">{{ item.name }}</div>
+                <div class="item-sub" :title="item.subTitle">{{ item.subTitle }}</div>
+              </div>
+            </div>
+            <div class="item-meta">
+              <span class="item-sort" v-if="item.sortText">{{ item.sortText }}</span>
+              <el-dropdown
+                trigger="click"
+                placement="bottom-end"
+                @command="(command: DropdownCommand) => onCardCommand(command, item.raw)"
               >
-                {{ data.raw.Name }}
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="edit" :disabled="!isAdmin">编辑</el-dropdown-item>
-                  <el-dropdown-item command="delete" :disabled="!isAdmin">删除</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </template>
-        </el-tree>
+                <span class="item-actions" @click.stop>
+                  <el-icon><MoreFilled /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="edit" :disabled="!isAdmin">编辑</el-dropdown-item>
+                    <el-dropdown-item command="delete" :disabled="!isAdmin">删除</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </div>
+        </el-scrollbar>
       </div>
     </aside>
 
@@ -118,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, nextTick } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CategoryAPI } from '@/api/category'
 import type { CategoryListParams, CategoryRow, CategoryUpdatePayload } from '@/api/category'
@@ -126,6 +135,7 @@ import { notifyError } from '@/utils/notify'
 import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
+import { MoreFilled } from '@element-plus/icons-vue'
 
 const keyword = ref('')
 const categories = ref<CategoryRow[]>([])
@@ -135,7 +145,6 @@ const submitLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const deletingId = ref('')
-const treeRef = ref<any>(null)
 const editingCategory = ref<CategoryRow | null>(null)
 
 interface CategoryForm {
@@ -156,17 +165,6 @@ const form = reactive<CategoryForm>({
 
 type DropdownCommand = 'edit' | 'delete'
 
-type CategoryTreeNode = {
-  id: string
-  label: string
-  raw: CategoryRow
-}
-
-const treeProps = {
-  label: 'label',
-  children: 'children',
-}
-
 const jwtPayload = computed<JwtPayload | null>(() => {
   const token = getToken()
   return token ? parseJwt(token) : null
@@ -175,16 +173,19 @@ const jwtPayload = computed<JwtPayload | null>(() => {
 const teamId = computed(() => jwtPayload.value?.team_id || '')
 const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
-const treeNodes = computed<CategoryTreeNode[]>(() =>
-  categories.value.map(item => ({
-    id: item.ID,
-    label: item.Name,
-    raw: item,
-  }))
-)
-
 const selectedCategory = computed(() =>
   categories.value.find(item => item.ID === selectedId.value) || null
+)
+
+const cardCategories = computed(() =>
+  categories.value.map(item => ({
+    id: item.ID,
+    name: item.Name,
+    avatar: item.Name?.charAt(0)?.toUpperCase() || '#',
+    subTitle: item.Code || item.Pinyin || '暂无编码信息',
+    sortText: Number.isFinite(item.Sort) ? `排序 ${item.Sort}` : '',
+    raw: item,
+  }))
 )
 
 const namePlaceholder = computed(() =>
@@ -267,24 +268,15 @@ watch(
         selectedId.value = first.ID
       }
     }
-    nextTick(() => {
-      treeRef.value?.setCurrentKey(selectedId.value)
-    })
   },
   { deep: true }
 )
 
-watch(selectedId, (id) => {
-  nextTick(() => {
-    treeRef.value?.setCurrentKey(id)
-  })
-})
-
-const onNodeClick = (node: CategoryTreeNode) => {
-  selectedId.value = node.id
+const selectCategory = (id: string) => {
+  selectedId.value = id
 }
 
-const onNodeCommand = (command: DropdownCommand, row: CategoryRow) => {
+const onCardCommand = (command: DropdownCommand, row: CategoryRow) => {
   selectedId.value = row.ID
   if (command === 'edit') {
     openEdit(row)
@@ -422,16 +414,23 @@ const confirmDelete = async (row: CategoryRow) => {
   gap: 12px;
 }
 
+
 .panel-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.panel-header h2 {
+.panel-title h2 {
   font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.panel-sub {
   margin: 0;
+  font-size: 12px;
+  color: #909399;
 }
 
 .panel-search {
@@ -439,24 +438,106 @@ const confirmDelete = async (row: CategoryRow) => {
   gap: 8px;
 }
 
-.panel-tree {
+.category-list {
   flex: 1;
   min-height: 0;
-  overflow: auto;
 }
 
-.tree-node-label {
+.category-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background: #f8fafc;
+  margin-bottom: 10px;
+}
+
+.category-item:last-child {
+  margin-bottom: 0;
+}
+
+.category-item:hover,
+.category-item.active {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.12);
+}
+
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.item-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #409eff, #66b1ff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 4px 10px rgba(64, 158, 255, 0.35);
+  flex-shrink: 0;
+}
+
+.item-text {
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-sub {
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.item-sort {
+  font-size: 12px;
+  color: #409eff;
+  background: rgba(64, 158, 255, 0.12);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.item-actions {
   display: inline-flex;
   align-items: center;
-  padding: 4px 6px;
-  border-radius: 4px;
-  cursor: pointer;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   transition: background 0.2s;
+  color: #606266;
 }
 
-.tree-node-label:hover,
-.tree-node-label.selected {
-  background: rgba(64, 158, 255, 0.12);
+.item-actions:hover {
+  background: rgba(64, 158, 255, 0.15);
   color: #409eff;
 }
 
