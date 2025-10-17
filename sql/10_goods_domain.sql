@@ -11,10 +11,13 @@ CREATE TABLE IF NOT EXISTS base_category (
   name        VARCHAR(64)  NOT NULL COMMENT '品类名称（唯一）',
   code        VARCHAR(64)      NULL COMMENT '品类编码（可选，建议唯一）',
   pinyin      VARCHAR(64)      NULL COMMENT '拼音（可选，用于搜索）',
+  team_id     CHAR(36)     NOT NULL COMMENT '中队ID',
   is_deleted  TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
+  -- 可避免同一中队下名字+规格重复
+  UNIQUE KEY uq_goods_team_name_spec (team_id, name, spec_id),
   UNIQUE KEY uq_category_name (name),
   UNIQUE KEY uq_category_code (code)
 ) ENGINE=InnoDB

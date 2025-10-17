@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -92,6 +94,33 @@ func ContainsChinese(s string) bool {
 		}
 	}
 	return false
+}
+
+func GetOrgCodeAndSortByID(ctx context.Context, db *gorm.DB, id string, forUpdate bool) (code string, sort int, err error) {
+	if id == "" {
+		return "", 0, errors.New("id 不能为空")
+	}
+
+	// 用一个轻量的投影结构体接收
+	var row struct {
+		Code string
+		Sort int
+	}
+
+	q := db.WithContext(ctx).
+		Table("base_org").
+		Select("code, sort").
+		Where("id = ? AND is_deleted = 0", id)
+
+	// 需要在事务里加锁时，传 forUpdate=true
+	if forUpdate {
+		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+
+	if err = q.Take(&row).Error; err != nil {
+		return "", 0, err // 可能是 gorm.ErrRecordNotFound
+	}
+	return row.Code, row.Sort, nil
 }
 
 // GeneratePinyin generates pinyin string from Chinese characters

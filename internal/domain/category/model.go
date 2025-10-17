@@ -15,6 +15,7 @@ type Category struct {
 	Code      *string   `gorm:"size:64;uniqueIndex:uq_category_code;comment:品类编码（可选，建议唯一）"`
 	Pinyin    *string   `gorm:"size:64;comment:拼音（可选，用于搜索）"`
 	Sort      int       `gorm:"not null;default:0;index;comment:排序值"`
+	OrgID     string    `gorm:"type:char(36);not null;comment:所属机构ID"`
 	IsDeleted int       `gorm:"not null;default:0;comment:软删标记：0=有效,1=已删除"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
