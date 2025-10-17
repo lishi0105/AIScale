@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS base_user (
   password_hash  VARCHAR(255) NOT NULL COMMENT '用户密码Hash（建议BCrypt/Argon2）',
   org_id         CHAR(36)     NOT NULL COMMENT '组织机构id（base_org.id）',
   role           TINYINT      NOT NULL DEFAULT 1 COMMENT '角色 0管理员 1用户',
+  sort           INT          NOT NULL DEFAULT 0 COMMENT '排序码',
   is_deleted     TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否删除标记：0=否 1=是',
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   last_login_at  DATETIME         NULL COMMENT '登录时间',

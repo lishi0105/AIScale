@@ -71,6 +71,9 @@ func main() {
 		log.Fatal("seed dicts failed", zap.Error(err))
 	}
 
+	if err := foodDB.EnsureDefaultCategory(context.Background(), food_db); err != nil {
+		log.Fatal("seed category failed", zap.Error(err))
+	}
 	engine := server.New(food_db, cfg.Auth, cfg.Server.WebRoot)
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	srv := &http.Server{

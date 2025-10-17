@@ -19,6 +19,7 @@ const (
 	defaultAdminUsername = "admin"
 	defaultAdminPassword = "admin123"
 	defaultAdminRole     = middleware.RoleAdmin
+	defaultAdminSort     = -1
 
 	// 默认组织固定 UUID（你刚刚要的那一个）
 	defaultOrgID = DefaultOrgID
@@ -72,6 +73,7 @@ func EnsureDefaultAccount(ctx context.Context, gdb *gorm.DB) error {
 			Username:     defaultAdminUsername,
 			PasswordHash: hash,
 			OrgID:        defaultOrgID, // 绑定默认组织
+			Sort:         defaultAdminSort,
 			IsDeleted:    middleware.DeletedNo,
 			Role:         int(defaultAdminRole),
 		}

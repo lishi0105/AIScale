@@ -5,9 +5,41 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
+	"github.com/mozillazg/go-pinyin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+func NextColoumSort(tx *gorm.DB, tableName string) (int, error) {
+	// 读取现有有效记录的 sort 并加锁，避免并发插入冲突
+	var sorts []int
+	if err := tx.
+		Table(tableName).
+		Select("sort").
+		Where("is_deleted = 0").
+		Order("sort ASC").
+		Clauses(clause.Locking{Strength: "UPDATE"}). // 相当于 FOR UPDATE
+		Scan(&sorts).Error; err != nil {
+		return 0, err
+	}
+
+	// 计算最小缺口：1,2,3,...，谁缺谁就是答案；如果不缺，则=最大值+1
+	next := 1
+	for _, s := range sorts {
+		if s < next {
+			continue
+		}
+		if s == next {
+			next++
+			continue
+		}
+		// s > next，说明 next 缺失
+		break
+	}
+	return next, nil
+}
 
 func NextDictionaryCode(tx *gorm.DB, tableName, base string) (string, error) {
 	var codes []string
@@ -50,4 +82,33 @@ func NextDictionaryCode(tx *gorm.DB, tableName, base string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s%03d", base, expected), nil
+}
+
+// ContainsChinese checks if the string contains Chinese characters
+func ContainsChinese(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
+}
+
+// GeneratePinyin generates pinyin string from Chinese characters
+// Returns empty string if input is empty or contains no Chinese characters
+func GeneratePinyin(s string) string {
+	if s == "" || !ContainsChinese(s) {
+		return ""
+	}
+
+	args := pinyin.NewArgs()
+	args.Style = pinyin.Normal // 不带声调
+	args.Separator = ""        // 拼音之间不加分隔符
+	args.Fallback = func(r rune, a pinyin.Args) []string {
+		// 非汉字字符保留原样
+		return []string{string(r)}
+	}
+
+	pinyinSlice := pinyin.LazyPinyin(s, args)
+	return strings.Join(pinyinSlice, "")
 }

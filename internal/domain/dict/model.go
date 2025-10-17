@@ -1,6 +1,7 @@
 package dict
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,10 +23,13 @@ func (u *Unit) BeforeCreate(tx *gorm.DB) error {
 	if u.ID == "" {
 		u.ID = uuid.NewString()
 	}
-	code, err := utils.NextDictionaryCode(tx, "base_unit", "01")
+
+	sort, err := utils.NextColoumSort(tx, u.TableName())
 	if err != nil {
 		return err
 	}
+	u.Sort = sort
+	code := codeFromSort(sort)
 	u.Code = &code
 	return nil
 }
@@ -46,10 +50,12 @@ func (s *Spec) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == "" {
 		s.ID = uuid.NewString()
 	}
-	code, err := utils.NextDictionaryCode(tx, "base_spec", "02")
+	sort, err := utils.NextColoumSort(tx, s.TableName())
 	if err != nil {
 		return err
 	}
+	s.Sort = sort
+	code := codeFromSort(sort)
 	s.Code = &code
 	return nil
 }
@@ -70,12 +76,18 @@ func (m *MealTime) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == "" {
 		m.ID = uuid.NewString()
 	}
-	code, err := utils.NextDictionaryCode(tx, "menu_meal", "03")
+	sort, err := utils.NextColoumSort(tx, m.TableName())
 	if err != nil {
 		return err
 	}
+	m.Sort = sort
+	code := codeFromSort(sort)
 	m.Code = &code
 	return nil
 }
 
 func (MealTime) TableName() string { return "menu_meal" }
+
+func codeFromSort(sort int) string {
+	return fmt.Sprintf("%02d", sort)
+}
