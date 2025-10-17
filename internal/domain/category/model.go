@@ -27,6 +27,17 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 		return err
 	}
 	c.Code = &code
+	
+	// Auto-generate pinyin if name contains Chinese characters and pinyin is not provided
+	if c.Pinyin == nil || *c.Pinyin == "" {
+		if utils.IsChineseText(c.Name) {
+			pinyin := utils.GeneratePinyin(c.Name)
+			if pinyin != "" {
+				c.Pinyin = &pinyin
+			}
+		}
+	}
+	
 	return nil
 }
 
