@@ -32,8 +32,8 @@ func (s *Service) GetCategory(ctx context.Context, id string) (*domain.Category,
 	return s.r.GetCategory(ctx, id)
 }
 
-func (s *Service) ListCategories(ctx context.Context, keyword string, page, pageSize int) ([]domain.Category, int64, error) {
-	return s.r.ListCategories(ctx, keyword, page, pageSize)
+func (s *Service) ListCategories(ctx context.Context, keyword string, team_id string, page, pageSize int) ([]domain.Category, int64, error) {
+	return s.r.ListCategories(ctx, keyword, team_id, page, pageSize)
 }
 
 func (s *Service) UpdateCategory(ctx context.Context, id, name string, code *string, pinyin *string) error {

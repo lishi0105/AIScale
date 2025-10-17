@@ -110,7 +110,7 @@
             show-word-limit
           />
         </el-form-item>
-        <el-form-item v-if="dialogMode === 'create'" label="排序码">
+        <el-form-item v-if="dialogMode === 'create'" label="排序码" placeholder="留空则自动生成">
           <el-input-number v-model="form.sort" :min="0" :max="9999" controls-position="right" />
         </el-form-item>
       </el-form>

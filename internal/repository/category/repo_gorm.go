@@ -24,11 +24,11 @@ func (r *categoryRepo) GetCategory(ctx context.Context, id string) (*category.Ca
 	return &out, nil
 }
 
-func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, page, pageSize int) ([]category.Category, int64, error) {
+func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, team_id string, page, pageSize int) ([]category.Category, int64, error) {
 	var list []category.Category
 	var total int64
 	q := r.db.WithContext(ctx).Model(&category.Category{}).
-		Where("is_deleted = 0")
+		Where("is_deleted = 0 AND team_id = ?", team_id)
 	if keyword != "" {
 		pattern := "%" + keyword + "%"
 		q = q.Where("(name LIKE ? OR code LIKE ? OR pinyin LIKE ?)", pattern, pattern, pattern)

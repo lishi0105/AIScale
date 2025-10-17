@@ -8,7 +8,6 @@ import (
 	"gorm.io/gorm"
 	domain "hdzk.cn/foodapp/internal/domain/account"
 	repo "hdzk.cn/foodapp/internal/repository/account"
-	middleware "hdzk.cn/foodapp/internal/server/middleware"
 	"hdzk.cn/foodapp/pkg/crypto"
 )
 
@@ -16,21 +15,21 @@ type Service struct{ r repo.Repository }
 
 func NewService(r repo.Repository) *Service { return &Service{r: r} }
 
-func (s *Service) Authenticate(ctx context.Context, username, plain string) (string, int, int, error) {
+func (s *Service) Authenticate(ctx context.Context, username, plain string) (*domain.Account, error) {
 	u, err := s.r.GetByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", int(middleware.RoleUser), int(middleware.DeletedYes), errors.New("用户名或密码错误")
+			return nil, errors.New("用户名或密码错误")
 		}
-		return "", int(middleware.RoleUser), int(middleware.DeletedYes), err
+		return nil, err
 	}
 	if !crypto.VerifyPassword(u.PasswordHash, plain) {
-		return "", int(middleware.RoleUser), int(middleware.DeletedYes), errors.New("用户名或密码错误")
+		return nil, errors.New("用户名或密码错误")
 	}
 	if u.IsDeleted == 1 {
-		return "", int(u.Role), int(middleware.DeletedYes), errors.New("账户已停用")
+		return nil, errors.New("账户已停用")
 	}
-	return u.ID, int(u.Role), int(middleware.DeletedNo), nil
+	return u, nil
 }
 
 func (s *Service) Create(ctx context.Context, a *domain.Account) error {

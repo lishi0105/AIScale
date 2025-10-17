@@ -27,9 +27,13 @@ func (h *CategoryHandler) Register(rg *gin.RouterGroup) {
 // 请求体
 type category_createReq struct {
 	Name   string  `json:"name" binding:"required,min=1,max=64"`
-	OrgID  string  `json:"org_id" binding:"required,uuid4"`
+	TeamId string  `json:"team_id" binding:"required,uuid4"`
 	Code   *string `json:"code" binding:"omitempty,max=64"`
 	Pinyin *string `json:"pinyin" binding:"omitempty,max=64"`
+}
+
+type category_listReq struct {
+	TeamId string `json:"team_id" binding:"required,uuid4"`
 }
 
 type category_updateReq struct {
@@ -57,7 +61,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateCategory(c, req.Name, req.OrgID, req.Code, req.Pinyin)
+	m, err := h.s.CreateCategory(c, req.Name, req.TeamId, req.Code, req.Pinyin)
 	if err != nil {
 		ConflictError(c, err_title, "添加品类失败:"+err.Error())
 		return
@@ -97,10 +101,15 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
+	var req category_listReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		BadRequest(c, err_title, "参数错误：需要 team_id(UUID4)")
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	list, total, err := h.s.ListCategories(c, kw, page, ps)
+	list, total, err := h.s.ListCategories(c, kw, req.TeamId, page, ps)
 	if err != nil {
 		InternalError(c, err_title, err.Error())
 		return

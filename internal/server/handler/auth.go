@@ -39,7 +39,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	uid, role, deleted, err := h.s.Authenticate(c, req.Username, req.Password)
+	account, err := h.s.Authenticate(c, req.Username, req.Password)
 	if err != nil {
 		UnauthorizedError(c, err_title, "用户名或密码错误")
 		return
@@ -49,13 +49,14 @@ func (h *AuthHandler) login(c *gin.Context) {
 	now := time.Now()
 	exp := now.Add(time.Duration(h.ttlMins) * time.Minute)
 	claims := jwt.MapClaims{
-		"sub":  uid,
-		"usr":  req.Username,
-		"role": role,
-		"del":  deleted,
-		"iat":  now.Unix(),
-		"exp":  exp.Unix(),
-		"iss":  "foodapp",
+		"sub":     account.ID,
+		"usr":     req.Username,
+		"role":    account.Role,
+		"del":     account.IsDeleted,
+		"team_id": account.OrgID,
+		"iat":     now.Unix(),
+		"exp":     exp.Unix(),
+		"iss":     "foodapp",
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := tok.SignedString([]byte(h.secret))
