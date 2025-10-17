@@ -3,55 +3,69 @@
     <aside class="category-panel">
       <div class="panel-header">
         <h2>商品品类</h2>
-        <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增品类</el-button>
+        <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增商品</el-button>
       </div>
       <div class="panel-search">
         <el-input
           v-model="keyword"
           size="small"
           clearable
-          placeholder="搜索品类名称/编码/拼音"
+          placeholder="请输入"
           @clear="onSearch"
           @keyup.enter="onSearch"
-        />
-        <el-button size="small" @click="onSearch">搜索</el-button>
-      </div>
-      <div class="panel-tree" v-loading="treeLoading">
-        <el-tree
-          ref="treeRef"
-          :data="treeNodes"
-          node-key="id"
-          :props="treeProps"
-          highlight-current
-          :current-node-key="selectedId"
-          @node-click="onNodeClick"
-          empty-text="暂无品类"
         >
-          <template #default="{ data }">
-            <el-dropdown
-              trigger="contextmenu"
-              @command="(command: DropdownCommand) => onNodeCommand(command, data.raw)"
-            >
-              <span
-                class="tree-node-label"
-                :class="{ selected: data.raw.ID === selectedId }"
-              >
-                {{ data.raw.Name }}
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="edit" :disabled="!isAdmin">编辑</el-dropdown-item>
-                  <el-dropdown-item command="delete" :disabled="!isAdmin">删除</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+          <template #suffix>
+            <el-button link @click="onSearch">查询</el-button>
           </template>
-        </el-tree>
+        </el-input>
+      </div>
+      <div class="panel-list" v-loading="treeLoading">
+        <!-- 全部商品选项 -->
+        <div 
+          class="category-item all-item"
+          :class="{ active: selectedId === '' }"
+          @click="onSelectAll"
+        >
+          <span class="item-name">全部商品</span>
+        </div>
+        <!-- 品类列表 -->
+        <div
+          v-for="item in categories"
+          :key="item.ID"
+          class="category-item"
+          :class="{ active: item.ID === selectedId }"
+          @click="onNodeClick(item)"
+        >
+          <span class="item-name">{{ item.Name }}</span>
+          <el-dropdown
+            v-if="isAdmin"
+            trigger="click"
+            @command="(command: DropdownCommand) => onNodeCommand(command, item)"
+            @click.stop
+          >
+            <el-button link class="item-more">
+              <el-icon><MoreFilled /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                <el-dropdown-item command="delete">删除</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <el-empty v-if="!categories.length && !treeLoading" description="暂无品类" :image-size="80" />
       </div>
     </aside>
 
     <section class="category-content">
-      <div v-if="selectedCategory" class="detail-card">
+      <div v-if="!selectedId" class="detail-card">
+        <h3 class="detail-title">全部商品</h3>
+        <div class="all-products-info">
+          <p>当前共有 <strong>{{ categories.length }}</strong> 个商品品类</p>
+        </div>
+      </div>
+      <div v-else-if="selectedCategory" class="detail-card">
         <h3 class="detail-title">品类详情</h3>
         <el-descriptions :column="1" border size="small">
           <el-descriptions-item label="品类名称">{{ selectedCategory.Name }}</el-descriptions-item>
@@ -118,8 +132,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, nextTick } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { MoreFilled } from '@element-plus/icons-vue'
 import { CategoryAPI } from '@/api/category'
 import type { CategoryListParams, CategoryRow, CategoryUpdatePayload } from '@/api/category'
 import { notifyError } from '@/utils/notify'
@@ -135,7 +150,6 @@ const submitLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const deletingId = ref('')
-const treeRef = ref<any>(null)
 const editingCategory = ref<CategoryRow | null>(null)
 
 interface CategoryForm {
@@ -156,17 +170,6 @@ const form = reactive<CategoryForm>({
 
 type DropdownCommand = 'edit' | 'delete'
 
-type CategoryTreeNode = {
-  id: string
-  label: string
-  raw: CategoryRow
-}
-
-const treeProps = {
-  label: 'label',
-  children: 'children',
-}
-
 const jwtPayload = computed<JwtPayload | null>(() => {
   const token = getToken()
   return token ? parseJwt(token) : null
@@ -174,14 +177,6 @@ const jwtPayload = computed<JwtPayload | null>(() => {
 
 const teamId = computed(() => jwtPayload.value?.team_id || '')
 const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
-
-const treeNodes = computed<CategoryTreeNode[]>(() =>
-  categories.value.map(item => ({
-    id: item.ID,
-    label: item.Name,
-    raw: item,
-  }))
-)
 
 const selectedCategory = computed(() =>
   categories.value.find(item => item.ID === selectedId.value) || null
@@ -261,27 +256,20 @@ watch(
       selectedId.value = ''
       return
     }
-    if (!list.some(item => item.ID === selectedId.value)) {
-      const first = list[0]
-      if (first) {
-        selectedId.value = first.ID
-      }
+    // 如果当前选中的品类不在列表中，默认选中"全部商品"
+    if (selectedId.value && !list.some(item => item.ID === selectedId.value)) {
+      selectedId.value = ''
     }
-    nextTick(() => {
-      treeRef.value?.setCurrentKey(selectedId.value)
-    })
   },
   { deep: true }
 )
 
-watch(selectedId, (id) => {
-  nextTick(() => {
-    treeRef.value?.setCurrentKey(id)
-  })
-})
+const onSelectAll = () => {
+  selectedId.value = ''
+}
 
-const onNodeClick = (node: CategoryTreeNode) => {
-  selectedId.value = node.id
+const onNodeClick = (item: CategoryRow) => {
+  selectedId.value = item.ID
 }
 
 const onNodeCommand = (command: DropdownCommand, row: CategoryRow) => {
@@ -412,14 +400,14 @@ const confirmDelete = async (row: CategoryRow) => {
 }
 
 .category-panel {
-  width: 280px;
+  width: 320px;
   background: #fff;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .panel-header {
@@ -427,49 +415,109 @@ const confirmDelete = async (row: CategoryRow) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .panel-header h2 {
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 600;
   margin: 0;
+  color: #1f2937;
 }
 
 .panel-search {
-  display: flex;
-  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.panel-tree {
+.panel-search :deep(.el-input) {
+  width: 100%;
+}
+
+.panel-search :deep(.el-input__suffix) {
+  padding-right: 4px;
+}
+
+.panel-search :deep(.el-button) {
+  font-size: 13px;
+  padding: 0 8px;
+  color: #409eff;
+}
+
+.panel-list {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  padding: 8px 0;
 }
 
-.tree-node-label {
-  display: inline-flex;
+.category-item {
+  display: flex;
   align-items: center;
-  padding: 4px 6px;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin: 2px 8px;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.tree-node-label:hover,
-.tree-node-label.selected {
-  background: rgba(64, 158, 255, 0.12);
-  color: #409eff;
+.category-item:hover {
+  background: #f3f4f6;
+}
+
+.category-item.active {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 500;
+}
+
+.category-item.active .item-name {
+  color: #fff;
+}
+
+.category-item .item-name {
+  flex: 1;
+  font-size: 14px;
+  color: #374151;
+  transition: color 0.2s ease;
+}
+
+.category-item.active:hover {
+  background: #2563eb;
+}
+
+.category-item .item-more {
+  padding: 4px;
+  font-size: 16px;
+  color: #9ca3af;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.category-item:hover .item-more {
+  opacity: 1;
+}
+
+.category-item.active .item-more {
+  color: #fff;
+  opacity: 1;
+}
+
+.category-item.all-item {
+  margin-bottom: 4px;
 }
 
 .category-content {
   flex: 1;
   min-width: 0;
   background: #fff;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  padding: 20px 24px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .detail-card {
@@ -477,8 +525,45 @@ const confirmDelete = async (row: CategoryRow) => {
 }
 
 .detail-title {
-  margin: 0 0 16px;
+  margin: 0 0 20px;
   font-size: 18px;
   font-weight: 600;
+  color: #1f2937;
+}
+
+.all-products-info {
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.all-products-info p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.all-products-info strong {
+  color: #3b82f6;
+  font-size: 16px;
+}
+
+/* 滚动条样式 */
+.panel-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-list::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.panel-list::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 </style>
