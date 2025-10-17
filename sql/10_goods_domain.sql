@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS base_category (
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   -- 可避免同一中队下名字+规格重复
-  UNIQUE KEY uq_goods_team_name_spec (team_id, name, spec_id),
+  UNIQUE KEY uq_goods_team_name_category (team_id, name, category_id),
   UNIQUE KEY uq_category_name (name),
   UNIQUE KEY uq_category_code (code)
 ) ENGINE=InnoDB
