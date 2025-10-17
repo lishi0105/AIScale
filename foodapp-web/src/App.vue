@@ -22,6 +22,16 @@
         text-color="#d9d9d9"
         active-text-color="#fff"
       >
+        <el-sub-menu index="base">
+          <template #title>
+            <el-icon><Collection /></el-icon>
+            <span>基础数据管理</span>
+          </template>
+          <el-menu-item index="/base/categories">
+            <el-icon><Document /></el-icon>
+            <span>商品库管理</span>
+          </el-menu-item>
+        </el-sub-menu>
         <el-sub-menu index="acl">
           <template #title>
             <el-icon><Collection /></el-icon>
@@ -133,6 +143,7 @@ const toggleCollapse = () => {
 // 激活菜单项（根据路由）
 const activeMenu = computed(() => {
   const path = route.path
+  if (path.startsWith('/base/')) return path
   if (path.startsWith('/acl/')) return path
   if (path.startsWith('/dict/')) return path
   return '/dict/units' // 默认高亮
