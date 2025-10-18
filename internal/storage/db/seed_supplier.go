@@ -26,23 +26,48 @@ var defaultSupplier = []struct {
 	{"测试供应商3", "王二", "15114785236", "贵州市******路132号", "test3@example.com", 0.13},
 }
 
+func strPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // 共用的 upsert（按 name 唯一冲突更新 sort）
 func upsertSupplier(ctx context.Context, db *gorm.DB, row *supplier.Supplier) error {
+	assignments := map[string]any{
+		"float_ratio": row.FloatRatio,
+		"is_deleted":  false, // 0
+		"updated_at":  time.Now(),
+	}
+	if row.ContactName != nil {
+		assignments["contact_name"] = *row.ContactName
+	} else {
+		assignments["contact_name"] = nil
+	}
+	if row.ContactPhone != nil {
+		assignments["contact_phone"] = *row.ContactPhone
+	} else {
+		assignments["contact_phone"] = nil
+	}
+	if row.ContactEmail != nil {
+		assignments["contact_email"] = *row.ContactEmail
+	} else {
+		assignments["contact_email"] = nil
+	}
+	if row.ContactAddress != nil {
+		assignments["contact_address"] = *row.ContactAddress
+	} else {
+		assignments["contact_address"] = nil
+	}
+
 	return db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns: []clause.Column{
 				{Name: "org_id"},
 				{Name: "name"},
 			},
-			DoUpdates: clause.Assignments(map[string]any{
-				"contact_name":    row.ContactName,
-				"contact_phone":   row.ContactPhone,
-				"contact_email":   row.ContactEmail,
-				"contact_address": row.ContactAddress,
-				"float_ratio":     row.FloatRatio,
-				"is_deleted":      false, // 0
-				"updated_at":      time.Now(),
-			}),
+			DoUpdates: clause.Assignments(assignments),
 		}).
 		Create(row).Error
 }
@@ -54,10 +79,10 @@ func EnsureDefaultSupplier(ctx context.Context, gdb *gorm.DB) error {
 			ID:             "", // GORM 会自动生成 UUID（如果你有钩子）或留空由数据库处理
 			Name:           it.Name,
 			OrgID:          DefaultOrgID,
-			ContactName:    it.ContactName,
-			ContactPhone:   it.ContactPhone,
-			ContactEmail:   it.ContactEmail,
-			ContactAddress: it.ContactAddress,
+			ContactName:    strPtr(it.ContactName),
+			ContactPhone:   strPtr(it.ContactPhone),
+			ContactEmail:   strPtr(it.ContactEmail),
+			ContactAddress: strPtr(it.ContactAddress),
 			FloatRatio:     it.FloatRatio,
 			Sort:           0,
 			Status:         1,
