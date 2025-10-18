@@ -28,28 +28,36 @@ func (h *SupplierHandler) Register(rg *gin.RouterGroup) {
 }
 
 type supplierCreateReq struct {
-	Name        string  `json:"name" binding:"required,min=1,max=128"`
-	OrgID       string  `json:"org_id" binding:"required,uuid4"`
-	Description string  `json:"description" binding:"required"`
-	FloatRatio  float64 `json:"float_ratio" binding:"required,gt=0"`
-	Code        *string `json:"code" binding:"omitempty,max=64"`
-	Pinyin      *string `json:"pinyin" binding:"omitempty,max=64"`
-	Status      *int    `json:"status" binding:"omitempty,oneof=1 2"`
-	StartTime   *string `json:"start_time"`
-	EndTime     *string `json:"end_time"`
+	Name           string  `json:"name" binding:"required,min=1,max=128"`
+	OrgID          string  `json:"org_id" binding:"required,uuid4"`
+	Description    string  `json:"description" binding:"required"`
+	FloatRatio     float64 `json:"float_ratio" binding:"required,gt=0"`
+	Code           *string `json:"code" binding:"omitempty,max=64"`
+	Pinyin         *string `json:"pinyin" binding:"omitempty,max=64"`
+	ContactName    *string `json:"contact_name" binding:"omitempty,max=64"`
+	ContactPhone   *string `json:"contact_phone" binding:"omitempty,max=32"`
+	ContactEmail   *string `json:"contact_email" binding:"omitempty,email,max=128"`
+	ContactAddress *string `json:"contact_address" binding:"omitempty,max=255"`
+	Status         *int    `json:"status" binding:"omitempty,oneof=1 2"`
+	StartTime      *string `json:"start_time"`
+	EndTime        *string `json:"end_time"`
 }
 
 type supplierUpdateReq struct {
-	ID          string   `json:"id" binding:"required,uuid4"`
-	Name        *string  `json:"name" binding:"omitempty,min=1,max=128"`
-	Code        *string  `json:"code" binding:"omitempty,max=64"`
-	Pinyin      *string  `json:"pinyin" binding:"omitempty,max=64"`
-	Sort        *int     `json:"sort" binding:"omitempty,min=0"`
-	Status      *int     `json:"status" binding:"omitempty,oneof=1 2"`
-	Description *string  `json:"description"`
-	FloatRatio  *float64 `json:"float_ratio" binding:"omitempty,gt=0"`
-	StartTime   *string  `json:"start_time"`
-	EndTime     *string  `json:"end_time"`
+	ID             string   `json:"id" binding:"required,uuid4"`
+	Name           *string  `json:"name" binding:"omitempty,min=1,max=128"`
+	Code           *string  `json:"code" binding:"omitempty,max=64"`
+	Pinyin         *string  `json:"pinyin" binding:"omitempty,max=64"`
+	Sort           *int     `json:"sort" binding:"omitempty,min=0"`
+	Status         *int     `json:"status" binding:"omitempty,oneof=1 2"`
+	Description    *string  `json:"description"`
+	FloatRatio     *float64 `json:"float_ratio" binding:"omitempty,gt=0"`
+	ContactName    *string  `json:"contact_name" binding:"omitempty,max=64"`
+	ContactPhone   *string  `json:"contact_phone" binding:"omitempty,max=32"`
+	ContactEmail   *string  `json:"contact_email" binding:"omitempty,email,max=128"`
+	ContactAddress *string  `json:"contact_address" binding:"omitempty,max=255"`
+	StartTime      *string  `json:"start_time"`
+	EndTime        *string  `json:"end_time"`
 }
 
 func (h *SupplierHandler) create(c *gin.Context) {
@@ -82,15 +90,19 @@ func (h *SupplierHandler) create(c *gin.Context) {
 	}
 
 	params := svc.CreateParams{
-		Name:        req.Name,
-		OrgID:       req.OrgID,
-		Description: req.Description,
-		FloatRatio:  req.FloatRatio,
-		Code:        req.Code,
-		Pinyin:      req.Pinyin,
-		Status:      req.Status,
-		StartTime:   startTime,
-		EndTime:     endTime,
+		Name:           req.Name,
+		OrgID:          req.OrgID,
+		Description:    req.Description,
+		FloatRatio:     req.FloatRatio,
+		Code:           req.Code,
+		Pinyin:         req.Pinyin,
+		ContactName:    req.ContactName,
+		ContactPhone:   req.ContactPhone,
+		ContactEmail:   req.ContactEmail,
+		ContactAddress: req.ContactAddress,
+		Status:         req.Status,
+		StartTime:      startTime,
+		EndTime:        endTime,
 	}
 	supplier, err := h.s.CreateSupplier(c, params)
 	if err != nil {
@@ -152,9 +164,28 @@ func (h *SupplierHandler) list(c *gin.Context) {
 		}
 	}
 
+	contactName := strings.TrimSpace(c.Query("contact_name"))
+	contactPhone := strings.TrimSpace(c.Query("contact_phone"))
+	contactEmail := strings.TrimSpace(c.Query("contact_email"))
+	contactAddress := strings.TrimSpace(c.Query("contact_address"))
+
+	var contactNamePtr, contactPhonePtr, contactEmailPtr, contactAddressPtr *string
+	if contactName != "" {
+		contactNamePtr = &contactName
+	}
+	if contactPhone != "" {
+		contactPhonePtr = &contactPhone
+	}
+	if contactEmail != "" {
+		contactEmailPtr = &contactEmail
+	}
+	if contactAddress != "" {
+		contactAddressPtr = &contactAddress
+	}
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	list, total, err := h.s.ListSuppliers(c, kw, orgIDPtr, statusPtr, page, ps)
+	list, total, err := h.s.ListSuppliers(c, kw, orgIDPtr, statusPtr, contactNamePtr, contactPhonePtr, contactEmailPtr, contactAddressPtr, page, ps)
 	if err != nil {
 		InternalError(c, err_title, err.Error())
 		return
@@ -201,6 +232,10 @@ func (h *SupplierHandler) update(c *gin.Context) {
 		Status:          req.Status,
 		Description:     req.Description,
 		FloatRatio:      req.FloatRatio,
+		ContactName:     req.ContactName,
+		ContactPhone:    req.ContactPhone,
+		ContactEmail:    req.ContactEmail,
+		ContactAddress:  req.ContactAddress,
 		StartTime:       startTime,
 		EndTime:         endTime,
 		UpdateSort:      req.Sort != nil,

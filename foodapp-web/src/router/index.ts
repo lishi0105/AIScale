@@ -8,6 +8,7 @@ import { getToken } from '@/api/http'
 import Organs from '@/pages/Organs.vue'
 import Accounts from '@/pages/Accounts.vue'
 import Category from '@/pages/Category.vue'
+import Suppliers from '@/pages/Suppliers.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -27,6 +28,10 @@ const routes = [
   { path: '/base/category',
     component: Category,
     meta: { requiresAuth: true, section: '基础数据管理', title: '商品库管理' }
+  },
+  { path: '/base/suppliers',
+    component: Suppliers,
+    meta: { requiresAuth: true, section: '基础数据管理', title: '供货商管理' }
   },
   { path: '/acl/orgs',
     component: Organs,

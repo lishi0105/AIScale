@@ -26,7 +26,7 @@ func (r *supplierRepo) GetSupplier(ctx context.Context, id string) (*domain.Supp
 	return &out, nil
 }
 
-func (r *supplierRepo) ListSuppliers(ctx context.Context, keyword string, orgID *string, status *int, page, pageSize int) ([]supplier.Supplier, int64, error) {
+func (r *supplierRepo) ListSuppliers(ctx context.Context, keyword string, orgID *string, status *int, contactName, contactPhone, contactEmail, contactAddress *string, page, pageSize int) ([]supplier.Supplier, int64, error) {
 	var list []supplier.Supplier
 	var total int64
 	q := r.db.WithContext(ctx).Model(&supplier.Supplier{}).
@@ -40,6 +40,19 @@ func (r *supplierRepo) ListSuppliers(ctx context.Context, keyword string, orgID 
 	// 过滤 status
 	if status != nil {
 		q = q.Where("status = ?", *status)
+	}
+
+	if contactName != nil {
+		q = q.Where("contact_name = ?", *contactName)
+	}
+	if contactPhone != nil {
+		q = q.Where("contact_phone = ?", *contactPhone)
+	}
+	if contactEmail != nil {
+		q = q.Where("contact_email = ?", *contactEmail)
+	}
+	if contactAddress != nil {
+		q = q.Where("contact_address = ?", *contactAddress)
 	}
 
 	// 关键词搜索
@@ -95,6 +108,34 @@ func (r *supplierRepo) UpdateSupplier(ctx context.Context, params UpdateParams) 
 	}
 	if params.FloatRatio != nil {
 		updates["float_ratio"] = *params.FloatRatio
+	}
+	if params.UpdateContactName {
+		if params.ContactName != nil {
+			updates["contact_name"] = *params.ContactName
+		} else {
+			updates["contact_name"] = nil
+		}
+	}
+	if params.UpdateContactPhone {
+		if params.ContactPhone != nil {
+			updates["contact_phone"] = *params.ContactPhone
+		} else {
+			updates["contact_phone"] = nil
+		}
+	}
+	if params.UpdateContactEmail {
+		if params.ContactEmail != nil {
+			updates["contact_email"] = *params.ContactEmail
+		} else {
+			updates["contact_email"] = nil
+		}
+	}
+	if params.UpdateContactAddress {
+		if params.ContactAddress != nil {
+			updates["contact_address"] = *params.ContactAddress
+		} else {
+			updates["contact_address"] = nil
+		}
 	}
 	if params.UpdateStartTime {
 		if params.StartTime != nil {

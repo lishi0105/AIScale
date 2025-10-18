@@ -31,6 +31,10 @@
             <el-icon><Document /></el-icon>
             <span>商品库管理</span>
           </el-menu-item>
+          <el-menu-item index="/base/suppliers">
+            <el-icon><Document /></el-icon>
+            <span>供货商管理</span>
+          </el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="acl">
           <template #title>
