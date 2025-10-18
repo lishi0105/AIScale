@@ -2,8 +2,9 @@ package foodDB
 
 import (
 	"context"
+	"time"
 
-	category "hdzk.cn/foodapp/internal/domain/category"
+	"hdzk.cn/foodapp/internal/domain/supplier"
 	"hdzk.cn/foodapp/pkg/logger"
 
 	"go.uber.org/zap"
@@ -13,34 +14,64 @@ import (
 
 // ① 商品单位
 var defaultSupplier = []struct {
-	Name string
+	Name           string
+	ContactName    string
+	ContactPhone   string
+	ContactAddress string
+	ContactEmail   string
+	FloatRatio     float64
 }{
-	{"蔬菜"}, {"水产海鲜"}, {"水果"}, {"肉、禽、蛋"},
-	{"牛奶饮品"}, {"干货调料"}, {"冻品、豆制品"},
+	{"测试供应商1", "张三", "13812345678", "北京市xxxxxx路", "test1@example.com", 0.12},
+	{"测试供应商2", "李四", "17687654321", "贵州市******路32号", "test2@example.com", 0.11},
+	{"测试供应商3", "王二", "15114785236", "贵州市******路132号", "test3@example.com", 0.13},
 }
 
 // 共用的 upsert（按 name 唯一冲突更新 sort）
-func upsertCategoryByName(ctx context.Context, db *gorm.DB, row any) error {
+func upsertSupplier(ctx context.Context, db *gorm.DB, row *supplier.Supplier) error {
 	return db.WithContext(ctx).
 		Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "name"}}, // 要求表上有 UNIQUE(name)
+			Columns: []clause.Column{
+				{Name: "org_id"},
+				{Name: "name"},
+			},
 			DoUpdates: clause.Assignments(map[string]any{
-				"is_deleted": 0,
+				"contact_name":    row.ContactName,
+				"contact_phone":   row.ContactPhone,
+				"contact_email":   row.ContactEmail,
+				"contact_address": row.ContactAddress,
+				"float_ratio":     row.FloatRatio,
+				"is_deleted":      false, // 0
+				"updated_at":      time.Now(),
 			}),
 		}).
 		Create(row).Error
 }
 
-func EnsureDefaultCategory(ctx context.Context, gdb *gorm.DB) error {
-	// category
-	for _, it := range defaultCategory {
-		if err := upsertCategoryByName(ctx, gdb, &category.Category{Name: it.Name, OrgID: DefaultOrgID}); err != nil {
+// 修正函数名和逻辑：确保默认供应商
+func EnsureDefaultSupplier(ctx context.Context, gdb *gorm.DB) error {
+	for _, it := range defaultSupplier {
+		s := &supplier.Supplier{
+			ID:             "", // GORM 会自动生成 UUID（如果你有钩子）或留空由数据库处理
+			Name:           it.Name,
+			OrgID:          DefaultOrgID,
+			ContactName:    it.ContactName,
+			ContactPhone:   it.ContactPhone,
+			ContactEmail:   it.ContactEmail,
+			ContactAddress: it.ContactAddress,
+			FloatRatio:     it.FloatRatio,
+			Sort:           0,
+			Status:         1,
+			Description:    "默认测试供应商",
+		}
+		if err := upsertSupplier(ctx, gdb, s); err != nil {
+			logger.L().Error("Failed to seed supplier", zap.Error(err), zap.String("name", it.Name))
 			return err
 		}
 	}
 
-	logger.L().Info("Category seeded/ensured",
-		zap.Int("category", len(defaultCategory)),
+	logger.L().Info("Supplier seeded/ensured",
+		zap.Int("count", len(defaultSupplier)),
+		zap.String("org_id", DefaultOrgID),
 	)
 	return nil
 }

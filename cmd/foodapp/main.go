@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,11 +11,41 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 	"hdzk.cn/foodapp/configs"
 	"hdzk.cn/foodapp/internal/server"
 	foodDB "hdzk.cn/foodapp/internal/storage/db"
 	"hdzk.cn/foodapp/pkg/logger"
 )
+
+func seedDefaultData(ctx context.Context, db *gorm.DB) error {
+	// TODO: 编写需要的 seeder 代码
+	if err := foodDB.EnsureDefaultOrganization(context.Background(), db); err != nil {
+		log.Fatal("ensure default org failed", zap.Error(err))
+		return err
+	}
+
+	if err := foodDB.EnsureDefaultAccount(context.Background(), db); err != nil {
+		log.Fatal("ensure default admin failed", zap.Error(err))
+		return err
+	}
+
+	if err := foodDB.EnsureDefaultDicts(context.Background(), db); err != nil {
+		log.Fatal("seed dicts failed", zap.Error(err))
+		return err
+	}
+
+	if err := foodDB.EnsureDefaultCategory(context.Background(), db); err != nil {
+		log.Fatal("seed category failed", zap.Error(err))
+		return err
+	}
+
+	if err := foodDB.EnsureDefaultSupplier(context.Background(), db); err != nil {
+		log.Fatal("seed supplier failed", zap.Error(err))
+		return err
+	}
+	return nil
+}
 
 func main() {
 	// 1. 加载配置文件
@@ -58,22 +89,8 @@ func main() {
 	}
 
 	// 3.2 创建默认组织、账户、字典
+	seedDefaultData(context.Background(), food_db)
 
-	if err := foodDB.EnsureDefaultOrganization(context.Background(), food_db); err != nil {
-		log.Fatal("ensure default org failed", zap.Error(err))
-	}
-
-	if err := foodDB.EnsureDefaultAccount(context.Background(), food_db); err != nil {
-		log.Fatal("ensure default admin failed", zap.Error(err))
-	}
-
-	if err := foodDB.EnsureDefaultDicts(context.Background(), food_db); err != nil {
-		log.Fatal("seed dicts failed", zap.Error(err))
-	}
-
-	if err := foodDB.EnsureDefaultCategory(context.Background(), food_db); err != nil {
-		log.Fatal("seed category failed", zap.Error(err))
-	}
 	engine := server.New(food_db, cfg.Auth, cfg.Server.WebRoot)
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	srv := &http.Server{

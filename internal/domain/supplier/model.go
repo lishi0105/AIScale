@@ -13,20 +13,24 @@ import (
 )
 
 type Supplier struct {
-	ID          string     `gorm:"primaryKey;type:char(36)"`
-	Name        string     `gorm:"size:128;not null;uniqueIndex:uq_supplier_name;comment:供货商名称（唯一）"`
-	Code        *string    `gorm:"size:64;comment:供货商编码（可选）"`
-	Sort        int        `gorm:"not null;default:0;index;comment:排序值"`
-	Pinyin      *string    `gorm:"size:64;comment:拼音（可选，用于搜索）"`
-	Status      int        `gorm:"not null;default:1;comment:状态：1=正常,2=禁用"`
-	Description string     `gorm:"type:text;not null;comment:供应商描述"`
-	FloatRatio  float64    `gorm:"type:decimal(6,4);not null;default:1.0000;comment:浮动比例"`
-	OrgID       string     `gorm:"column:org_id;type:char(36);not null;comment:所属机构ID"`
-	StartTime   *time.Time `gorm:"column:start_time"`
-	EndTime     *time.Time `gorm:"column:end_time"`
-	IsDeleted   int        `gorm:"column:is_deleted;not null;default:0;comment:软删标记：0=有效,1=已删除"`
-	CreatedAt   time.Time  `gorm:"autoCreateTime"`
-	UpdatedAt   time.Time  `gorm:"autoUpdateTime"`
+	ID             string     `gorm:"primaryKey;type:char(36)"`
+	Name           string     `gorm:"size:128;not null;comment:供货商名称"`
+	Code           *string    `gorm:"size:64;comment:供货商编码（可选）"`
+	Sort           int        `gorm:"not null;default:0;index;comment:排序值"`
+	ContactName    string     `gorm:"type:varchar(64);null"`
+	ContactPhone   string     `gorm:"type:varchar(32);null"`
+	ContactEmail   string     `gorm:"type:varchar(128);null"`
+	ContactAddress string     `gorm:"type:varchar(255);null"`
+	Pinyin         *string    `gorm:"size:64;comment:拼音（可选，用于搜索）"`
+	Status         int        `gorm:"not null;default:1;comment:状态：1=正常,2=禁用"`
+	Description    string     `gorm:"type:text;not null;comment:供应商描述"`
+	FloatRatio     float64    `gorm:"type:decimal(6,4);not null;default:1.0000;comment:浮动比例"`
+	OrgID          string     `gorm:"column:org_id;type:char(36);not null;comment:所属机构ID"`
+	StartTime      *time.Time `gorm:"column:start_time"`
+	EndTime        *time.Time `gorm:"column:end_time"`
+	IsDeleted      int        `gorm:"column:is_deleted;not null;default:0;comment:软删标记：0=有效,1=已删除"`
+	CreatedAt      time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt      time.Time  `gorm:"autoUpdateTime"`
 }
 
 func (s *Supplier) BeforeCreate(tx *gorm.DB) error {
