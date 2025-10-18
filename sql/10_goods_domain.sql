@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS supplier (
   name          VARCHAR(128) NOT NULL COMMENT '供货商名称',
   code          VARCHAR(64)      NULL COMMENT '供货商编码',
   sort          INT          NOT NULL DEFAULT 0 COMMENT '排序：越小越前',
+  pinyin        VARCHAR(64)      NULL COMMENT '拼音（可选，用于搜索）',
   status        TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1=正常,2=禁用',
   description   TEXT         NOT NULL COMMENT '供应商描述',
   float_ratio   DECIMAL(6,4) NOT NULL DEFAULT 1.0000 COMMENT '浮动比例：结算价=合同价*float_ratio',
