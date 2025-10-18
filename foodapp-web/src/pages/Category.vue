@@ -33,7 +33,6 @@
               <div class="item-avatar">{{ item.avatar }}</div>
               <div class="item-text">
                 <div class="item-name" :title="item.name">{{ item.name }}</div>
-                <div class="item-sub" :title="item.subTitle">{{ item.subTitle }}</div>
               </div>
             </div>
             <div class="item-meta">
@@ -181,7 +180,6 @@ const cardCategories = computed(() =>
     id: item.ID,
     name: item.Name,
     avatar: item.Name?.charAt(0)?.toUpperCase() || '#',
-    subTitle: item.Pinyin || '暂无拼音',
     raw: item,
   }))
 )

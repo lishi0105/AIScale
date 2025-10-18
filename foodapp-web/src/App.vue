@@ -101,9 +101,13 @@
       </div>
     </main>
   </div>
+  <el-config-provider :locale="zhCn">
+    <router-view />
+  </el-config-provider>
 </template>
 
 <script setup lang="ts">
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { clearAuth, getToken } from '@/api/http'

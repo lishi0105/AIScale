@@ -1,109 +1,144 @@
+<!-- src/pages/Suppliers.vue -->
 <template>
   <div class="page-suppliers">
+    <!-- 左侧：表格 + 工具栏 -->
     <aside class="supplier-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <h2>供货商列表</h2>
-          <p class="panel-sub">点击左侧供货商查看详情</p>
+      <div class="list-header">
+        <h2 class="list-title">供货商管理</h2>
+        <div class="list-tools">
+          <el-input
+            v-model="keywordInput"
+            size="small"
+            clearable
+            placeholder="请输入关键字"
+            @clear="onSearch"
+            @keyup.enter="onSearch"
+            style="width: 220px"
+          />
+          <el-button size="small" type="primary" @click="onSearch">查询</el-button>
+          <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">
+            + 新增供货商
+          </el-button>
         </div>
-        <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增供货商</el-button>
       </div>
-      <div class="panel-search">
-        <el-input
-          v-model="keywordInput"
-          size="small"
-          clearable
-          placeholder="搜索拼音/名称/联系人/地址/电话"
-          @clear="onSearch"
-          @keyup.enter="onSearch"
-        />
-        <el-button size="small" @click="onSearch">搜索</el-button>
-      </div>
-      <div class="supplier-list" v-loading="listLoading">
-        <el-empty v-if="!listLoading && !cardSuppliers.length" description="暂无供货商" />
-        <el-scrollbar v-else>
-          <div
-            v-for="item in cardSuppliers"
-            :key="item.id"
-            class="supplier-item"
-            :class="{ active: item.id === selectedId }"
-            @click="selectSupplier(item.id)"
-          >
-            <div class="item-info">
-              <div class="item-avatar">{{ item.avatar }}</div>
-              <div class="item-text">
-                <div class="item-name" :title="item.name">{{ item.name }}</div>
-                <div class="item-sub">
-                  <template v-if="item.fallback">
-                    {{ item.fallback }}
-                  </template>
-                  <template v-else>
-                    <span v-if="item.contact" class="item-contact" :title="item.contact">联系人：{{ item.contact }}</span>
-                    <span v-if="item.phone" class="item-phone" :title="item.phone">电话：{{ item.phone }}</span>
-                    <span v-else-if="item.address" class="item-address" :title="item.address">地址：{{ item.address }}</span>
-                  </template>
-                </div>
-              </div>
-            </div>
-            <div class="item-meta">
-              <el-dropdown
-                trigger="click"
-                placement="bottom-end"
-                @command="(command: DropdownCommand) => onCardCommand(command, item.raw)"
-              >
-                <span class="item-actions" @click.stop>
-                  <el-icon><MoreFilled /></el-icon>
-                </span>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="edit" :disabled="!isAdmin">编辑</el-dropdown-item>
-                    <el-dropdown-item command="delete" :disabled="!isAdmin">删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-        </el-scrollbar>
-      </div>
+
+      <el-table
+        class="supplier-table"
+        :data="sortedSuppliers"
+        stripe
+        v-loading="listLoading"
+        highlight-current-row
+        :row-key="getRowKey"
+        @current-change="onRowChange"
+        :style="{ '--el-font-size-base':'clamp(13.5px, 1.0vw, 16px)' }"
+      >
+        <el-table-column type="index" label="序号" width="70" />
+
+        <el-table-column label="供应商名称" min-width="200">
+          <template #header>
+            <span class="th-clickable" @click="toggleSort('pinyin')">
+              供应商名称
+              <i class="caret" :class="caretClass('pinyin')"></i>
+            </span>
+          </template>
+          <template #default="{ row }">
+            <el-link type="primary" @click.stop="selectSupplier(row.ID)">
+              {{ row.Name }}
+            </el-link>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="ContactName" label="联系人" min-width="140">
+          <template #default="{ row }">
+            {{ row.ContactName || '—' }}
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="ContactPhone" label="联系电话" min-width="160">
+          <template #default="{ row }">
+            {{ row.ContactPhone || '—' }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="浮动比例" width="140" align="center">
+          <template #header>
+            <span class="th-clickable" @click="toggleSort('ratio')">
+              浮动比例
+              <i class="caret" :class="caretClass('ratio')"></i>
+            </span>
+          </template>
+          <template #default="{ row }">
+            <el-link type="success" :title="formatRatio(row.FloatRatio)">
+              {{ formatRatioPct(row.FloatRatio) }}
+            </el-link>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="160" align="center">
+          <template #default="{ row }">
+            <el-button link @click.stop="openEdit(row)" :disabled="!isAdmin">编辑</el-button>
+            <el-button
+              link
+              type="danger"
+              @click.stop="confirmDelete(row)"
+              :disabled="!isAdmin || deletingId===row.ID"
+            >
+              <span v-if="deletingId===row.ID">删除中…</span>
+              <span v-else>删除</span>
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="pager">
+      <el-pagination
+        background
+        layout="prev, pager, next, jumper, ->, total, sizes"
+        :current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        :page-sizes="[10, 15, 20, 30, 50]"
+        @current-change="onPageChange"
+        @size-change="onPageSizeChange"
+      />
+    </div>
     </aside>
 
-    <section class="supplier-content">
+    <!-- 右侧：单列详情 -->
+    <section class="supplier-content" :style="fontVars">
       <div v-if="selectedSupplier" class="detail-card">
-        <h3 class="detail-title">供货商详情</h3>
-        <el-descriptions :column="2" border size="small" class="detail-grid">
-          <el-descriptions-item label="供货商名称">{{ selectedSupplier.Name }}</el-descriptions-item>
-          <el-descriptions-item label="供货商编码">
-            {{ selectedSupplier.Code || '—' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="拼音">
-            {{ selectedSupplier.Pinyin || '—' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="浮动比例">{{ formatRatio(selectedSupplier.FloatRatio) }}</el-descriptions-item>
-          <el-descriptions-item label="联系人">
-            {{ selectedSupplier.ContactName || '—' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="联系电话">
-            {{ selectedSupplier.ContactPhone || '—' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="联系邮箱">
-            {{ selectedSupplier.ContactEmail || '—' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="联系地址">
-            {{ selectedSupplier.ContactAddress || '—' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="状态">{{ statusLabel(selectedSupplier.Status) }}</el-descriptions-item>
+        <!-- 顶部摘要 -->
+        <div class="detail-header">
+          <div class="detail-header-left">
+            <div class="detail-name">{{ selectedSupplier.Name }}</div>
+            <div class="detail-meta">
+              <el-tag size="small" type="info">编码：{{ selectedSupplier.Code || '—' }}</el-tag>
+              <el-tag size="small" :type="selectedSupplier.Status === 1 ? 'success' : 'warning'">
+                {{ statusLabel(selectedSupplier.Status) }}
+              </el-tag>
+            </div>
+          </div>
+          <div class="ratio-hero" :title="'原始值：' + formatRatio(selectedSupplier.FloatRatio)">
+            <div class="ratio-hero-value">{{ formatRatioPct(selectedSupplier.FloatRatio) }}</div>
+            <div class="ratio-hero-label">浮动比例</div>
+          </div>
+        </div>
+
+        <!-- 单列详情 -->
+        <el-descriptions :column="1" border size="small" class="detail-grid">
+          <el-descriptions-item label="拼音">{{ selectedSupplier.Pinyin || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="联系人">{{ selectedSupplier.ContactName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ selectedSupplier.ContactPhone || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="联系邮箱">{{ selectedSupplier.ContactEmail || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="联系地址">{{ selectedSupplier.ContactAddress || '—' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(selectedSupplier.CreatedAt) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatDate(selectedSupplier.UpdatedAt) }}</el-descriptions-item>
-        </el-descriptions>
-        <el-descriptions :column="1" border size="small" class="detail-description">
-          <el-descriptions-item label="描述信息">
-            {{ formatDescription(selectedSupplier.Description) }}
-          </el-descriptions-item>
+          <el-descriptions-item label="描述信息">{{ formatDescription(selectedSupplier.Description) }}</el-descriptions-item>
         </el-descriptions>
       </div>
       <el-empty v-else description="请选择左侧供货商" />
     </section>
 
+    <!-- 弹窗 -->
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'create' ? '新增供货商' : '编辑供货商'"
@@ -156,9 +191,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { MoreFilled } from '@element-plus/icons-vue'
 import { SupplierAPI } from '@/api/supplier'
 import type { SupplierCreatePayload, SupplierRow, SupplierUpdatePayload } from '@/api/supplier'
 import { notifyError } from '@/utils/notify'
@@ -166,6 +200,9 @@ import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
 
+const page = ref(1)
+const pageSize = ref(15)
+const total = ref(0)
 const keywordInput = ref('')
 const filterKeyword = ref('')
 const suppliers = ref<SupplierRow[]>([])
@@ -187,7 +224,6 @@ interface SupplierForm {
   contactAddress: string
   description: string
 }
-
 const form = reactive<SupplierForm>({
   id: '',
   name: '',
@@ -199,19 +235,33 @@ const form = reactive<SupplierForm>({
   description: '',
 })
 
-type DropdownCommand = 'edit' | 'delete'
+const onPageChange = (p: number) => {
+  page.value = p
+  fetchSuppliers()
+}
 
+const onPageSizeChange = (ps: number) => {
+  pageSize.value = ps
+  page.value = 1
+  fetchSuppliers()
+}
+
+const getRowKey = (row: SupplierRow) => row.ID
+const onRowChange = (row: SupplierRow | undefined) => {
+  if (row) selectSupplier(row.ID)
+}
+
+// 登录信息
 const jwtPayload = computed<JwtPayload | null>(() => {
   const token = getToken()
   return token ? parseJwt(token) : null
 })
-
 const organId = computed(() => jwtPayload.value?.org_id || '')
 const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
+// 关键字本地过滤
 const normalizedKeyword = computed(() => filterKeyword.value.trim().toLowerCase())
-
-const toLower = (value: string | null | undefined) => (value ? value.toLowerCase() : '')
+const toLower = (v: string | null | undefined) => (v ? v.toLowerCase() : '')
 
 const displayedSuppliers = computed(() => {
   const kw = normalizedKeyword.value
@@ -222,31 +272,45 @@ const displayedSuppliers = computed(() => {
     const contact = toLower(item.ContactName)
     const phone = toLower(item.ContactPhone)
     const address = toLower(item.ContactAddress)
-    return [name, pinyin, contact, phone, address].some(field => field.includes(kw))
+    return [name, pinyin, contact, phone, address].some(f => f.includes(kw))
   })
 })
 
-const cardSuppliers = computed(() =>
-  displayedSuppliers.value.map(item => {
-    const contact = (item.ContactName || '').trim()
-    const phone = (item.ContactPhone || '').trim()
-    const address = (item.ContactAddress || '').trim()
-    const fallback = contact || phone || address ? '' : '暂无联系信息'
-    return {
-      id: item.ID,
-      name: item.Name,
-      avatar: item.Name?.charAt(0)?.toUpperCase() || '#',
-      contact,
-      phone,
-      address,
-      fallback,
-      raw: item,
-    }
-  })
-)
+// 排序：pinyin / ratio
+const sortKey = ref<'pinyin' | 'ratio' | null>('pinyin')
+const sortOrder = ref<'asc' | 'desc'>('asc')
 
-const selectedSupplier = computed(() =>
-  suppliers.value.find(item => item.ID === selectedId.value) || null
+const toggleSort = (key: 'pinyin' | 'ratio') => {
+  if (sortKey.value !== key) {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  } else {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  }
+}
+const caretClass = (key: 'pinyin' | 'ratio') => {
+  if (sortKey.value !== key) return ''
+  return sortOrder.value === 'asc' ? 'asc' : 'desc'
+}
+
+const sortedSuppliers = computed(() => {
+  const list = [...displayedSuppliers.value]
+  if (!sortKey.value) return list
+  const asc = sortOrder.value === 'asc' ? 1 : -1
+  if (sortKey.value === 'pinyin') {
+    return list.sort(
+      (a, b) =>
+        (toLower(a.Pinyin || a.Name) > toLower(b.Pinyin || b.Name) ? 1 : -1) * asc
+    )
+  }
+  return list.sort(
+    (a, b) => ((Number(a.FloatRatio) || 0) - (Number(b.FloatRatio) || 0)) * asc
+  )
+})
+
+// 右侧详情选中
+const selectedSupplier = computed(
+  () => suppliers.value.find(i => i.ID === selectedId.value) || null
 )
 
 const statusLabel = (status: number) => (status === 1 ? '正常' : '禁用')
@@ -255,19 +319,23 @@ const formatRatio = (ratio: number) => {
   if (ratio === undefined || ratio === null) return '—'
   return Number(ratio).toFixed(4)
 }
-
+const formatRatioPct = (ratio: number | null | undefined) => {
+  if (ratio === null || ratio === undefined) return '—'
+  const n = Number(ratio)
+  if (Number.isNaN(n)) return '—'
+  return (n * 100).toFixed(2) + '%'
+}
 const formatDate = (value: string | null) => {
   if (!value) return '—'
   try {
     return new Date(value).toLocaleString()
-  } catch (error) {
+  } catch {
     return value
   }
 }
-
 const formatDescription = (desc: string) => {
-  const trimmed = desc ? desc.trim() : ''
-  return trimmed || '—'
+  const t = desc ? desc.trim() : ''
+  return t || '—'
 }
 
 const ensureSelection = (list: SupplierRow[] | undefined) => {
@@ -281,52 +349,55 @@ const ensureSelection = (list: SupplierRow[] | undefined) => {
   }
 }
 
+// org_id 变化 & 首次加载
 watch(
   () => organId.value,
-  () => {
+  val => {
+    if (!val) {
+      ElMessage.error('缺少中队信息（org_id），无法加载供货商列表')
+      suppliers.value = []
+      selectedId.value = ''
+      return
+    }
+    page.value = 1  
     fetchSuppliers()
   },
-  { immediate: true }
+  { immediate: false }
 )
 
+onMounted(() => {
+  if (!organId.value) {
+    ElMessage.error('缺少中队信息（org_id），无法加载供货商列表')
+    suppliers.value = []
+    selectedId.value = ''
+    return
+  }
+  fetchSuppliers()
+})
+
+// 根据排序后的列表保证选中项
 watch(
-  () => displayedSuppliers.value,
-  (list) => {
-    ensureSelection(list)
-  },
+  () => sortedSuppliers.value,
+  list => ensureSelection(list),
   { immediate: true }
 )
-
-const resetForm = () => {
-  form.id = ''
-  form.name = ''
-  form.floatRatio = null
-  form.contactName = ''
-  form.contactPhone = ''
-  form.contactEmail = ''
-  form.contactAddress = ''
-  form.description = ''
-}
-
-const onDialogClosed = () => {
-  resetForm()
-  editingSupplier.value = null
-}
 
 const fetchSuppliers = async () => {
   if (!organId.value) {
     suppliers.value = []
     selectedId.value = ''
+    total.value = 0
     return
   }
   listLoading.value = true
   try {
     const { data } = await SupplierAPI.list({
       org_id: organId.value,
-      page: 1,
-      page_size: 500,
+      page: page.value,          // ✅ 当前页
+      page_size: pageSize.value, // ✅ 每页大小
     })
-    suppliers.value = data?.items || []
+    suppliers.value = Array.isArray(data?.items) ? data.items : []
+    total.value = Number(data?.total || 0)       // ✅ 总数
   } catch (error) {
     notifyError(error)
   } finally {
@@ -338,13 +409,14 @@ const selectSupplier = (id: string) => {
   selectedId.value = id
 }
 
-const onCardCommand = (command: DropdownCommand, row: SupplierRow) => {
-  selectedId.value = row.ID
-  if (command === 'edit') {
-    openEdit(row)
-  } else if (command === 'delete') {
-    confirmDelete(row)
+const onSearch = () => {
+  filterKeyword.value = keywordInput.value.trim()
+  if (!organId.value) {
+    ElMessage.error('缺少中队信息（org_id），无法搜索供货商')
+    return
   }
+   page.value = 1
+   fetchSuppliers()
 }
 
 const openCreate = () => {
@@ -353,7 +425,6 @@ const openCreate = () => {
   editingSupplier.value = null
   dialogVisible.value = true
 }
-
 const openEdit = (row: SupplierRow) => {
   dialogMode.value = 'edit'
   editingSupplier.value = row
@@ -368,23 +439,15 @@ const openEdit = (row: SupplierRow) => {
   dialogVisible.value = true
 }
 
-const onSearch = () => {
-  filterKeyword.value = keywordInput.value.trim()
-  fetchSuppliers()
+const optionalString = (v: string) => {
+  const t = v.trim()
+  return t || undefined
 }
-
-const optionalString = (value: string) => {
-  const trimmed = value.trim()
-  return trimmed || undefined
-}
-
-const buildUpdateString = (value: string, original: string | null | undefined) => {
-  const trimmed = value.trim()
-  const originalTrimmed = original ? original.trim() : ''
-  if (trimmed === originalTrimmed) {
-    return undefined
-  }
-  return trimmed || null
+const buildUpdateString = (v: string, o: string | null | undefined) => {
+  const t = v.trim()
+  const ot = o ? o.trim() : ''
+  if (t === ot) return undefined
+  return t || null
 }
 
 const onSubmit = async () => {
@@ -397,7 +460,11 @@ const onSubmit = async () => {
     ElMessage.warning('缺少中队信息，无法提交')
     return
   }
-  if (form.floatRatio === null || form.floatRatio === undefined || Number(form.floatRatio) <= 0) {
+  if (
+    form.floatRatio === null ||
+    form.floatRatio === undefined ||
+    Number(form.floatRatio) <= 0
+  ) {
     ElMessage.warning('请输入正确的浮动比例')
     return
   }
@@ -409,16 +476,16 @@ const onSubmit = async () => {
         name,
         org_id: organId.value,
         float_ratio: Number(form.floatRatio),
-        description: form.description.trim() || ' ',
+        description: form.description.trim() || ' '
       }
-      const contactName = optionalString(form.contactName)
-      if (contactName !== undefined) payload.contact_name = contactName
-      const contactPhone = optionalString(form.contactPhone)
-      if (contactPhone !== undefined) payload.contact_phone = contactPhone
-      const contactEmail = optionalString(form.contactEmail)
-      if (contactEmail !== undefined) payload.contact_email = contactEmail
-      const contactAddress = optionalString(form.contactAddress)
-      if (contactAddress !== undefined) payload.contact_address = contactAddress
+      const cn = optionalString(form.contactName)
+      if (cn !== undefined) payload.contact_name = cn
+      const cp = optionalString(form.contactPhone)
+      if (cp !== undefined) payload.contact_phone = cp
+      const ce = optionalString(form.contactEmail)
+      if (ce !== undefined) payload.contact_email = ce
+      const ca = optionalString(form.contactAddress)
+      if (ca !== undefined) payload.contact_address = ca
       const { data } = await SupplierAPI.create(payload)
       ElMessage.success('新增供货商成功')
       await fetchSuppliers()
@@ -427,51 +494,35 @@ const onSubmit = async () => {
       }
     } else if (editingSupplier.value) {
       const payload: SupplierUpdatePayload = { id: form.id }
-
-      if (name !== editingSupplier.value.Name) {
-        payload.name = name
-      }
-
+      if (name !== editingSupplier.value.Name) payload.name = name
       const ratio = Number(form.floatRatio)
       if (!Number.isNaN(ratio) && ratio > 0 && ratio !== editingSupplier.value.FloatRatio) {
         payload.float_ratio = ratio
       }
-
-      const contactName = buildUpdateString(form.contactName, editingSupplier.value.ContactName)
-      if (contactName !== undefined) {
-        payload.contact_name = contactName
+      const cn = buildUpdateString(form.contactName, editingSupplier.value.ContactName)
+      if (cn !== undefined) payload.contact_name = cn
+      const cp = buildUpdateString(form.contactPhone, editingSupplier.value.ContactPhone)
+      if (cp !== undefined) payload.contact_phone = cp
+      const ce = buildUpdateString(form.contactEmail, editingSupplier.value.ContactEmail)
+      if (ce !== undefined) payload.contact_email = ce
+      const ca = buildUpdateString(form.contactAddress, editingSupplier.value.ContactAddress)
+      if (ca !== undefined) payload.contact_address = ca
+      const desc = form.description.trim()
+      if (desc !== (editingSupplier.value.Description || '').trim()) {
+        payload.description = desc
       }
-      const contactPhone = buildUpdateString(form.contactPhone, editingSupplier.value.ContactPhone)
-      if (contactPhone !== undefined) {
-        payload.contact_phone = contactPhone
-      }
-      const contactEmail = buildUpdateString(form.contactEmail, editingSupplier.value.ContactEmail)
-      if (contactEmail !== undefined) {
-        payload.contact_email = contactEmail
-      }
-      const contactAddress = buildUpdateString(form.contactAddress, editingSupplier.value.ContactAddress)
-      if (contactAddress !== undefined) {
-        payload.contact_address = contactAddress
-      }
-
-      const description = form.description.trim()
-      if (description !== (editingSupplier.value.Description || '').trim()) {
-        payload.description = description
-      }
-
       if (Object.keys(payload).length === 1) {
         ElMessage.info('未检测到需要保存的修改')
         return
       }
-
       await SupplierAPI.update(payload)
       ElMessage.success('更新供货商成功')
       await fetchSuppliers()
       selectedId.value = form.id
     }
     dialogVisible.value = false
-  } catch (error) {
-    notifyError(error)
+  } catch (e) {
+    notifyError(e)
   } finally {
     submitLoading.value = false
   }
@@ -486,7 +537,7 @@ const confirmDelete = async (row: SupplierRow) => {
       {
         confirmButtonText: '确认删除',
         cancelButtonText: '取消',
-        type: 'warning',
+        type: 'warning'
       }
     )
   } catch {
@@ -501,12 +552,34 @@ const confirmDelete = async (row: SupplierRow) => {
       selectedId.value = ''
     }
     await fetchSuppliers()
-  } catch (error) {
-    notifyError(error)
+  } catch (e) {
+    notifyError(e)
   } finally {
     deletingId.value = ''
   }
 }
+
+const resetForm = () => {
+  form.id = ''
+  form.name = ''
+  form.floatRatio = null
+  form.contactName = ''
+  form.contactPhone = ''
+  form.contactEmail = ''
+  form.contactAddress = ''
+  form.description = ''
+}
+const onDialogClosed = () => {
+  resetForm()
+  editingSupplier.value = null
+}
+
+// 右侧字体自适应（EP 变量）
+const fontVars = computed(() => ({
+  '--el-font-size-base': 'clamp(14px, 1.15vw, 17px)',
+  '--el-font-size-small': 'clamp(13px, 1.0vw, 16px)',
+  '--el-font-size-extra-small': 'clamp(12px, 0.9vw, 14px)'
+}))
 </script>
 
 <style scoped>
@@ -517,8 +590,10 @@ const confirmDelete = async (row: SupplierRow) => {
   min-height: 520px;
 }
 
+/* 左侧区域 */
 .supplier-panel {
-  width: 320px;
+  width: 60%;
+  min-width: 620px;
   background: #fff;
   border: 1px solid #ebeef5;
   border-radius: 8px;
@@ -528,135 +603,50 @@ const confirmDelete = async (row: SupplierRow) => {
   gap: 12px;
 }
 
-.panel-header {
+.list-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
 }
 
-.panel-title h2 {
-  font-size: 18px;
-  margin: 0 0 4px;
-}
-
-.panel-sub {
+.list-title {
   margin: 0;
-  font-size: 12px;
-  color: #909399;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.panel-search {
+.list-tools {
   display: flex;
   gap: 8px;
-}
-
-.supplier-list {
-  flex: 1;
-  min-height: 0;
-}
-
-.supplier-item {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  transition: all 0.2s ease;
+}
+
+.supplier-table :deep(.el-link) {
   cursor: pointer;
-  background: #f8fafc;
-  margin-bottom: 10px;
 }
 
-.supplier-item:last-child {
-  margin-bottom: 0;
-}
-
-.supplier-item:hover,
-.supplier-item.active {
-  border-color: #67c23a;
-  background: rgba(103, 194, 58, 0.12);
-  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.18);
-}
-
-.item-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.item-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #67c23a, #95d475);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 16px;
-  box-shadow: 0 4px 10px rgba(103, 194, 58, 0.35);
-  flex-shrink: 0;
-}
-
-.item-text {
-  min-width: 0;
-}
-
-.item-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-sub {
-  font-size: 12px;
-  color: #909399;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.item-contact,
-.item-phone,
-.item-address {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-phone {
-  color: #67c23a;
-}
-
-.item-meta {
-  display: flex;
-  align-items: center;
-}
-
-.item-actions {
+/* 表头点击效果与箭头 */
+.th-clickable {
+  cursor: pointer;
+  user-select: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  transition: background 0.2s;
-  color: #606266;
+  gap: 6px;
+}
+.caret {
+  border: 5px solid transparent;
+  margin-left: 2px;
+}
+.caret.asc {
+  border-bottom-color: #303133;
+  transform: translateY(-2px);
+}
+.caret.desc {
+  border-top-color: #303133;
+  transform: translateY(2px);
 }
 
-.item-actions:hover {
-  background: rgba(103, 194, 58, 0.15);
-  color: #67c23a;
-}
-
+/* 右侧详情 */
 .supplier-content {
   flex: 1;
   min-width: 0;
@@ -668,22 +658,63 @@ const confirmDelete = async (row: SupplierRow) => {
   flex-direction: column;
   gap: 16px;
 }
-
 .detail-card {
   width: 100%;
 }
-
-.detail-title {
-  margin: 0 0 16px;
-  font-size: 18px;
-  font-weight: 600;
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+}
+.detail-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.detail-name {
+  font-size: clamp(18px, 1.4vw, 22px);
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detail-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.detail-grid .el-descriptions__label {
+/* 英雄比例徽章 */
+.ratio-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 120px;
+  user-select: none;
+}
+.ratio-hero-value {
+  font-size: clamp(22px, 2vw, 28px);
+  font-weight: 800;
+  line-height: 1;
+  color: #67c23a;
+}
+.ratio-hero-label {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 单列描述里标签列更清晰 */
+.detail-grid :deep(.el-descriptions__label) {
   width: 120px;
-}
-
-.detail-description {
-  margin-top: 8px;
+  font-weight: 600;
 }
 </style>
