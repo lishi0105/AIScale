@@ -7,6 +7,7 @@ import (
 	category "hdzk.cn/foodapp/internal/domain/category"
 	dict "hdzk.cn/foodapp/internal/domain/dict"
 	organ "hdzk.cn/foodapp/internal/domain/organ"
+	supplier "hdzk.cn/foodapp/internal/domain/supplier"
 )
 
 func AutoMigrate(gdb *gorm.DB) error {
@@ -17,6 +18,7 @@ func AutoMigrate(gdb *gorm.DB) error {
 		&dict.Spec{},
 		&dict.MealTime{},
 		&category.Category{},
+		&supplier.Supplier{},
 		// 其他模型
 		// 以后新增模型都放这里
 	)

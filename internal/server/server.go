@@ -11,12 +11,14 @@ import (
 	categoryrepo "hdzk.cn/foodapp/internal/repository/category"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
 	organrepo "hdzk.cn/foodapp/internal/repository/organ"
+	supplierrepo "hdzk.cn/foodapp/internal/repository/supplier"
 	handler "hdzk.cn/foodapp/internal/server/handler"
 	"hdzk.cn/foodapp/internal/server/middleware"
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
+	suppliersvc "hdzk.cn/foodapp/internal/service/supplier"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -90,6 +92,19 @@ func registerCategoryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthCon
 	categoryH.Register(protected)
 }
 
+func registerSupplierRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	supplierRepo := supplierrepo.NewRepository(gdb)
+	supplierSvc := suppliersvc.NewService(supplierRepo)
+	supplierH := handler.NewSupplierHandler(supplierSvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil), // 供货商不强制每次刷新
+		middleware.ActiveGuard(),
+	)
+	supplierH.Register(protected)
+}
+
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -121,6 +136,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerDictRoutes(r, gdb, authCfg)
 	registerOrganRoutes(r, gdb, authCfg)
 	registerCategoryRoutes(r, gdb, authCfg)
+	registerSupplierRoutes(r, gdb, authCfg)
 
 	return r
 }
