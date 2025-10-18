@@ -34,7 +34,7 @@ func upsertCategoryByName(ctx context.Context, db *gorm.DB, row any) error {
 func EnsureDefaultCategory(ctx context.Context, gdb *gorm.DB) error {
 	// category
 	for _, it := range defaultCategory {
-		if err := upsertCategoryByName(ctx, gdb, &category.Category{Name: it.Name, TeamID: DefaultOrgID}); err != nil {
+		if err := upsertCategoryByName(ctx, gdb, &category.Category{Name: it.Name, OrgID: DefaultOrgID}); err != nil {
 			return err
 		}
 	}

@@ -1,4 +1,3 @@
-<!-- src/pages/Organs.vue -->
 <template>
   <div class="page-organ">
     <h2 class="page-title">中队管理</h2>
@@ -70,11 +69,13 @@
       />
     </div>
 
+    <!-- 新增/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
       <el-form :model="form" label-width="110px" v-loading="submitLoading">
         <el-form-item label="中队名称">
           <el-input v-model="form.name" placeholder="请输入中队名称" maxlength="64" />
         </el-form-item>
+
         <el-form-item label="上级中队">
           <el-select
             v-model="form.parent"
@@ -92,6 +93,7 @@
             />
           </el-select>
         </el-form-item>
+
         <el-form-item label="编码">
           <el-input
             v-model="form.code"
@@ -100,6 +102,7 @@
             clearable
           />
         </el-form-item>
+
         <el-form-item label="描述">
           <el-input
             v-model="form.description"
@@ -110,13 +113,18 @@
             show-word-limit
           />
         </el-form-item>
-        <el-form-item v-if="dialogMode === 'create'" label="排序码" placeholder="留空则自动生成">
+
+        <el-form-item
+          v-if="dialogMode === 'create'"
+          label="排序码"
+          placeholder="留空则自动生成"
+        >
           <el-input-number v-model="form.sort" :min="0" :max="9999" controls-position="right" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false" :disabled="submitLoading">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="onSubmit">确定</el-button>
+        <el-button @click="dialogVisible=false" :disabled="submitLoading">取消</el-button>
+        <el-button type="primary" @click="onSubmit" :loading="submitLoading">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -126,6 +134,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { OrganAPI, type OrganRow } from '@/api/organ'
+import type { OrganListParams } from '@/api/organ'
 import { notifyError } from '@/utils/notify'
 import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
@@ -147,7 +156,6 @@ const pageSize = ref(15)
 const keyword = ref('')
 const tableLoading = ref(false)
 const deletingId = ref('')
-
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const submitLoading = ref(false)
@@ -168,16 +176,15 @@ const jwtPayload = computed<JwtPayload | null>(() => {
   const token = getToken()
   return token ? parseJwt(token) : null
 })
-
 const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
-const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新增中队' : '编辑中队'))
+const dialogTitle = computed(() =>
+  dialogMode.value === 'create' ? '新增中队' : '编辑中队'
+)
 
 const parentMap = computed<Map<string, OrganRow>>(() => {
   const map = new Map<string, OrganRow>()
-  ;[...allParents.value, ...rows.value].forEach(item => {
-    map.set(item.ID, item)
-  })
+  ;[...allParents.value, ...rows.value].forEach(item => map.set(item.ID, item))
   return map
 })
 
@@ -204,7 +211,7 @@ const resetForm = () => {
 const fetchParents = async () => {
   try {
     parentLoading.value = true
-    const { data } = await OrganAPI.list({ limit: 200, offset: 0, is_deleted: 0 })
+    const { data } = await OrganAPI.list({ page: 1, page_size: 200, is_deleted: 0 })
     allParents.value = Array.isArray(data?.items) ? data.items : []
   } catch (error) {
     notifyError(error)
@@ -216,15 +223,13 @@ const fetchParents = async () => {
 const fetchList = async () => {
   try {
     tableLoading.value = true
-    const limit = pageSize.value
-    const offset = (page.value - 1) * pageSize.value
-    const body = {
-      name_like: keyword.value || undefined,
-      limit,
-      offset,
+    const params: OrganListParams= {
+      page: page.value,
+      page_size: pageSize.value,
+      keyword: keyword.value || undefined,
       is_deleted: 0,
     }
-    const { data } = await OrganAPI.list(body)
+    const { data } = await OrganAPI.list(params)
     rows.value = Array.isArray(data?.items) ? data.items : []
     total.value = Number(data?.total || 0)
   } catch (error) {
@@ -238,7 +243,6 @@ const onSearch = () => {
   page.value = 1
   fetchList()
 }
-
 const onPageChange = (p: number) => {
   page.value = p
   fetchList()
@@ -350,22 +354,18 @@ fetchParents()
   display: flex;
   flex-direction: column;
 }
-
 .page-title {
   margin: 8px 0 16px;
 }
-
 .toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
 }
-
 .toolbar-btn {
   margin-left: auto;
 }
-
 .pager {
   margin-top: 16px;
   display: flex;

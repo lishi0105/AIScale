@@ -31,37 +31,47 @@ func (r *gormRepo) GetByID(ctx context.Context, id string) (*domain.Organ, error
 	return &o, nil
 }
 
-func (r *gormRepo) List(ctx context.Context, q domain.ListQuery) ([]*domain.Organ, int64, error) {
-	tx := r.db.WithContext(ctx).Model(&domain.Organ{}).
-		Where("sort <> ?", -1)
-	if q.NameLike != "" {
-		tx = tx.Where("name LIKE ?", "%"+q.NameLike+"%")
+func (r *gormRepo) List(ctx context.Context, keyword string, Deleted, Role *int, page, pageSize int) ([]domain.Organ, int64, error) {
+	var (
+		list  []domain.Organ
+		total int64
+	)
+
+	q := r.db.WithContext(ctx).Model(&domain.Organ{})
+
+	if Deleted != nil {
+		q = q.Where("is_deleted = ?", *Deleted)
 	}
-	if q.Deleted != nil {
-		tx = tx.Where("is_deleted = ?", *q.Deleted)
+	if Role != nil {
+		q = q.Where("role = ?", *Role)
+	}
+	if keyword != "" {
+		pattern := "%" + keyword + "%"
+		q = q.Where("(name LIKE ? OR code LIKE ? OR pinyin LIKE ?)", pattern, pattern, pattern)
 	}
 
-	var total int64
-	if err := tx.Count(&total).Error; err != nil {
+	// ---------- 分页参数 ----------
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 || pageSize > 1000 {
+		pageSize = 20
+	}
+
+	// ---------- 统计总数 ----------
+	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	limit, offset := q.Limit, q.Offset
-	if limit <= 0 || limit > 200 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
+	// ---------- 查询结果 ----------
+	err := q.
+		Order("sort ASC").
+		Order("name ASC").
+		Limit(pageSize).
+		Offset((page - 1) * pageSize).
+		Find(&list).Error
 
-	var rows []*domain.Organ
-	if err := tx.
-		Order("sort ASC, created_at DESC").
-		Limit(limit).Offset(offset).
-		Find(&rows).Error; err != nil {
-		return nil, 0, err
-	}
-	return rows, total, nil
+	return list, total, err
 }
 
 func (r *gormRepo) UpdateFields(ctx context.Context, id string, fields map[string]any) error {

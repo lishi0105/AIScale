@@ -14,7 +14,7 @@ type Repository interface {
 	// R
 	GetByID(ctx context.Context, id string) (*domain.Account, error)
 	GetByUsername(ctx context.Context, username string) (*domain.Account, error)
-	List(ctx context.Context, q domain.ListQuery) ([]domain.Account, int64, error)
+	List(ctx context.Context, NameLike string, Deleted, Role *int, page, page_size int) ([]domain.Account, int64, error)
 
 	// U
 	UpdatePasswordHash(ctx context.Context, id string, hash string) error

@@ -10,7 +10,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, m *domain.Organ) error
 	GetByID(ctx context.Context, id string) (*domain.Organ, error)
-	List(ctx context.Context, q domain.ListQuery) ([]*domain.Organ, int64, error)
+	List(ctx context.Context, NameLike string, Deleted, Role *int, page, page_size int) ([]domain.Organ, int64, error)
 	UpdateFields(ctx context.Context, id string, fields map[string]any) error
 	SoftDelete(ctx context.Context, id string) error
 	HardDelete(ctx context.Context, id string) error

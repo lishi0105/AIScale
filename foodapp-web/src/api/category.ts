@@ -1,7 +1,7 @@
 import http from './http'
 
 export interface CategoryListParams {
-  team_id: string
+  organ_id: string
   keyword?: string
   page?: number
   page_size?: number
@@ -9,7 +9,7 @@ export interface CategoryListParams {
 
 export interface CategoryCreatePayload {
   name: string
-  team_id: string
+  organ_id: string
   code?: string
   pinyin?: string
 }
@@ -28,7 +28,7 @@ export interface CategoryRow {
   Code: string | null
   Pinyin: string | null
   Sort: number
-  TeamID: string
+  OrganID: string
   IsDeleted: number
   CreatedAt: string
   UpdatedAt: string

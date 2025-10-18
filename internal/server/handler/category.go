@@ -21,13 +21,14 @@ func (h *CategoryHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/get_category", h.GetCategory)        // 按 id 获取
 	g.POST("/list_category", h.ListCategories)    // 列表（分页/条件）
 	g.POST("/update_category", h.UpdateCategory)  // 更新品类
-	g.POST("/udelete_category", h.DeleteCategory) // 删除品类
+	g.POST("/soft_delete_category", h.softDelete) // 删除品类
+	g.POST("/hard_delete_category", h.hardDelete) // 删除品类
 }
 
 // 请求体
 type category_createReq struct {
 	Name   string  `json:"name" binding:"required,min=1,max=64"`
-	TeamId string  `json:"team_id" binding:"required,uuid4"`
+	OrgID  string  `json:"org_id" binding:"required,uuid4"`
 	Code   *string `json:"code" binding:"omitempty,max=64"`
 	Pinyin *string `json:"pinyin" binding:"omitempty,max=64"`
 }
@@ -58,7 +59,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateCategory(c, req.Name, req.TeamId, req.Code, req.Pinyin)
+	m, err := h.s.CreateCategory(c, req.Name, req.OrgID, req.Code, req.Pinyin)
 	if err != nil {
 		ConflictError(c, err_title, "添加品类失败:"+err.Error())
 		return
@@ -98,14 +99,14 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
-	teamID := c.Query("team_id")
-	if teamID == "" {
-		BadRequest(c, err_title, "参数错误：缺少 team_id")
+	orgID := c.Query("org_id")
+	if orgID == "" {
+		BadRequest(c, err_title, "参数错误：缺少 org_id")
 		return
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	list, total, err := h.s.ListCategories(c, kw, teamID, page, ps)
+	list, total, err := h.s.ListCategories(c, kw, orgID, page, ps)
 	if err != nil {
 		InternalError(c, err_title, err.Error())
 		return
@@ -136,7 +137,31 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
+func (h *CategoryHandler) softDelete(c *gin.Context) {
+	err_title := "删除品类失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已停用，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, err_title, "仅管理员可删除组织")
+		return
+	}
+
+	var req types.IDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err_title, err.Error())
+		return
+	}
+	if err := h.s.SoftDeleteCategory(c, req.ID); err != nil {
+		InternalError(c, err_title, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *CategoryHandler) hardDelete(c *gin.Context) {
 	var req types.IDReq
 	err_title := "删除品类失败"
 	act := middleware.GetActor(c)
@@ -152,7 +177,7 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.DeleteCategory(c, req.ID); err != nil {
+	if err := h.s.HardDeleteCategory(c, req.ID); err != nil {
 		ConflictError(c, err_title, err.Error())
 		return
 	}

@@ -49,8 +49,16 @@ func (s *Service) GetByID(ctx context.Context, id string) (*domain.Organ, error)
 	return s.r.GetByID(ctx, id)
 }
 
-func (s *Service) List(ctx context.Context, q domain.ListQuery) ([]*domain.Organ, int64, error) {
-	return s.r.List(ctx, q)
+type ListQuery struct {
+	NameLike string // 模糊匹配
+	Deleted  *int
+	Role     *int
+	Limit    int
+	Offset   int
+}
+
+func (s *Service) List(ctx context.Context, NameLike string, Deleted, Role *int, page, page_size int) ([]domain.Organ, int64, error) {
+	return s.r.List(ctx, NameLike, Deleted, Role, page, page_size)
 }
 
 func (s *Service) Update(ctx context.Context, in UpdateInput) error {

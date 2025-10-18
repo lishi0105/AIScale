@@ -18,7 +18,7 @@ type Category struct {
 	Code      *string   `gorm:"size:64;uniqueIndex:uq_category_code;comment:品类编码（可选，建议唯一）"`
 	Pinyin    *string   `gorm:"size:64;comment:拼音（可选，用于搜索）"`
 	Sort      int       `gorm:"not null;default:0;index;comment:排序值"`
-	TeamID    string    `gorm:"column:team_id;type:char(36);not null;comment:所属机构ID"` // 注意 tag
+	OrgID     string    `gorm:"column:org_id;type:char(36);not null;comment:所属机构ID"` // 注意 tag
 	IsDeleted int       `gorm:"not null;default:0;comment:软删标记：0=有效,1=已删除"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
@@ -28,12 +28,12 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 	if c.ID == "" {
 		c.ID = uuid.NewString()
 	}
-	if c.TeamID == "" {
-		return errors.New("TeamID(team_id) 不能为空")
+	if c.OrgID == "" {
+		return errors.New("OrgID(org_id) 不能为空")
 	}
 
-	// 1) 查 team 的 code/sort（FOR UPDATE）
-	orgCode, orgSort, err := utils.GetOrgCodeAndSortByID(tx.Statement.Context, tx, c.TeamID, true)
+	// 1) 查 organ 的 code/sort（FOR UPDATE）
+	orgCode, orgSort, err := utils.GetOrgCodeAndSortByID(tx.Statement.Context, tx, c.OrgID, true)
 	if err != nil {
 		return fmt.Errorf("查询 org code/sort 失败: %w", err)
 	}
@@ -47,7 +47,7 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 
 	// 2) sort = org.sort*1000 + 最小缺口
 	if c.Sort <= 0 {
-		suf, err := nextSortSuffix(tx, c.TeamID, base, true)
+		suf, err := nextSortSuffix(tx, c.OrgID, base, true)
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 
 	// 3) code = org.code + 三位后缀（各自独立找缺口）
 	if c.Code == nil || (c.Code != nil && *c.Code == "") {
-		suf, err := nextCodeSuffixByPrefix(tx, c.TeamID, orgCode, true)
+		suf, err := nextCodeSuffixByPrefix(tx, c.OrgID, orgCode, true)
 		if err != nil {
 			return err
 		}
@@ -78,8 +78,8 @@ func (Category) TableName() string { return "base_category" }
 
 // ---------- helpers ----------
 
-// sort 段的最小缺口：仅统计本 team、未删除、落在 (base, base+999] 的 sort
-func nextSortSuffix(tx *gorm.DB, teamID string, base int, forUpdate bool) (int, error) {
+// sort 段的最小缺口：仅统计本 organ (base, base+999] 的 sort
+func nextSortSuffix(tx *gorm.DB, orgID string, base int, forUpdate bool) (int, error) {
 	type rec struct{ Sort int }
 	var rows []rec
 
@@ -87,10 +87,10 @@ func nextSortSuffix(tx *gorm.DB, teamID string, base int, forUpdate bool) (int, 
 	q := tx.Table("base_category").
 		Select("sort").
 		Where(`
-			team_id = ?
+			org_id = ?
 			AND is_deleted = 0
 			AND sort > ? AND sort <= ?`,
-			teamID, base, base+999).
+			orgID, base, base+999).
 		Order("sort ASC")
 	if forUpdate {
 		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
@@ -117,8 +117,8 @@ func nextSortSuffix(tx *gorm.DB, teamID string, base int, forUpdate bool) (int, 
 	return next, nil
 }
 
-// code 段的最小缺口：仅统计本 team、未删除、code 形如 <orgCode><三位数字>
-func nextCodeSuffixByPrefix(tx *gorm.DB, teamID, orgCode string, forUpdate bool) (int, error) {
+// code 段的最小缺口：仅统计本 organ 形如 <orgCode><三位数字>
+func nextCodeSuffixByPrefix(tx *gorm.DB, orgID, orgCode string, forUpdate bool) (int, error) {
 	type rec struct{ Suffix int }
 	var rows []rec
 
@@ -128,11 +128,11 @@ func nextCodeSuffixByPrefix(tx *gorm.DB, teamID, orgCode string, forUpdate bool)
 	q := tx.Table("base_category").
 		Select("CAST(SUBSTRING(code, ? + 1) AS UNSIGNED) AS suffix", prefixLen).
 		Where(`
-			team_id = ?
+			org_id = ?
 			AND is_deleted = 0
 			AND code LIKE CONCAT(?, '___')
 			AND code REGEXP CONCAT('^', ?, '[0-9]{3}$')`,
-			teamID, orgCode, orgCode).
+			orgID, orgCode, orgCode).
 		Order("suffix ASC")
 	if forUpdate {
 		q = q.Clauses(clause.Locking{Strength: "UPDATE"})

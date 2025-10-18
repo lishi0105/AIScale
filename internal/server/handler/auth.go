@@ -49,14 +49,14 @@ func (h *AuthHandler) login(c *gin.Context) {
 	now := time.Now()
 	exp := now.Add(time.Duration(h.ttlMins) * time.Minute)
 	claims := jwt.MapClaims{
-		"sub":     account.ID,
-		"usr":     req.Username,
-		"role":    account.Role,
-		"del":     account.IsDeleted,
-		"team_id": account.OrgID,
-		"iat":     now.Unix(),
-		"exp":     exp.Unix(),
-		"iss":     "foodapp",
+		"sub":    account.ID,
+		"usr":    req.Username,
+		"role":   account.Role,
+		"del":    account.IsDeleted,
+		"org_id": account.OrgID,
+		"iat":    now.Unix(),
+		"exp":    exp.Unix(),
+		"iss":    "foodapp",
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := tok.SignedString([]byte(h.secret))

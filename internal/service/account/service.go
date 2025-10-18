@@ -46,8 +46,8 @@ func (s *Service) GetByID(ctx context.Context, id string) (*domain.Account, erro
 func (s *Service) GetByUsername(ctx context.Context, username string) (*domain.Account, error) {
 	return s.r.GetByUsername(ctx, username)
 }
-func (s *Service) List(ctx context.Context, q domain.ListQuery) ([]domain.Account, int64, error) {
-	return s.r.List(ctx, q)
+func (s *Service) List(ctx context.Context, NameLike string, Deleted, Role *int, page, page_size int) ([]domain.Account, int64, error) {
+	return s.r.List(ctx, NameLike, Deleted, Role, page, page_size)
 }
 func (s *Service) UpdatePasswordHash(ctx context.Context, id string, hash string) error {
 	return s.r.UpdatePasswordHash(ctx, id, hash)

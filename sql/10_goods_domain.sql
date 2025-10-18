@@ -9,8 +9,8 @@ USE main;
 CREATE TABLE IF NOT EXISTS base_category (
   id          CHAR(36)     NOT NULL COMMENT '主键UUID',
   name        VARCHAR(64)  NOT NULL COMMENT '品类名称（同一中队内唯一）',
-  team_id     CHAR(36)     NOT NULL COMMENT '中队ID',
-  code        VARCHAR(64)      NULL COMMENT '品类编码（可选，建议全局唯一）',
+  org_id      CHAR(36)     NOT NULL COMMENT '中队ID',
+  code        VARCHAR(64)      NULL COMMENT '品类编码',
   pinyin      VARCHAR(64)      NULL COMMENT '拼音（可选，用于搜索）',
   sort        INT          NOT NULL DEFAULT 0 COMMENT '排序码',
   is_deleted  TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS base_category (
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   -- 同一中队下品类名称唯一
-  UNIQUE KEY uq_category_team_name (team_id, name),
+  UNIQUE KEY uq_category_org_name (org_id, name),
   -- 品类编码全局唯一（如果业务需要）
   UNIQUE KEY uq_category_code (code)
 ) ENGINE=InnoDB
@@ -33,12 +33,12 @@ CREATE TABLE IF NOT EXISTS price_inquiry (
   market_1      VARCHAR(128)    NULL COMMENT '市场1',
   market_2      VARCHAR(128)    NULL COMMENT '市场2',
   market_3      VARCHAR(128)    NULL COMMENT '市场3',
-  team_id       CHAR(36)   NOT NULL COMMENT '中队ID',
+  org_id        CHAR(36)   NOT NULL COMMENT '中队ID',
   is_deleted    TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删标记',
   created_at    DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at    DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   KEY idx_inquiry_date (inquiry_date),
-  KEY idx_inquiry_team (team_id)
+  KEY idx_inquiry_org (org_id)
 ) ENGINE=InnoDB
   COMMENT='询价记录（抬头）';
 
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS price_inquiry (
 /* 说明：
    - spec_id     → base_spec.id（规格字典）
    - category_id → base_category.id（品类字典）
-   - team_id     → 多组织/中队隔离
+   - org_id     → 多组织/中队隔离
 */
 CREATE TABLE IF NOT EXISTS base_goods (
   id            CHAR(36)      NOT NULL COMMENT '主键UUID',
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   sku           VARCHAR(64)       NULL COMMENT 'SKU/条码',
   image_url     VARCHAR(512)      NULL COMMENT '商品图片URL',
   category_id   CHAR(36)          NULL COMMENT '商品品类ID（base_category.id）',
-  team_id       CHAR(36)          NULL COMMENT '中队ID',
+  org_id        CHAR(36)          NULL COMMENT '中队ID',
   is_deleted    TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=删除',
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -68,15 +68,13 @@ CREATE TABLE IF NOT EXISTS base_goods (
   KEY idx_goods_spec      (spec_id),
 
   -- 可避免同一中队下名字+规格重复
-  UNIQUE KEY uq_goods_team_name_spec (team_id, name, spec_id),
+  UNIQUE KEY uq_goods_org_name_spec (org_id, name, spec_id),
 
   -- 外键（确保依赖表已创建）
   CONSTRAINT fk_goods_spec     FOREIGN KEY (spec_id)     REFERENCES base_spec(id),
   CONSTRAINT fk_goods_category FOREIGN KEY (category_id) REFERENCES base_category(id)
 ) ENGINE=InnoDB
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';
-
-USE main;
 
 /* ---------- Base_商品均价明细 ---------- */
 /* 说明：
@@ -111,7 +109,7 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
     ) STORED COMMENT '商品均价（自动按非空项求平均，保留2位）',
 
   inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录Id（price_inquiry.id）',
-  team_id         CHAR(36)          NULL COMMENT '中队Id',
+  org_id          CHAR(36)          NULL COMMENT '中队Id',
   is_deleted      TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
   created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -134,11 +132,16 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
 CREATE TABLE IF NOT EXISTS supplier (
   id            CHAR(36)     NOT NULL COMMENT '主键UUID',
   name          VARCHAR(128) NOT NULL COMMENT '供货商名称',
+  code          VARCHAR(64)      NULL COMMENT '供货商编码',
   active_start  DATE             NULL COMMENT '开始日期（可空）',
   active_end    DATE             NULL COMMENT '结束日期（可空）',
+  sort          INT          NOT NULL DEFAULT 0 COMMENT '排序：越小越前',
   status        TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1=正常,2=禁用',
+  description   TEXT         NOT NULL COMMENT '供应商描述',
   float_ratio   DECIMAL(6,4) NOT NULL DEFAULT 1.0000 COMMENT '浮动比例：结算价=合同价*float_ratio',
-  team_id       CHAR(36)         NULL COMMENT '中队ID',
+  org_id        CHAR(36)         NULL COMMENT '中队ID',
+  startTime     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '开始时间', 
+  endTime       DATETIME         NULL COMMENT '结束时间',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间', 
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -165,7 +168,7 @@ CREATE TABLE IF NOT EXISTS base_goods_price (
   unit_price      DECIMAL(10,2) NOT NULL COMMENT '商品单价（本次报价）',
   float_ratio     DECIMAL(6,4)  NOT NULL DEFAULT 1.0000 COMMENT '浮动比例快照（来自 supplier.float_ratio）',
 
-  team_id         CHAR(36)          NULL COMMENT '中队ID',
+  org_id         CHAR(36)          NULL COMMENT '中队ID',
   is_deleted      TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
   created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

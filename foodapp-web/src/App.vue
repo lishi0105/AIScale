@@ -85,7 +85,7 @@
           </el-breadcrumb>
         </div>
         <div class="topbar-right">
-          <span v-if="teamNameDisplay" class="team">当前中队：{{ teamNameDisplay }}</span>
+          <span v-if="organNameDisplay" class="organ">当前中队：{{ organNameDisplay }}</span>
           <span class="user">欢迎，{{ usernameDisplay }}</span>
           <el-button size="small" @click="onLogout">退出登录</el-button>
         </div>
@@ -139,30 +139,30 @@ const usernameDisplay = computed(() => {
 })
 
 // 当前用户所属中队 ID
-const currentTeamId = computed(() => jwtPayload.value?.team_id || '')
+const currentOrganId = computed(() => jwtPayload.value?.organ_id || '')
 
 // 顶部展示的中队名称
-const teamName = ref('')
-const teamNameDisplay = computed(() => teamName.value || (currentTeamId.value ? currentTeamId.value : ''))
+const organName = ref('')
+const organNameDisplay = computed(() => organName.value || (currentOrganId.value ? currentOrganId.value : ''))
 
-const fetchTeamName = async (teamId: string) => {
-  if (!teamId) {
-    teamName.value = ''
+const fetchOrganName = async (organId: string) => {
+  if (!organId) {
+    organName.value = ''
     return
   }
   try {
-    const { data } = await OrganAPI.get(teamId)
-    teamName.value = data?.Name || ''
+    const { data } = await OrganAPI.get(organId)
+    organName.value = data?.Name || ''
   } catch (error) {
-    teamName.value = ''
+    organName.value = ''
     notifyError(error)
   }
 }
 
 watch(
-  () => currentTeamId.value,
-  (teamId) => {
-    fetchTeamName(teamId)
+  () => currentOrganId.value,
+  (organId) => {
+    fetchOrganName(organId)
   },
   { immediate: true }
 )
@@ -274,7 +274,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-.team {
+.organ {
   color: #333;
   font-size: 13px;
 }

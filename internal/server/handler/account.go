@@ -3,6 +3,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	svc "hdzk.cn/foodapp/internal/service/account"
 	types "hdzk.cn/foodapp/internal/transport"
 	"hdzk.cn/foodapp/pkg/crypto"
+	"hdzk.cn/foodapp/pkg/utils"
 )
 
 type AccountHandler struct{ s *svc.Service }
@@ -168,39 +170,42 @@ func (h *AccountHandler) getByUsername(c *gin.Context) {
 }
 
 func (h *AccountHandler) list(c *gin.Context) {
-	const errTitle = "获取用户列表失败"
+	const err_title = "获取用户列表失败"
+	kw := c.Query("keyword")
+
 	act := middleware.GetActor(c)
 	if act.Deleted != middleware.DeletedNo {
-		ForbiddenError(c, errTitle, "账户已停用，禁止操作")
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
-
-	if act.Role != middleware.RoleAdmin {
-		a, err := h.s.GetByID(c, act.ID)
-		if err != nil {
-			InternalError(c, errTitle, "无法获取当前用户信息: "+err.Error())
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"total": 1, "items": []any{a}})
-		return
-	}
-
-	var req acc_listReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		req.Limit, req.Offset = 20, 0
-	}
-	items, total, err := h.s.List(c, domain.ListQuery{
-		UsernameLike: req.UsernameLike,
-		Deleted:      req.Deleted,
-		Role:         req.Role,
-		Limit:        req.Limit,
-		Offset:       req.Offset,
-	})
+	deleted, err := utils.GetQueryIntPointer(c, "is_deleted")
 	if err != nil {
-		InternalError(c, errTitle, err.Error())
+		BadRequest(c, err_title, "deleted 非法"+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": items})
+	if deleted != nil && *deleted != 0 && *deleted != 1 {
+		BadRequest(c, err_title, "deleted 取值非法，只能为0/1")
+		return
+	}
+
+	role, err := utils.GetQueryIntPointer(c, "role")
+	if err != nil {
+		BadRequest(c, err_title, "role 非法"+err.Error())
+		return
+	}
+	if role != nil && *role != 0 && *role != 1 && *role != 2 {
+		BadRequest(c, err_title, "role 取值非法，只能为0/1/2")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	list, total, err := h.s.List(c, kw, deleted, role, page, ps)
+	if err != nil {
+		InternalError(c, err_title, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
 }
 
 func (h *AccountHandler) updatePassword(c *gin.Context) {

@@ -54,11 +54,3 @@ func codeFromSort(sort int) string {
 }
 
 func (Organ) TableName() string { return "base_org" }
-
-type ListQuery struct {
-	NameLike string // 模糊匹配
-	Deleted  *int
-	Role     *int
-	Limit    int
-	Offset   int
-}

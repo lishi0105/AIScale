@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -78,45 +79,54 @@ func (r *GormRepo) GetByUsername(ctx context.Context, username string) (*domain.
 	return &a, nil
 }
 
-func (r *GormRepo) List(ctx context.Context, q domain.ListQuery) ([]domain.Account, int64, error) {
-	tx := r.db.WithContext(ctx).Model(&domain.Account{})
+func (r *GormRepo) List(ctx context.Context, keyword string, Deleted, Role *int, page, pageSize int) ([]domain.Account, int64, error) {
+	var (
+		list  []domain.Account
+		total int64
+	)
 
-	// 默认只查未删除；若显式传了 Deleted 则按传参过滤
-	if q.Deleted == nil {
-		tx = tx.Where("is_deleted = 0")
-	} else {
-		tx = tx.Where("is_deleted = ?", *q.Deleted)
+	q := r.db.WithContext(ctx).Model(&domain.Account{})
+
+	// 可选条件
+	if Deleted != nil {
+		q = q.Where("is_deleted = ?", *Deleted)
 	}
-	if q.UsernameLike != "" {
-		tx = tx.Where("username LIKE ?", "%"+q.UsernameLike+"%")
-	}
-	if q.Role != nil {
-		tx = tx.Where("role = ?", *q.Role)
+	if Role != nil {
+		q = q.Where("role = ?", *Role)
 	}
 
-	var total int64
-	if err := tx.Count(&total).Error; err != nil {
+	// 关键字搜索：只用真实存在的列
+	if kw := strings.TrimSpace(keyword); kw != "" {
+		pattern := "%" + kw + "%"
+		// 如果 accounts 表只有 username / description：
+		q = q.Where("(username LIKE ? OR description LIKE ?)", pattern, pattern)
+		// 如果没有 description，就用 username 一个字段：
+		// q = q.Where("username LIKE ?", pattern)
+	}
+
+	// 分页参数
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 || pageSize > 1000 {
+		pageSize = 20
+	}
+
+	// 统计总数
+	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	limit := q.Limit
-	if limit <= 0 || limit > 200 {
-		limit = 20
-	}
-	offset := q.Offset
-	if offset < 0 {
-		offset = 0
-	}
-
-	var items []domain.Account
-	if err := tx.
+	// 查询结果（去掉不存在的 sort 排序）
+	err := q.
 		Order("sort ASC").
-		Order("created_at DESC").
-		Limit(limit).Offset(offset).
-		Find(&items).Error; err != nil {
-		return nil, 0, err
-	}
-	return items, total, nil
+		Order("username ASC").
+		Order("created_at DESC"). // 如无 created_at，则换成你表里的时间列
+		Limit(pageSize).
+		Offset((page - 1) * pageSize).
+		Find(&list).Error
+
+	return list, total, err
 }
 
 // -------- U --------

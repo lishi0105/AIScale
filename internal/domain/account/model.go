@@ -37,11 +37,3 @@ func (a *Account) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (Account) TableName() string { return "base_user" }
-
-type ListQuery struct {
-	UsernameLike string // 模糊匹配
-	Deleted      *int
-	Role         *int
-	Limit        int
-	Offset       int
-}

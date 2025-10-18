@@ -2,6 +2,7 @@ package category
 
 import (
 	"context"
+	"errors"
 
 	"gorm.io/gorm"
 	category "hdzk.cn/foodapp/internal/domain/category"
@@ -24,11 +25,11 @@ func (r *categoryRepo) GetCategory(ctx context.Context, id string) (*category.Ca
 	return &out, nil
 }
 
-func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, team_id string, page, pageSize int) ([]category.Category, int64, error) {
+func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, org_id string, page, pageSize int) ([]category.Category, int64, error) {
 	var list []category.Category
 	var total int64
 	q := r.db.WithContext(ctx).Model(&category.Category{}).
-		Where("is_deleted = 0 AND team_id = ?", team_id)
+		Where("is_deleted = 0 AND org_id = ?", org_id)
 	if keyword != "" {
 		pattern := "%" + keyword + "%"
 		q = q.Where("(name LIKE ? OR code LIKE ? OR pinyin LIKE ?)", pattern, pattern, pattern)
@@ -76,8 +77,18 @@ func (r *categoryRepo) UpdateCategory(ctx context.Context, id string, name strin
 		Updates(updates).Error
 }
 
-func (r *categoryRepo) DeleteCategory(ctx context.Context, id string) error {
+func (r *categoryRepo) SoftDeleteCategory(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Model(&category.Category{}).
 		Where("id = ?", id).
 		Update("is_deleted", 1).Error
+}
+
+func (r *categoryRepo) HardDeleteCategory(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("id 不能为空")
+	}
+	return r.db.WithContext(ctx).
+		Unscoped().
+		Where("id = ?", id).
+		Delete(&category.Category{}).Error
 }

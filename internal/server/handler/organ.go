@@ -2,12 +2,14 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	domain "hdzk.cn/foodapp/internal/domain/organ"
 	middleware "hdzk.cn/foodapp/internal/server/middleware"
 	svc "hdzk.cn/foodapp/internal/service/organ"
 	types "hdzk.cn/foodapp/internal/transport"
+	"hdzk.cn/foodapp/pkg/utils"
 )
 
 /************* Handler *************/
@@ -42,13 +44,6 @@ type orgUpdateReq struct {
 	ParentID    *string `json:"parent_id"`
 	Code        *string `json:"code"` // 若传入空串，将置为 NULL
 	Description *string `json:"description"`
-}
-
-type orgListReq struct {
-	NameLike string `json:"name_like"`
-	Deleted  *int   `json:"is_deleted"`
-	Limit    int    `json:"limit"  binding:"omitempty,min=1,max=200"`
-	Offset   int    `json:"offset" binding:"omitempty,min=0"`
 }
 
 /************* 处理函数 *************/
@@ -116,25 +111,45 @@ func (h *OrganHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, o)
 }
 
-func (h *OrganHandler) list(c *gin.Context) {
-	const errTitle = "获取组织列表失败"
-	var req orgListReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		// 容错默认
-		req.Limit, req.Offset = 20, 0
-	}
+func ptr[T any](v T) *T { return &v }
 
-	items, total, err := h.s.List(c, domain.ListQuery{
-		NameLike: req.NameLike,
-		Deleted:  req.Deleted,
-		Limit:    req.Limit,
-		Offset:   req.Offset,
-	})
-	if err != nil {
-		InternalError(c, errTitle, err.Error())
+func (h *OrganHandler) list(c *gin.Context) {
+	const err_title = "获取组织列表失败"
+	kw := c.Query("keyword")
+
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": items})
+	deleted, err := utils.GetQueryIntPointer(c, "is_deleted")
+	if err != nil {
+		BadRequest(c, err_title, "deleted 非法"+err.Error())
+		return
+	}
+	if deleted != nil && *deleted != 0 && *deleted != 1 {
+		BadRequest(c, err_title, "deleted 取值非法，只能为0/1")
+		return
+	}
+
+	role, err := utils.GetQueryIntPointer(c, "role")
+	if err != nil {
+		BadRequest(c, err_title, "role 非法"+err.Error())
+		return
+	}
+	if role != nil && *role != 0 && *role != 1 && *role != 2 {
+		BadRequest(c, err_title, "role 取值非法，只能为0/1/2")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	list, total, err := h.s.List(c, kw, deleted, role, page, ps)
+	if err != nil {
+		InternalError(c, err_title, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
 }
 
 func (h *OrganHandler) update(c *gin.Context) {

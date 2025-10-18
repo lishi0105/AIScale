@@ -15,13 +15,13 @@ type Service struct {
 
 func NewService(r repo.CategoryRepository) *Service { return &Service{r: r} }
 
-func (s *Service) CreateCategory(ctx context.Context, name string, team_id string, code *string, pinyin *string) (*domain.Category, error) {
+func (s *Service) CreateCategory(ctx context.Context, name string, org_id string, code *string, pinyin *string) (*domain.Category, error) {
 	normalizedCode, _ := normalizeString(code)
 	normalizedPinyin, _ := normalizeString(pinyin)
 	m := &domain.Category{
 		ID:     uuid.NewString(),
 		Name:   name,
-		TeamID: team_id,
+		OrgID:  org_id,
 		Code:   normalizedCode,
 		Pinyin: normalizedPinyin,
 	}
@@ -32,8 +32,8 @@ func (s *Service) GetCategory(ctx context.Context, id string) (*domain.Category,
 	return s.r.GetCategory(ctx, id)
 }
 
-func (s *Service) ListCategories(ctx context.Context, keyword string, team_id string, page, pageSize int) ([]domain.Category, int64, error) {
-	return s.r.ListCategories(ctx, keyword, team_id, page, pageSize)
+func (s *Service) ListCategories(ctx context.Context, keyword string, org_id string, page, pageSize int) ([]domain.Category, int64, error) {
+	return s.r.ListCategories(ctx, keyword, org_id, page, pageSize)
 }
 
 func (s *Service) UpdateCategory(ctx context.Context, id, name string, code *string, pinyin *string, sort *int) error {
@@ -43,8 +43,12 @@ func (s *Service) UpdateCategory(ctx context.Context, id, name string, code *str
 	return s.r.UpdateCategory(ctx, id, name, normalizedCode, normalizedPinyin, sort, updateCode, updatePinyin, updateSort)
 }
 
-func (s *Service) DeleteCategory(ctx context.Context, id string) error {
-	return s.r.DeleteCategory(ctx, id)
+func (s *Service) SoftDeleteCategory(ctx context.Context, id string) error {
+	return s.r.SoftDeleteCategory(ctx, id)
+}
+
+func (s *Service) HardDeleteCategory(ctx context.Context, id string) error {
+	return s.r.HardDeleteCategory(ctx, id)
 }
 
 func normalizeString(str *string) (*string, bool) {

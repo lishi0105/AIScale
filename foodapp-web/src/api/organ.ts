@@ -2,10 +2,11 @@
 import http from './http'
 
 export interface OrganListParams {
-  name_like?: string
+  keyword?: string
   is_deleted?: number
-  limit?: number
-  offset?: number
+  role?:number
+  page?: number
+  page_size?: number
 }
 
 export interface OrganCreatePayload {
@@ -27,7 +28,7 @@ export interface OrganUpdatePayload {
 export const OrganAPI = {
   create: (data: OrganCreatePayload) => http.post('/orgs/create_organ', data),
   get: (id: string) => http.post('/orgs/get_organ', { id }),
-  list: (params: OrganListParams) => http.post('/orgs/list_organ', params || {}),
+  list: (params: OrganListParams) => http.post('/orgs/list_organ', null, { params }),
   update: (data: OrganUpdatePayload) => http.post('/orgs/update_organ', data),
   softDelete: (id: string) => http.post('/orgs/soft_delete_organ', { id }),
   hardDelete: (id: string) => http.post('/orgs/hard_delete_organ', { id }),

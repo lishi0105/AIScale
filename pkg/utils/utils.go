@@ -131,8 +131,8 @@ func GeneratePinyin(s string) string {
 	}
 
 	args := pinyin.NewArgs()
-	args.Style = pinyin.Normal // 不带声调
-	args.Separator = ""        // 拼音之间不加分隔符
+	args.Style = pinyin.FirstLetter // 不带声调
+	args.Separator = ""             // 拼音之间不加分隔符
 	args.Fallback = func(r rune, a pinyin.Args) []string {
 		// 非汉字字符保留原样
 		return []string{string(r)}
