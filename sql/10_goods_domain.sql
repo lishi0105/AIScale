@@ -130,25 +130,43 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
   COMMENT='Base_商品均价明细（按询价记录保存各市场价并生成均价）';
 
 CREATE TABLE IF NOT EXISTS supplier (
-  id            CHAR(36)     NOT NULL COMMENT '主键UUID',
-  name          VARCHAR(128) NOT NULL COMMENT '供货商名称',
-  code          VARCHAR(64)      NULL COMMENT '供货商编码',
-  sort          INT          NOT NULL DEFAULT 0 COMMENT '排序：越小越前',
-  pinyin        VARCHAR(64)      NULL COMMENT '拼音（可选，用于搜索）',
-  status        TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1=正常,2=禁用',
-  description   TEXT         NOT NULL COMMENT '供应商描述',
-  float_ratio   DECIMAL(6,4) NOT NULL DEFAULT 1.0000 COMMENT '浮动比例：结算价=合同价*float_ratio',
-  org_id        CHAR(36)         NULL COMMENT '中队ID',
-  start_time    DATETIME         NULL COMMENT '开始时间', 
-  end_time      DATETIME         NULL COMMENT '结束时间',
-  is_deleted    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
-  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间', 
-  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id              CHAR(36)     NOT NULL COMMENT '主键UUID',
+  name            VARCHAR(128) NOT NULL COMMENT '供货商名称',
+  code            VARCHAR(64)      NULL COMMENT '供货商编码',
+  sort            INT          NOT NULL DEFAULT 0 COMMENT '排序：越小越前',
+  pinyin          VARCHAR(64)      NULL COMMENT '拼音（可选，用于搜索）',
+  status          TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1=正常,2=禁用',
+  description     TEXT         NOT NULL COMMENT '供应商描述',
+  contact_name    VARCHAR(64)      NULL COMMENT '联系人姓名',
+  contact_phone   VARCHAR(32)      NULL COMMENT '联系电话（手机/固话）',
+  contact_email   VARCHAR(128)     NULL COMMENT '联系邮箱',
+  contact_address VARCHAR(255)     NULL COMMENT '联系地址',
+  float_ratio     DECIMAL(6,4) NOT NULL DEFAULT 1.0000 COMMENT '浮动比例：结算价=合同价*float_ratio',
+  org_id          CHAR(36)     NOT NULL COMMENT '中队ID（必填）',
+  start_time      DATETIME         NULL COMMENT '开始时间', 
+  end_time        DATETIME         NULL COMMENT '结束时间',
+  is_deleted      TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间', 
+  updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  
   PRIMARY KEY (id),
-  UNIQUE KEY uq_supplier_name (name),
+  
+  -- ✅ 同一组织内供货商名称必须唯一
+  UNIQUE KEY uq_supplier_org_name (org_id, name),
+  
+  -- ✅ 同一组织内联系方式组合唯一（防止重复录入同一联系人）
+  -- 如果业务允许同一供应商有多个联系人，可删除此索引
+  UNIQUE KEY uq_supplier_org_contact (org_id, contact_name, contact_phone, contact_email, contact_address),
+  
+  -- 按组织查询很常见，建议加索引
+  KEY idx_supplier_org_id (org_id),
+  
+  -- 时间范围查询索引
   KEY idx_supplier_active (start_time, end_time),
+  
+  -- 约束
   CONSTRAINT ck_supplier_ratio_pos CHECK (float_ratio > 0),
-  CONSTRAINT ck_supplier_active_range CHECK (start_time IS NULL OR end_time IS NULL OR start_time >= end_time)
+  CONSTRAINT ck_supplier_active_range CHECK (start_time IS NULL OR end_time IS NULL OR end_time >= start_time)
 ) ENGINE=InnoDB
   COMMENT='供货商';
 

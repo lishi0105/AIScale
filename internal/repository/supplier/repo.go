@@ -37,7 +37,7 @@ type UpdateParams struct {
 type SupplierRepository interface {
 	CreateSupplier(ctx context.Context, m *domain.Supplier) error
 	GetSupplier(ctx context.Context, id string) (*domain.Supplier, error)
-	ListSuppliers(ctx context.Context, params ListParams) ([]domain.Supplier, int64, error)
+	ListSuppliers(ctx context.Context, keyword string, orgID *string, status *int, page, pageSize int) ([]domain.Supplier, int64, error)
 	UpdateSupplier(ctx context.Context, params UpdateParams) error
 	SoftDeleteSupplier(ctx context.Context, id string) error
 	HardDeleteSupplier(ctx context.Context, id string) error

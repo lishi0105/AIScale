@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
+	"hdzk.cn/foodapp/internal/domain/supplier"
 	domain "hdzk.cn/foodapp/internal/domain/supplier"
 )
 
@@ -25,37 +26,39 @@ func (r *supplierRepo) GetSupplier(ctx context.Context, id string) (*domain.Supp
 	return &out, nil
 }
 
-func (r *supplierRepo) ListSuppliers(ctx context.Context, params ListParams) ([]domain.Supplier, int64, error) {
-	var list []domain.Supplier
+func (r *supplierRepo) ListSuppliers(ctx context.Context, keyword string, orgID *string, status *int, page, pageSize int) ([]supplier.Supplier, int64, error) {
+	var list []supplier.Supplier
 	var total int64
-
-	q := r.db.WithContext(ctx).Model(&domain.Supplier{}).
+	q := r.db.WithContext(ctx).Model(&supplier.Supplier{}).
 		Where("is_deleted = 0")
-	if params.OrgID != "" {
-		q = q.Where("org_id = ?", params.OrgID)
+
+	// 过滤 org_id
+	if orgID != nil && *orgID != "" {
+		q = q.Where("org_id = ?", *orgID)
 	}
-	if params.Keyword != "" {
-		pattern := "%" + params.Keyword + "%"
+
+	// 过滤 status
+	if status != nil {
+		q = q.Where("status = ?", *status)
+	}
+
+	// 关键词搜索
+	if keyword != "" {
+		pattern := "%" + keyword + "%"
 		q = q.Where("(name LIKE ? OR code LIKE ? OR pinyin LIKE ?)", pattern, pattern, pattern)
-	}
-	if params.Status != nil {
-		q = q.Where("status = ?", *params.Status)
 	}
 
 	q.Count(&total)
-	page := params.Page
 	if page < 1 {
 		page = 1
 	}
-	pageSize := params.PageSize
 	if pageSize <= 0 || pageSize > 1000 {
 		pageSize = 20
 	}
 	err := q.
 		Order("sort ASC").
-		Order("name ASC").
-		Limit(pageSize).
-		Offset((page - 1) * pageSize).
+		Order("name asc").
+		Limit(pageSize).Offset((page - 1) * pageSize).
 		Find(&list).Error
 	return list, total, err
 }

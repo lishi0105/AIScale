@@ -7,11 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	repo "hdzk.cn/foodapp/internal/repository/supplier"
 	middleware "hdzk.cn/foodapp/internal/server/middleware"
 	svc "hdzk.cn/foodapp/internal/service/supplier"
 	types "hdzk.cn/foodapp/internal/transport"
-	"hdzk.cn/foodapp/pkg/utils"
 )
 
 type SupplierHandler struct{ s *svc.Service }
@@ -126,47 +124,42 @@ func (h *SupplierHandler) get(c *gin.Context) {
 }
 
 func (h *SupplierHandler) list(c *gin.Context) {
-	const errTitle = "获取供应商列表失败"
+	kw := c.Query("keyword")
 
+	err_title := "获取供货商列表失败"
 	act := middleware.GetActor(c)
 	if act.Deleted != middleware.DeletedNo {
-		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		ForbiddenError(c, err_title, "账户已删除，禁止操作")
 		return
 	}
 
+	// org_id 是可选的
 	orgID := c.Query("org_id")
-	if strings.TrimSpace(orgID) == "" {
-		BadRequest(c, errTitle, "参数错误：缺少 org_id")
+	var orgIDPtr *string
+	if orgID != "" {
+		orgIDPtr = &orgID
+	} else {
+		BadRequest(c, err_title, "参数错误：缺少 org_id")
 		return
 	}
-	keyword := c.Query("keyword")
-	statusPtr, err := utils.GetQueryIntPointer(c, "status")
-	if err != nil {
-		BadRequest(c, errTitle, "status 非法: "+err.Error())
-		return
-	}
-	if statusPtr != nil && *statusPtr != 1 && *statusPtr != 2 {
-		BadRequest(c, errTitle, "status 取值非法，只能为1或2")
-		return
+
+	// status 是可选的
+	statusStr := c.Query("status")
+	var statusPtr *int
+	if statusStr != "" {
+		if status, err := strconv.Atoi(statusStr); err == nil {
+			statusPtr = &status
+		}
 	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-
-	listParams := repo.ListParams{
-		Keyword:  keyword,
-		OrgID:    orgID,
-		Status:   statusPtr,
-		Page:     page,
-		PageSize: pageSize,
-	}
-
-	items, total, err := h.s.ListSuppliers(c, listParams)
+	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	list, total, err := h.s.ListSuppliers(c, kw, orgIDPtr, statusPtr, page, ps)
 	if err != nil {
-		InternalError(c, errTitle, err.Error())
+		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": items})
+	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
 }
 
 func (h *SupplierHandler) update(c *gin.Context) {

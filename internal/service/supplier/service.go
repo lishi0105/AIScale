@@ -72,8 +72,8 @@ func (s *Service) GetSupplier(ctx context.Context, id string) (*domain.Supplier,
 	return s.r.GetSupplier(ctx, id)
 }
 
-func (s *Service) ListSuppliers(ctx context.Context, params repo.ListParams) ([]domain.Supplier, int64, error) {
-	return s.r.ListSuppliers(ctx, params)
+func (s *Service) ListSuppliers(ctx context.Context, keyword string, orgID *string, status *int, page, pageSize int) ([]domain.Supplier, int64, error) {
+	return s.r.ListSuppliers(ctx, keyword, orgID, status, page, pageSize)
 }
 
 func (s *Service) UpdateSupplier(ctx context.Context, params UpdateParams) error {
