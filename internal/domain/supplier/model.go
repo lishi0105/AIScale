@@ -17,10 +17,10 @@ type Supplier struct {
 	Name           string     `gorm:"size:128;not null;comment:供货商名称"`
 	Code           *string    `gorm:"size:64;comment:供货商编码（可选）"`
 	Sort           int        `gorm:"not null;default:0;index;comment:排序值"`
-	ContactName    string     `gorm:"type:varchar(64);null"`
-	ContactPhone   string     `gorm:"type:varchar(32);null"`
-	ContactEmail   string     `gorm:"type:varchar(128);null"`
-	ContactAddress string     `gorm:"type:varchar(255);null"`
+	ContactName    *string    `gorm:"type:varchar(64);comment:联系人姓名"`
+	ContactPhone   *string    `gorm:"type:varchar(32);comment:联系电话"`
+	ContactEmail   *string    `gorm:"type:varchar(128);comment:联系邮箱"`
+	ContactAddress *string    `gorm:"type:varchar(255);comment:联系地址"`
 	Pinyin         *string    `gorm:"size:64;comment:拼音（可选，用于搜索）"`
 	Status         int        `gorm:"not null;default:1;comment:状态：1=正常,2=禁用"`
 	Description    string     `gorm:"type:text;not null;comment:供应商描述"`
