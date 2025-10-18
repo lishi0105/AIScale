@@ -211,7 +211,7 @@ const resetForm = () => {
 const fetchParents = async () => {
   try {
     parentLoading.value = true
-    const { data } = await OrganAPI.list({ page: 1, page_size: 200, is_deleted: 0 })
+    const { data } = await OrganAPI.list({ page: 1, page_size: 15, is_deleted: 0 })
     allParents.value = Array.isArray(data?.items) ? data.items : []
   } catch (error) {
     notifyError(error)

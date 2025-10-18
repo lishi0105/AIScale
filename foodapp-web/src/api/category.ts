@@ -1,7 +1,7 @@
 import http from './http'
 
 export interface CategoryListParams {
-  organ_id: string
+  org_id: string
   keyword?: string
   page?: number
   page_size?: number
@@ -9,7 +9,7 @@ export interface CategoryListParams {
 
 export interface CategoryCreatePayload {
   name: string
-  organ_id: string
+  org_id: string
   code?: string
   pinyin?: string
 }

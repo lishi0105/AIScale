@@ -170,7 +170,7 @@ const jwtPayload = computed<JwtPayload | null>(() => {
   return token ? parseJwt(token) : null
 })
 
-const organId = computed(() => jwtPayload.value?.organ_id || '')
+const organId = computed(() => jwtPayload.value?.org_id || '')
 const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
 const selectedCategory = computed(() =>
@@ -231,9 +231,9 @@ const fetchCategories = async () => {
   treeLoading.value = true
   try {
     const params: CategoryListParams = {
-      organ_id: organId.value,
+      org_id: organId.value,
       page: 1,
-      page_size: 999,
+      page_size: 15,
     }
     if (keyword.value.trim()) {
       params.keyword = keyword.value.trim()
@@ -327,7 +327,7 @@ const onSubmit = async () => {
     if (dialogMode.value === 'create') {
       const { data } = await CategoryAPI.create({
         name,
-        organ_id: organId.value,
+        org_id: organId.value,
         pinyin: form.pinyin.trim() ? form.pinyin.trim() : undefined,
         code: form.code.trim() ? form.code.trim() : undefined,
       })

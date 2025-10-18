@@ -139,7 +139,7 @@ const usernameDisplay = computed(() => {
 })
 
 // 当前用户所属中队 ID
-const currentOrganId = computed(() => jwtPayload.value?.organ_id || '')
+const currentOrganId = computed(() => jwtPayload.value?.org_id || '')
 
 // 顶部展示的中队名称
 const organName = ref('')

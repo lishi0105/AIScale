@@ -5,7 +5,7 @@ export interface JwtPayload {
   usr: string      // username
   role: number     // role
   del?: number | boolean // deletion flag (0/1 or boolean)
-  organ_id?: string // organization / organ identifier
+  org_id?: string // organization / organ identifier
   iat: number      // issued at
   exp: number      // expire at
   iss: string      // issuer
