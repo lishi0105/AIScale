@@ -33,6 +33,13 @@ func strPtr(s string) *string {
 	return &s
 }
 
+func strPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // 共用的 upsert（按 name 唯一冲突更新 sort）
 func upsertSupplier(ctx context.Context, db *gorm.DB, row *supplier.Supplier) error {
 	assignments := map[string]any{

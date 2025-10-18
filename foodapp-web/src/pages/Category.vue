@@ -37,7 +37,6 @@
               </div>
             </div>
             <div class="item-meta">
-              <span class="item-sort" v-if="item.sortText">{{ item.sortText }}</span>
               <el-dropdown
                 trigger="click"
                 placement="bottom-end"
@@ -182,8 +181,7 @@ const cardCategories = computed(() =>
     id: item.ID,
     name: item.Name,
     avatar: item.Name?.charAt(0)?.toUpperCase() || '#',
-    subTitle: item.Code || item.Pinyin || '暂无编码信息',
-    sortText: Number.isFinite(item.Sort) ? `排序 ${item.Sort}` : '',
+    subTitle: item.Pinyin || '暂无拼音',
     raw: item,
   }))
 )
@@ -515,14 +513,6 @@ const confirmDelete = async (row: CategoryRow) => {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.item-sort {
-  font-size: 12px;
-  color: #409eff;
-  background: rgba(64, 158, 255, 0.12);
-  padding: 3px 8px;
-  border-radius: 999px;
 }
 
 .item-actions {
