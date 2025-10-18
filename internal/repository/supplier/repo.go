@@ -8,14 +8,6 @@ import (
 	domain "hdzk.cn/foodapp/internal/domain/supplier"
 )
 
-type ListParams struct {
-	Keyword  string
-	OrgID    string
-	Status   *int
-	Page     int
-	PageSize int
-}
-
 type UpdateParams struct {
 	ID                   string
 	Name                 *string
