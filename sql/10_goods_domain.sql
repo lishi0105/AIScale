@@ -133,23 +133,21 @@ CREATE TABLE IF NOT EXISTS supplier (
   id            CHAR(36)     NOT NULL COMMENT '主键UUID',
   name          VARCHAR(128) NOT NULL COMMENT '供货商名称',
   code          VARCHAR(64)      NULL COMMENT '供货商编码',
-  active_start  DATE             NULL COMMENT '开始日期（可空）',
-  active_end    DATE             NULL COMMENT '结束日期（可空）',
   sort          INT          NOT NULL DEFAULT 0 COMMENT '排序：越小越前',
   status        TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1=正常,2=禁用',
   description   TEXT         NOT NULL COMMENT '供应商描述',
   float_ratio   DECIMAL(6,4) NOT NULL DEFAULT 1.0000 COMMENT '浮动比例：结算价=合同价*float_ratio',
   org_id        CHAR(36)         NULL COMMENT '中队ID',
-  startTime     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '开始时间', 
-  endTime       DATETIME         NULL COMMENT '结束时间',
+  start_time    DATETIME         NULL COMMENT '开始时间', 
+  end_time      DATETIME         NULL COMMENT '结束时间',
   is_deleted    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间', 
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
   UNIQUE KEY uq_supplier_name (name),
-  KEY idx_supplier_active (active_start, active_end),
+  KEY idx_supplier_active (start_time, end_time),
   CONSTRAINT ck_supplier_ratio_pos CHECK (float_ratio > 0),
-  CONSTRAINT ck_supplier_active_range CHECK (active_end IS NULL OR active_start IS NULL OR active_end >= active_start)
+  CONSTRAINT ck_supplier_active_range CHECK (start_time IS NULL OR end_time IS NULL OR start_time >= end_time)
 ) ENGINE=InnoDB
   COMMENT='供货商';
 
