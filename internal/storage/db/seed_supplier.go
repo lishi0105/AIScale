@@ -21,9 +21,9 @@ var defaultSupplier = []struct {
 	ContactEmail   string
 	FloatRatio     float64
 }{
-	{"测试供应商1", "张三", "13812345678", "北京市xxxxxx路", "test1@example.com", 0.12},
-	{"测试供应商2", "李四", "17687654321", "贵州市******路32号", "test2@example.com", 0.11},
-	{"测试供应商3", "王二", "15114785236", "贵州市******路132号", "test3@example.com", 0.13},
+	{"贵阳恒阳食品贸易公司", "张三", "13812345678", "北京市xxxxxx路", "test1@example.com", 0.12},
+	{"贵阳李四副食", "李四", "17687654321", "贵州市******路32号", "test2@example.com", 0.11},
+	{"贵阳网二食品", "王二", "15114785236", "贵州市******路132号", "test3@example.com", 0.13},
 }
 
 // 共用的 upsert（按 name 唯一冲突更新 sort）
