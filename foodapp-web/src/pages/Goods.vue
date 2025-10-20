@@ -143,7 +143,7 @@
         </el-form-item>
         <el-form-item label="所属品类">
           <div class="field-inline">
-            <el-select v-model="form.category_id" placeholder="选择品类" style="width:100%">
+            <el-select v-model="form.category_id" placeholder="选择品类">
               <el-option v-for="c in categories" :key="c.ID" :label="c.Name" :value="c.ID" />
             </el-select>
             <span class="required-mark">*</span>
@@ -151,7 +151,7 @@
         </el-form-item>
         <el-form-item label="规格">
           <div class="field-inline">
-            <el-select v-model="form.spec_id" placeholder="选择规格" style="width:100%">
+            <el-select v-model="form.spec_id" placeholder="选择规格">
               <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
             </el-select>
             <span class="required-mark">*</span>
@@ -159,7 +159,7 @@
         </el-form-item>
         <el-form-item label="单位">
           <div class="field-inline">
-            <el-select v-model="form.unit_id" placeholder="选择单位" style="width:100%">
+            <el-select v-model="form.unit_id" placeholder="选择单位">
               <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
             </el-select>
             <span class="required-mark">*</span>
