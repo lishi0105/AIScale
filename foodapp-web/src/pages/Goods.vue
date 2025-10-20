@@ -146,7 +146,6 @@
             <el-select
               v-model="form.category_id"
               placeholder="选择品类"
-              class="full-width-select"
             >
               <el-option v-for="c in categories" :key="c.ID" :label="c.Name" :value="c.ID" />
             </el-select>
@@ -158,7 +157,6 @@
             <el-select
               v-model="form.spec_id"
               placeholder="选择规格"
-              class="full-width-select"
             >
               <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
             </el-select>
@@ -170,7 +168,6 @@
             <el-select
               v-model="form.unit_id"
               placeholder="选择单位"
-              class="full-width-select"
             >
               <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
             </el-select>
@@ -560,19 +557,15 @@ watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() }, { im
 .pager { display:flex; justify-content:flex-end; padding-top:12px; }
 
 /* 商品表单样式 */
-.goods-form .field-inline { display:flex; align-items:center; gap:8px; }
-.goods-form .field-inline :deep(.el-input),
+.goods-form :deep(.el-form-item__content) { width: 80%; }
 .goods-form .field-inline :deep(.el-select),
-.goods-form .field-inline :deep(.el-input-number) { flex:1; }
+.goods-form .field-inline :deep(.el-input),
+.goods-form .field-inline :deep(.el-input-number) {flex: 1 1 auto;width: 80%;min-width: 0;}
+.goods-form .field-inline :deep(.el-select .el-input) { width: 80%; }
 
-.goods-form .field-inline .full-width-select {
-  flex: 1;
-  width: 100% !important;
-}
-.goods-form .field-inline .full-width-select :deep(.el-select__wrapper) {
-  width: 100%;
-}
-.goods-form .field-inline :deep(.el-input-number) { width:100%; }
+.goods-form .field-inline { --reqw: 18px; position: relative; display: flex; align-items: center;gap: 8px; width: 80%; padding-right: var(--reqw);}
+.goods-form .required-mark { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: var(--reqw); text-align: center; line-height: 1; color: #f56c6c; pointer-events: none; }
+
 .required-mark { color:#f56c6c; font-size:18px; line-height:1; }
 .optional-hint { color:#909399; font-size:12px; }
 </style>
