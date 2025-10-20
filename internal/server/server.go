@@ -11,6 +11,7 @@ import (
 	categoryrepo "hdzk.cn/foodapp/internal/repository/category"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
 	goodsrepo "hdzk.cn/foodapp/internal/repository/goods"
+	inquiryrepo "hdzk.cn/foodapp/internal/repository/inquiry"
 	organrepo "hdzk.cn/foodapp/internal/repository/organ"
 	supplierrepo "hdzk.cn/foodapp/internal/repository/supplier"
 	handler "hdzk.cn/foodapp/internal/server/handler"
@@ -19,6 +20,7 @@ import (
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
 	goodssvc "hdzk.cn/foodapp/internal/service/goods"
+	inquirysvc "hdzk.cn/foodapp/internal/service/inquiry"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
 	suppliersvc "hdzk.cn/foodapp/internal/service/supplier"
 
@@ -121,6 +123,20 @@ func registerSupplierRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthCon
 	supplierH.Register(protected)
 }
 
+func registerInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	inquiryRepo := inquiryrepo.NewRepository(gdb)
+	inquirySvc := inquirysvc.NewService(inquiryRepo)
+	inquiryH := handler.NewInquiryHandler(inquirySvc)
+
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil), // 询价记录不强制每次刷新
+		middleware.ActiveGuard(),
+	)
+	inquiryH.Register(protected)
+}
+
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -154,6 +170,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerCategoryRoutes(r, gdb, authCfg)
 	registerSupplierRoutes(r, gdb, authCfg)
 	registerGoodsRoutes(r, gdb, authCfg)
+	registerInquiryRoutes(r, gdb, authCfg)
 
 	return r
 }
