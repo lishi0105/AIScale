@@ -29,25 +29,6 @@ func seedDefaultData(ctx context.Context, db *gorm.DB) error {
 		log.Fatal("ensure default admin failed", zap.Error(err))
 		return err
 	}
-
-	if err := foodDB.EnsureDefaultDicts(context.Background(), db); err != nil {
-		log.Fatal("seed dicts failed", zap.Error(err))
-		return err
-	}
-
-	if err := foodDB.EnsureDefaultCategory(context.Background(), db); err != nil {
-		log.Fatal("seed category failed", zap.Error(err))
-		return err
-	}
-
-	if err := foodDB.EnsureDefaultSupplier(context.Background(), db); err != nil {
-		log.Fatal("seed supplier failed", zap.Error(err))
-		return err
-	}
-	if err := foodDB.EnsureDefaultGoods(context.Background(), db); err != nil {
-		log.Fatal("seed goods failed", zap.Error(err))
-		return err
-	}
 	return nil
 }
 
