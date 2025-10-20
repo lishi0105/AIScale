@@ -591,6 +591,8 @@ const fontVars = computed(() => ({
   min-height: 520px;
 }
 
+.pager-suppliers { display:flex; justify-content:flex-end; padding-top:12px; }
+
 /* 左侧区域 */
 .supplier-panel {
   width: 60%;
@@ -625,7 +627,11 @@ const fontVars = computed(() => ({
 .supplier-table :deep(.el-link) {
   cursor: pointer;
 }
-
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
 /* 表头点击效果与箭头 */
 .th-clickable {
   cursor: pointer;

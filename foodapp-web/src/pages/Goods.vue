@@ -132,14 +132,13 @@
       <el-form :model="form" label-width="110px" v-loading="submitLoading" class="goods-form">
         <el-form-item label="商品名称">
           <div class="field-inline">
-            <el-input v-model="form.name" placeholder="缺省自动生成" maxlength="128" />
+            <el-input v-model="form.name" maxlength="128" />
             <span class="required-mark">*</span>
           </div>
         </el-form-item>
         <el-form-item label="编码(SKU)">
           <div class="field-inline">
             <el-input v-model="form.code" placeholder="缺省自动生成" maxlength="64" />
-            <span class="required-mark">*</span>
           </div>
         </el-form-item>
         <el-form-item label="所属品类">
@@ -547,10 +546,15 @@ watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() }, { im
 .spacer { flex:1 }
 .img-ph { width:48px; height:48px; border-radius:6px; background:#f5f7fa; color:#909399; display:flex; align-items:center; justify-content:center; font-size:12px; }
 .pager { display:flex; justify-content:flex-end; padding-top:12px; }
+
+/* 商品表单样式 */
 .goods-form .field-inline { display:flex; align-items:center; gap:8px; }
 .goods-form .field-inline :deep(.el-input),
 .goods-form .field-inline :deep(.el-select),
 .goods-form .field-inline :deep(.el-input-number) { flex:1; }
+
+.goods-form .field-inline :deep(.el-select) {width: 100%;}
+.goods-form .field-inline :deep(.el-select .el-input__wrapper) {width: 100%;}
 .goods-form .field-inline :deep(.el-input-number) { width:100%; }
 .required-mark { color:#f56c6c; font-size:18px; line-height:1; }
 .optional-hint { color:#909399; font-size:12px; }
