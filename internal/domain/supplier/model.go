@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	utils "hdzk.cn/foodapp/pkg/utils"
 )
@@ -57,7 +56,7 @@ func (s *Supplier) BeforeCreate(tx *gorm.DB) error {
 	base := orgSort * 1000
 
 	if s.Sort <= 0 {
-		suf, err := nextSupplierSortSuffix(tx, s.OrgID, base, true)
+		suf, err := utils.NextSortSuffix(tx, s.TableName(), s.OrgID, base, true)
 		if err != nil {
 			return err
 		}
@@ -65,7 +64,7 @@ func (s *Supplier) BeforeCreate(tx *gorm.DB) error {
 	}
 
 	if s.Code == nil || (s.Code != nil && *s.Code == "") {
-		suf, err := nextSupplierCodeSuffix(tx, s.OrgID, orgCode, true)
+		suf, err := utils.NextCodeSuffixByPrefix(tx, s.TableName(), s.OrgID, orgCode, true)
 		if err != nil {
 			return err
 		}
@@ -83,79 +82,3 @@ func (s *Supplier) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (Supplier) TableName() string { return "supplier" }
-
-func nextSupplierSortSuffix(tx *gorm.DB, orgID string, base int, forUpdate bool) (int, error) {
-	type rec struct{ Sort int }
-	var rows []rec
-
-	q := tx.Table("supplier").
-		Select("sort").
-		Where(`
-                        org_id = ?
-                        AND is_deleted = 0
-                        AND sort > ? AND sort <= ?`,
-			orgID, base, base+999).
-		Order("sort ASC")
-	if forUpdate {
-		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
-	if err := q.Scan(&rows).Error; err != nil {
-		return 0, fmt.Errorf("扫描 sort 失败: %w", err)
-	}
-
-	next := 1
-	for _, r := range rows {
-		suffix := r.Sort - base
-		if suffix < next {
-			continue
-		}
-		if suffix == next {
-			next++
-			continue
-		}
-		break
-	}
-	if next > 999 {
-		return 0, fmt.Errorf("该 org 的 sort 段已满（1..999）")
-	}
-	return next, nil
-}
-
-func nextSupplierCodeSuffix(tx *gorm.DB, orgID, orgCode string, forUpdate bool) (int, error) {
-	type rec struct{ Suffix int }
-	var rows []rec
-
-	prefixLen := len(orgCode)
-
-	q := tx.Table("supplier").
-		Select("CAST(SUBSTRING(code, ? + 1) AS UNSIGNED) AS suffix", prefixLen).
-		Where(`
-                        org_id = ?
-                        AND is_deleted = 0
-                        AND code LIKE CONCAT(?, '___')
-                        AND code REGEXP CONCAT('^', ?, '[0-9]{3}$')`,
-			orgID, orgCode, orgCode).
-		Order("suffix ASC")
-	if forUpdate {
-		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
-	if err := q.Scan(&rows).Error; err != nil {
-		return 0, fmt.Errorf("扫描 code 后缀失败: %w", err)
-	}
-
-	next := 1
-	for _, r := range rows {
-		if r.Suffix < next {
-			continue
-		}
-		if r.Suffix == next {
-			next++
-			continue
-		}
-		break
-	}
-	if next > 999 {
-		return 0, fmt.Errorf("该 org 的 code 段已满（001..999）")
-	}
-	return next, nil
-}

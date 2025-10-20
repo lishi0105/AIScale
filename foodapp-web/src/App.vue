@@ -1,108 +1,107 @@
 <!-- src/App.vue -->
 <template>
-  <!-- 登录页：全屏，无布局 -->
-  <div v-if="isLoginRoute" class="login-only">
-    <router-view />
-  </div>
-
-  <!-- 主应用布局 -->
-  <div v-else class="layout">
-    <!-- 左侧导航 -->
-    <aside class="sider" :class="{ collapsed }">
-      <div class="logo">
-        <span v-if="!collapsed">食品品控管理系统</span>
-        <el-icon v-else><Menu /></el-icon>
-      </div>
-      <el-menu
-        class="menu"
-        router
-        :default-active="activeMenu"
-        :collapse="collapsed"
-        background-color="#1f1f1f"
-        text-color="#d9d9d9"
-        active-text-color="#fff"
-      >
-        <el-sub-menu index="base">
-          <template #title>
-            <el-icon><Collection /></el-icon>
-            <span>基础数据管理</span>
-          </template>
-          <el-menu-item index="/base/goods">
-            <el-icon><Document /></el-icon>
-            <span>商品库管理</span>
-          </el-menu-item>
-          <el-menu-item index="/base/suppliers">
-            <el-icon><Document /></el-icon>
-            <span>供货商管理</span>
-          </el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="acl">
-          <template #title>
-            <el-icon><Collection /></el-icon>
-            <span>权限管理</span>
-          </template>
-          <el-menu-item index="/acl/orgs">
-            <el-icon><Document /></el-icon>
-            <span>中队管理</span>
-          </el-menu-item>
-          <el-menu-item index="/acl/accounts">
-            <el-icon><Document /></el-icon>
-            <span>账户管理</span>
-          </el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="dict">
-          <template #title>
-            <el-icon><Collection /></el-icon>
-            <span>字典数据管理</span>
-          </template>
-          <el-menu-item index="/dict/units">
-            <el-icon><Document /></el-icon>
-            <span>商品单位</span>
-          </el-menu-item>
-          <el-menu-item index="/dict/specs">
-            <el-icon><Document /></el-icon>
-            <span>商品规格</span>
-          </el-menu-item>
-          <el-menu-item index="/dict/mealtimes">
-            <el-icon><Document /></el-icon>
-            <span>菜单餐次</span>
-          </el-menu-item>
-        </el-sub-menu>
-      </el-menu>
-
-      <div class="sider-bottom">
-        <el-button size="small" text @click="toggleCollapse">
-          <el-icon v-if="collapsed"><Expand /></el-icon>
-          <el-icon v-else><Fold /></el-icon>
-          {{ collapsed ? '展开' : '收起' }}
-        </el-button>
-      </div>
-    </aside>
-
-    <!-- 右侧内容区 -->
-    <main class="content">
-      <!-- 顶部工具条 -->
-      <div class="topbar">
-        <div class="topbar-left">
-          <el-breadcrumb separator=">">
-            <el-breadcrumb-item v-for="(c, i) in crumbs" :key="i">{{ c }}</el-breadcrumb-item>
-          </el-breadcrumb>
-        </div>
-        <div class="topbar-right">
-          <span v-if="organNameDisplay" class="organ">当前中队：{{ organNameDisplay }}</span>
-          <span class="user">欢迎，{{ usernameDisplay }}</span>
-          <el-button size="small" @click="onLogout">退出登录</el-button>
-        </div>
-      </div>
-
-      <!-- 页面内容 -->
-      <div class="page">
-        <router-view />
-      </div>
-    </main>
-  </div>
   <el-config-provider :locale="zhCn">
-    <router-view />
+    <!-- 登录页：全屏，无布局 -->
+    <div v-if="isLoginRoute" class="login-only">
+      <router-view />
+    </div>
+
+    <!-- 主应用布局 -->
+    <div v-else class="layout">
+      <!-- 左侧导航 -->
+      <aside class="sider" :class="{ collapsed }">
+        <div class="logo">
+          <span v-if="!collapsed">食品品控管理系统</span>
+          <el-icon v-else><Menu /></el-icon>
+        </div>
+        <el-menu
+          class="menu"
+          router
+          :default-active="activeMenu"
+          :collapse="collapsed"
+          background-color="#1f1f1f"
+          text-color="#d9d9d9"
+          active-text-color="#fff"
+        >
+          <el-sub-menu index="base">
+            <template #title>
+              <el-icon><Collection /></el-icon>
+              <span>基础数据管理</span>
+            </template>
+            <el-menu-item index="/base/goods">
+              <el-icon><Document /></el-icon>
+              <span>商品库管理</span>
+            </el-menu-item>
+            <el-menu-item index="/base/suppliers">
+              <el-icon><Document /></el-icon>
+              <span>供货商管理</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="acl">
+            <template #title>
+              <el-icon><Collection /></el-icon>
+              <span>权限管理</span>
+            </template>
+            <el-menu-item index="/acl/orgs">
+              <el-icon><Document /></el-icon>
+              <span>中队管理</span>
+            </el-menu-item>
+            <el-menu-item index="/acl/accounts">
+              <el-icon><Document /></el-icon>
+              <span>账户管理</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="dict">
+            <template #title>
+              <el-icon><Collection /></el-icon>
+              <span>字典数据管理</span>
+            </template>
+            <el-menu-item index="/dict/units">
+              <el-icon><Document /></el-icon>
+              <span>商品单位</span>
+            </el-menu-item>
+            <el-menu-item index="/dict/specs">
+              <el-icon><Document /></el-icon>
+              <span>商品规格</span>
+            </el-menu-item>
+            <el-menu-item index="/dict/mealtimes">
+              <el-icon><Document /></el-icon>
+              <span>菜单餐次</span>
+            </el-menu-item>
+          </el-sub-menu>
+        </el-menu>
+
+        <div class="sider-bottom">
+          <el-button size="small" text @click="toggleCollapse">
+            <el-icon v-if="collapsed"><Expand /></el-icon>
+            <el-icon v-else><Fold /></el-icon>
+            {{ collapsed ? '展开' : '收起' }}
+          </el-button>
+        </div>
+      </aside>
+
+      <!-- 右侧内容区 -->
+      <main class="content">
+        <!-- 顶部工具条 -->
+        <div class="topbar">
+          <div class="topbar-left">
+            <el-breadcrumb separator=">">
+              <el-breadcrumb-item v-for="(c, i) in crumbs" :key="i">{{ c }}</el-breadcrumb-item>
+            </el-breadcrumb>
+          </div>
+          <div class="topbar-right">
+            <span v-if="organNameDisplay" class="organ">当前中队：{{ organNameDisplay }}</span>
+            <span class="user">欢迎，{{ usernameDisplay }}</span>
+            <el-button size="small" @click="onLogout">退出登录</el-button>
+          </div>
+        </div>
+
+        <!-- 页面内容 -->
+        <div class="page">
+          <router-view />
+        </div>
+      </main>
+    </div>
   </el-config-provider>
 </template>
 

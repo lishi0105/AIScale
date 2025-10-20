@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   sort          INT           NOT NULL DEFAULT 0 COMMENT '排序码',
   pinyin        VARCHAR(128)      NULL COMMENT '商品拼音（检索用）',
   spec_id       CHAR(36)      NOT NULL COMMENT '规格ID（base_spec.id）',
+  unit_id       CHAR(36)      NOT NULL COMMENT '单位ID（base_spec.id）',
   image_url     VARCHAR(512)      NULL COMMENT '商品图片URL',
   acceptance_standard VARCHAR(512) NULL COMMENT '验收标准',
   category_id   CHAR(36)      NOT NULL COMMENT '商品品类ID（base_category.id）',
@@ -68,13 +69,15 @@ CREATE TABLE IF NOT EXISTS base_goods (
   KEY idx_goods_name_py   (name, pinyin),
   KEY idx_goods_category  (category_id),
   KEY idx_goods_spec      (spec_id),
+  KEY idx_goods_unit      (unit_id),
 
   -- 可避免同一中队下名字+规格重复
   UNIQUE KEY uq_goods_code (code),
-  UNIQUE KEY uq_goods_org_name_spec (org_id, name, spec_id),
+  UNIQUE KEY uq_goods_org_name_spec_unit (org_id, name, spec_id, unit_id),
 
   -- 外键（确保依赖表已创建）
   CONSTRAINT fk_goods_spec     FOREIGN KEY (spec_id)     REFERENCES base_spec(id),
+  CONSTRAINT fk_goods_unit     FOREIGN KEY (unit_id)     REFERENCES base_unit(id),
   CONSTRAINT fk_goods_category FOREIGN KEY (category_id) REFERENCES base_category(id)
 ) ENGINE=InnoDB
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';

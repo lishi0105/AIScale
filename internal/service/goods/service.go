@@ -20,6 +20,7 @@ type CreateParams struct {
 	Name               string
 	OrgID              string
 	SpecID             string
+	UnitID             string
 	CategoryID         string
 	Sort               *int
 	Code               *string
@@ -35,6 +36,7 @@ type UpdateParams struct {
 	Pinyin             *string
 	Sort               *int
 	SpecID             *string
+	UnitID             *string
 	CategoryID         *string
 	ImageURL           *string
 	AcceptanceStandard *string
@@ -53,6 +55,10 @@ func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain
 	if err != nil {
 		return nil, err
 	}
+	unitID, err := normalizeRequiredValue(params.UnitID, "unit_id")
+	if err != nil {
+		return nil, err
+	}
 	categoryID, err := normalizeRequiredValue(params.CategoryID, "category_id")
 	if err != nil {
 		return nil, err
@@ -68,6 +74,7 @@ func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain
 		Name:               name,
 		OrgID:              orgID,
 		SpecID:             specID,
+		UnitID:             unitID,
 		CategoryID:         categoryID,
 		Code:               normalizedCode,
 		Pinyin:             normalizedPinyin,
@@ -84,7 +91,7 @@ func (s *Service) GetGoods(ctx context.Context, id string) (*domain.Goods, error
 	return s.r.GetGoods(ctx, strings.TrimSpace(id))
 }
 
-func (s *Service) ListGoods(ctx context.Context, keyword string, orgID string, categoryID, specID *string, page, pageSize int) ([]domain.Goods, int64, error) {
+func (s *Service) ListGoods(ctx context.Context, keyword string, orgID string, categoryID, specID, unitID *string, page, pageSize int) ([]domain.Goods, int64, error) {
 	trimmedOrg := strings.TrimSpace(orgID)
 	if trimmedOrg == "" {
 		return nil, 0, fmt.Errorf("org_id 不能为空")
@@ -105,8 +112,17 @@ func (s *Service) ListGoods(ctx context.Context, keyword string, orgID string, c
 		}
 		specPtr = normalized
 	}
+
+	var unitPtr *string
+	if unitID != nil {
+		normalized, err := normalizeOptionalWithOriginal(unitID)
+		if err != nil {
+			return nil, 0, err
+		}
+		unitPtr = normalized
+	}
 	kw := strings.TrimSpace(keyword)
-	return s.r.ListGoods(ctx, kw, trimmedOrg, categoryPtr, specPtr, page, pageSize)
+	return s.r.ListGoods(ctx, kw, trimmedOrg, categoryPtr, specPtr, unitPtr, page, pageSize)
 }
 
 func (s *Service) UpdateGoods(ctx context.Context, params UpdateParams) error {

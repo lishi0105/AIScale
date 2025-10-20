@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	utils "hdzk.cn/foodapp/pkg/utils"
 )
@@ -47,7 +46,7 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 
 	// 2) sort = org.sort*1000 + 最小缺口
 	if c.Sort <= 0 {
-		suf, err := nextSortSuffix(tx, c.OrgID, base, true)
+		suf, err := utils.NextSortSuffix(tx, c.TableName(), c.OrgID, base, true)
 		if err != nil {
 			return err
 		}
@@ -56,7 +55,7 @@ func (c *Category) BeforeCreate(tx *gorm.DB) error {
 
 	// 3) code = org.code + 三位后缀（各自独立找缺口）
 	if c.Code == nil || (c.Code != nil && *c.Code == "") {
-		suf, err := nextCodeSuffixByPrefix(tx, c.OrgID, orgCode, true)
+		suf, err := utils.NextCodeSuffixByPrefix(tx, c.TableName(), c.OrgID, orgCode, true)
 		if err != nil {
 			return err
 		}
@@ -79,81 +78,3 @@ func (Category) TableName() string { return "base_category" }
 // ---------- helpers ----------
 
 // sort 段的最小缺口：仅统计本 organ (base, base+999] 的 sort
-func nextSortSuffix(tx *gorm.DB, orgID string, base int, forUpdate bool) (int, error) {
-	type rec struct{ Sort int }
-	var rows []rec
-
-	// 不在 SELECT 里用占位，直接选出 sort 再在 Go 里计算 suffix，避免参数计数错乱
-	q := tx.Table("base_category").
-		Select("sort").
-		Where(`
-			org_id = ?
-			AND is_deleted = 0
-			AND sort > ? AND sort <= ?`,
-			orgID, base, base+999).
-		Order("sort ASC")
-	if forUpdate {
-		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
-	if err := q.Scan(&rows).Error; err != nil {
-		return 0, fmt.Errorf("扫描 sort 失败: %w", err)
-	}
-
-	next := 1
-	for _, r := range rows {
-		suffix := r.Sort - base
-		if suffix < next {
-			continue
-		}
-		if suffix == next {
-			next++
-			continue
-		}
-		break
-	}
-	if next > 999 {
-		return 0, fmt.Errorf("该 org 的 sort 段已满（1..999）")
-	}
-	return next, nil
-}
-
-// code 段的最小缺口：仅统计本 organ 形如 <orgCode><三位数字>
-func nextCodeSuffixByPrefix(tx *gorm.DB, orgID, orgCode string, forUpdate bool) (int, error) {
-	type rec struct{ Suffix int }
-	var rows []rec
-
-	// 用 SUBSTRING(code, ? + 1) + REGEXP/LIKE；以 len(orgCode) 作为位置参数，避免 CHAR_LENGTH(?) 触发计数差异
-	prefixLen := len(orgCode)
-
-	q := tx.Table("base_category").
-		Select("CAST(SUBSTRING(code, ? + 1) AS UNSIGNED) AS suffix", prefixLen).
-		Where(`
-			org_id = ?
-			AND is_deleted = 0
-			AND code LIKE CONCAT(?, '___')
-			AND code REGEXP CONCAT('^', ?, '[0-9]{3}$')`,
-			orgID, orgCode, orgCode).
-		Order("suffix ASC")
-	if forUpdate {
-		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
-	if err := q.Scan(&rows).Error; err != nil {
-		return 0, fmt.Errorf("扫描 code 后缀失败: %w", err)
-	}
-
-	next := 1
-	for _, r := range rows {
-		if r.Suffix < next {
-			continue
-		}
-		if r.Suffix == next {
-			next++
-			continue
-		}
-		break
-	}
-	if next > 999 {
-		return 0, fmt.Errorf("该 org 的 code 段已满（001..999）")
-	}
-	return next, nil
-}

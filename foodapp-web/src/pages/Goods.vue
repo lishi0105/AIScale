@@ -92,7 +92,7 @@
         <el-table-column prop="Pinyin" label="拼音首字母代码" width="160">
           <template #default="{ row }">{{ row.Pinyin || '—' }}</template>
         </el-table-column>
-        <el-table-column label="商品描述" min-width="280" show-overflow-tooltip>
+        <el-table-column label="验收标准" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">{{ row.AcceptanceStandard || '—' }}</template>
         </el-table-column>
         <el-table-column prop="Code" label="商品编码" width="140" />

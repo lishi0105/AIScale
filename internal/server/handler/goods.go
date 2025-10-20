@@ -30,6 +30,7 @@ type goodsCreateReq struct {
 	Name               string  `json:"name" binding:"required,min=1,max=128"`
 	OrgID              string  `json:"org_id" binding:"required,uuid4"`
 	SpecID             string  `json:"spec_id" binding:"required,uuid4"`
+	UnitID             string  `json:"unit_id" binding:"required,uuid4"`
 	CategoryID         string  `json:"category_id" binding:"required,uuid4"`
 	Sort               *int    `json:"sort" binding:"omitempty,min=0"`
 	Code               *string `json:"code" binding:"omitempty,min=1,max=64"`
@@ -44,6 +45,7 @@ type goodsUpdateReq struct {
 	Code               *string `json:"code" binding:"omitempty,min=1,max=64"`
 	Sort               *int    `json:"sort" binding:"omitempty,min=0"`
 	SpecID             *string `json:"spec_id" binding:"omitempty,uuid4"`
+	UnitID             *string `json:"unit_id" binding:"omitempty,uuid4"`
 	CategoryID         *string `json:"category_id" binding:"omitempty,uuid4"`
 	Pinyin             *string `json:"pinyin" binding:"omitempty,max=128"`
 	ImageURL           *string `json:"image_url" binding:"omitempty,max=512"`
@@ -78,6 +80,7 @@ func (h *GoodsHandler) create(c *gin.Context) {
 		Code:               req.Code,
 		OrgID:              req.OrgID,
 		SpecID:             req.SpecID,
+		UnitID:             req.UnitID,
 		CategoryID:         req.CategoryID,
 		Sort:               req.Sort,
 		Pinyin:             req.Pinyin,
@@ -139,11 +142,16 @@ func (h *GoodsHandler) list(c *gin.Context) {
 	if specID != "" {
 		specPtr = &specID
 	}
+	unitID := strings.TrimSpace(c.Query("unit_id"))
+	var unitPtr *string
+	if unitID != "" {
+		unitPtr = &unitID
+	}
 
 	kw := c.Query("keyword")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	list, total, err := h.s.ListGoods(c, kw, orgID, categoryPtr, specPtr, page, ps)
+	list, total, err := h.s.ListGoods(c, kw, orgID, categoryPtr, specPtr, unitPtr, page, ps)
 	if err != nil {
 		InternalError(c, errTitle, err.Error())
 		return
@@ -176,6 +184,7 @@ func (h *GoodsHandler) update(c *gin.Context) {
 		Code:               req.Code,
 		Sort:               req.Sort,
 		SpecID:             req.SpecID,
+		UnitID:             req.UnitID,
 		CategoryID:         req.CategoryID,
 		Pinyin:             req.Pinyin,
 		ImageURL:           req.ImageURL,

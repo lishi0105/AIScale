@@ -25,7 +25,7 @@ func (r *goodsRepo) GetGoods(ctx context.Context, id string) (*domain.Goods, err
 	return &out, nil
 }
 
-func (r *goodsRepo) ListGoods(ctx context.Context, keyword string, orgID string, categoryID, specID *string, page, pageSize int) ([]domain.Goods, int64, error) {
+func (r *goodsRepo) ListGoods(ctx context.Context, keyword string, orgID string, categoryID, specID, unitID *string, page, pageSize int) ([]domain.Goods, int64, error) {
 	var list []domain.Goods
 	var total int64
 
@@ -37,6 +37,9 @@ func (r *goodsRepo) ListGoods(ctx context.Context, keyword string, orgID string,
 	}
 	if specID != nil && *specID != "" {
 		q = q.Where("spec_id = ?", *specID)
+	}
+	if unitID != nil && *unitID != "" {
+		q = q.Where("unit_id =?", *unitID)
 	}
 	if keyword != "" {
 		pattern := "%" + keyword + "%"
@@ -79,6 +82,9 @@ func (r *goodsRepo) UpdateGoods(ctx context.Context, params UpdateParams) error 
 	}
 	if params.SpecID != nil {
 		updates["spec_id"] = *params.SpecID
+	}
+	if params.UnitID != nil {
+		updates["unit_id"] = *params.UnitID
 	}
 	if params.CategoryID != nil {
 		updates["category_id"] = *params.CategoryID
