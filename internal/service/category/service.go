@@ -15,7 +15,7 @@ type Service struct {
 
 func NewService(r repo.CategoryRepository) *Service { return &Service{r: r} }
 
-func (s *Service) CreateCategory(ctx context.Context, name string, org_id string, code *string, pinyin *string) (*domain.Category, error) {
+func (s *Service) Create(ctx context.Context, name string, org_id string, code *string, pinyin *string) (*domain.Category, error) {
 	normalizedCode, _ := normalizeString(code)
 	normalizedPinyin, _ := normalizeString(pinyin)
 	m := &domain.Category{
@@ -25,30 +25,30 @@ func (s *Service) CreateCategory(ctx context.Context, name string, org_id string
 		Code:   normalizedCode,
 		Pinyin: normalizedPinyin,
 	}
-	return m, s.r.CreateCategory(ctx, m)
+	return m, s.r.Create(ctx, m)
 }
 
-func (s *Service) GetCategory(ctx context.Context, id string) (*domain.Category, error) {
-	return s.r.GetCategory(ctx, id)
+func (s *Service) Get(ctx context.Context, id string) (*domain.Category, error) {
+	return s.r.Get(ctx, id)
 }
 
-func (s *Service) ListCategories(ctx context.Context, keyword string, org_id string, page, pageSize int) ([]domain.Category, int64, error) {
-	return s.r.ListCategories(ctx, keyword, org_id, page, pageSize)
+func (s *Service) List(ctx context.Context, keyword string, org_id string, page, pageSize int) ([]domain.Category, int64, error) {
+	return s.r.List(ctx, keyword, org_id, page, pageSize)
 }
 
-func (s *Service) UpdateCategory(ctx context.Context, id, name string, code *string, pinyin *string, sort *int) error {
+func (s *Service) Update(ctx context.Context, id, name string, code *string, pinyin *string, sort *int) error {
 	normalizedCode, updateCode := normalizeString(code)
 	normalizedPinyin, updatePinyin := normalizeString(pinyin)
 	updateSort := sort != nil
-	return s.r.UpdateCategory(ctx, id, name, normalizedCode, normalizedPinyin, sort, updateCode, updatePinyin, updateSort)
+	return s.r.Update(ctx, id, name, normalizedCode, normalizedPinyin, sort, updateCode, updatePinyin, updateSort)
 }
 
-func (s *Service) SoftDeleteCategory(ctx context.Context, id string) error {
-	return s.r.SoftDeleteCategory(ctx, id)
+func (s *Service) SoftDelete(ctx context.Context, id string) error {
+	return s.r.SoftDelete(ctx, id)
 }
 
-func (s *Service) HardDeleteCategory(ctx context.Context, id string) error {
-	return s.r.HardDeleteCategory(ctx, id)
+func (s *Service) HardDelete(ctx context.Context, id string) error {
+	return s.r.HardDelete(ctx, id)
 }
 
 func normalizeString(str *string) (*string, bool) {

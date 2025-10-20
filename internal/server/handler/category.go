@@ -17,12 +17,12 @@ func NewCategoryHandler(s *svc.Service) *CategoryHandler { return &CategoryHandl
 func (h *CategoryHandler) Register(rg *gin.RouterGroup) {
 	g := rg.Group("/category")
 
-	g.POST("/create_category", h.CreateCategory)  // 新增品类
-	g.POST("/get_category", h.GetCategory)        // 按 id 获取
-	g.POST("/list_category", h.ListCategories)    // 列表（分页/条件）
-	g.POST("/update_category", h.UpdateCategory)  // 更新品类
-	g.POST("/soft_delete_category", h.softDelete) // 删除品类
-	g.POST("/hard_delete_category", h.hardDelete) // 删除品类
+	g.POST("/create_category", h.Create)          // 新增品类
+	g.POST("/get_category", h.Get)                // 按 id 获取
+	g.POST("/list_category", h.List)              // 列表（分页/条件）
+	g.POST("/update_category", h.Update)          // 更新品类
+	g.POST("/soft_delete_category", h.SoftDelete) // 删除品类
+	g.POST("/hard_delete_category", h.HardDelete) // 删除品类
 }
 
 // 请求体
@@ -42,7 +42,7 @@ type category_updateReq struct {
 }
 
 // ---------- Category ----------
-func (h *CategoryHandler) CreateCategory(c *gin.Context) {
+func (h *CategoryHandler) Create(c *gin.Context) {
 	var req category_createReq
 	err_title := "创建品类失败"
 	act := middleware.GetActor(c)
@@ -59,7 +59,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	m, err := h.s.CreateCategory(c, req.Name, req.OrgID, req.Code, req.Pinyin)
+	m, err := h.s.Create(c, req.Name, req.OrgID, req.Code, req.Pinyin)
 	if err != nil {
 		ConflictError(c, err_title, "添加品类失败:"+err.Error())
 		return
@@ -67,7 +67,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	c.JSON(http.StatusCreated, m)
 }
 
-func (h *CategoryHandler) GetCategory(c *gin.Context) {
+func (h *CategoryHandler) Get(c *gin.Context) {
 	var req types.IDReq
 	err_title := "获取品类失败"
 
@@ -82,7 +82,7 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 		return
 	}
 
-	m, err := h.s.GetCategory(c, req.ID)
+	m, err := h.s.Get(c, req.ID)
 	if err != nil {
 		NotFoundError(c, err_title, "品类不存在:"+err.Error())
 		return
@@ -90,7 +90,7 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, m)
 }
 
-func (h *CategoryHandler) ListCategories(c *gin.Context) {
+func (h *CategoryHandler) List(c *gin.Context) {
 	kw := c.Query("keyword")
 
 	err_title := "获取品类列表失败"
@@ -106,7 +106,7 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	ps, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	list, total, err := h.s.ListCategories(c, kw, orgID, page, ps)
+	list, total, err := h.s.List(c, kw, orgID, page, ps)
 	if err != nil {
 		InternalError(c, err_title, err.Error())
 		return
@@ -114,7 +114,7 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
 }
 
-func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
+func (h *CategoryHandler) Update(c *gin.Context) {
 	var req category_updateReq
 	err_title := "更新品类失败"
 	act := middleware.GetActor(c)
@@ -130,14 +130,14 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.UpdateCategory(c, req.ID, req.Name, req.Code, req.Pinyin, req.Sort); err != nil {
+	if err := h.s.Update(c, req.ID, req.Name, req.Code, req.Pinyin, req.Sort); err != nil {
 		ConflictError(c, err_title, "更新品类失败:"+err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func (h *CategoryHandler) softDelete(c *gin.Context) {
+func (h *CategoryHandler) SoftDelete(c *gin.Context) {
 	err_title := "删除品类失败"
 	act := middleware.GetActor(c)
 	if act.Deleted != middleware.DeletedNo {
@@ -154,14 +154,14 @@ func (h *CategoryHandler) softDelete(c *gin.Context) {
 		BadRequest(c, err_title, err.Error())
 		return
 	}
-	if err := h.s.SoftDeleteCategory(c, req.ID); err != nil {
+	if err := h.s.SoftDelete(c, req.ID); err != nil {
 		InternalError(c, err_title, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-func (h *CategoryHandler) hardDelete(c *gin.Context) {
+func (h *CategoryHandler) HardDelete(c *gin.Context) {
 	var req types.IDReq
 	err_title := "删除品类失败"
 	act := middleware.GetActor(c)
@@ -177,7 +177,7 @@ func (h *CategoryHandler) hardDelete(c *gin.Context) {
 		BadRequest(c, err_title, "输入格式非法")
 		return
 	}
-	if err := h.s.HardDeleteCategory(c, req.ID); err != nil {
+	if err := h.s.HardDelete(c, req.ID); err != nil {
 		ConflictError(c, err_title, err.Error())
 		return
 	}

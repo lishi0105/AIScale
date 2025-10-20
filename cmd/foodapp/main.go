@@ -44,6 +44,10 @@ func seedDefaultData(ctx context.Context, db *gorm.DB) error {
 		log.Fatal("seed supplier failed", zap.Error(err))
 		return err
 	}
+	if err := foodDB.EnsureDefaultGoods(context.Background(), db); err != nil {
+		log.Fatal("seed goods failed", zap.Error(err))
+		return err
+	}
 	return nil
 }
 

@@ -10,11 +10,11 @@ import (
 
 type categoryRepo struct{ db *gorm.DB }
 
-func (r *categoryRepo) CreateCategory(ctx context.Context, m *category.Category) error {
+func (r *categoryRepo) Create(ctx context.Context, m *category.Category) error {
 	return r.db.WithContext(ctx).Create(m).Error
 }
 
-func (r *categoryRepo) GetCategory(ctx context.Context, id string) (*category.Category, error) {
+func (r *categoryRepo) Get(ctx context.Context, id string) (*category.Category, error) {
 	var out category.Category
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND is_deleted = 0", id).
@@ -25,7 +25,7 @@ func (r *categoryRepo) GetCategory(ctx context.Context, id string) (*category.Ca
 	return &out, nil
 }
 
-func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, org_id string, page, pageSize int) ([]category.Category, int64, error) {
+func (r *categoryRepo) List(ctx context.Context, keyword string, org_id string, page, pageSize int) ([]category.Category, int64, error) {
 	var list []category.Category
 	var total int64
 	q := r.db.WithContext(ctx).Model(&category.Category{}).
@@ -49,7 +49,7 @@ func (r *categoryRepo) ListCategories(ctx context.Context, keyword string, org_i
 	return list, total, err
 }
 
-func (r *categoryRepo) UpdateCategory(ctx context.Context, id string, name string, code *string, pinyin *string, sort *int, updateCode bool, updatePinyin bool, updateSort bool) error {
+func (r *categoryRepo) Update(ctx context.Context, id string, name string, code *string, pinyin *string, sort *int, updateCode bool, updatePinyin bool, updateSort bool) error {
 	updates := map[string]any{
 		"name": name,
 	}
@@ -77,13 +77,13 @@ func (r *categoryRepo) UpdateCategory(ctx context.Context, id string, name strin
 		Updates(updates).Error
 }
 
-func (r *categoryRepo) SoftDeleteCategory(ctx context.Context, id string) error {
+func (r *categoryRepo) SoftDelete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Model(&category.Category{}).
 		Where("id = ?", id).
 		Update("is_deleted", 1).Error
 }
 
-func (r *categoryRepo) HardDeleteCategory(ctx context.Context, id string) error {
+func (r *categoryRepo) HardDelete(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("id 不能为空")
 	}
