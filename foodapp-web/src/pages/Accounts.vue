@@ -58,11 +58,13 @@
     <div class="pager">
       <el-pagination
         background
-        layout="prev, pager, next, jumper, ->, total"
+        layout="sizes, prev, pager, next, jumper, ->, total"
+        :page-sizes="pageSizes"
         :current-page="page"
         :page-size="pageSize"
         :total="total"
-        @current-change="(p:number)=>{page=p;fetchList()}"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
       />
     </div>
 
@@ -210,6 +212,7 @@ const rows = ref<Row[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(15)
+const pageSizes = [10, 15, 20, 50]
 const keyword = ref('')
 const tableLoading = ref(false)
 
@@ -233,6 +236,17 @@ const fetchList = async () => {
   }
 }
 const onSearch = () => { page.value = 1; fetchList() }
+
+const handlePageChange = (p: number) => {
+  page.value = p
+  fetchList()
+}
+
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  page.value = 1
+  fetchList()
+}
 
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')

@@ -61,11 +61,13 @@
     <div class="pager">
       <el-pagination
         background
-        layout="prev, pager, next, jumper, ->, total"
+        layout="sizes, prev, pager, next, jumper, ->, total"
+        :page-sizes="pageSizes"
         :current-page="page"
         :page-size="pageSize"
         :total="total"
         @current-change="onPageChange"
+        @size-change="onPageSizeChange"
       />
     </div>
 
@@ -153,6 +155,7 @@ const rows = ref<OrganRow[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(15)
+const pageSizes = [10, 15, 20, 50]
 const keyword = ref('')
 const tableLoading = ref(false)
 const deletingId = ref('')
@@ -245,6 +248,12 @@ const onSearch = () => {
 }
 const onPageChange = (p: number) => {
   page.value = p
+  fetchList()
+}
+
+const onPageSizeChange = (size: number) => {
+  pageSize.value = size
+  page.value = 1
   fetchList()
 }
 

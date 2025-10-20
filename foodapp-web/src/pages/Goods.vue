@@ -48,6 +48,11 @@
           </div>
         </el-scrollbar>
       </div>
+      <div class="category-footer">
+        <el-button size="small" type="primary" plain @click="openCreateCategory" :disabled="!isAdmin">
+          + 新增品类
+        </el-button>
+      </div>
     </aside>
 
     <!-- 右侧：商品表格 -->
@@ -111,44 +116,67 @@
       <div class="pager">
         <el-pagination
           background
-          layout="prev, pager, next, jumper, ->, total"
+          layout="sizes, prev, pager, next, jumper, ->, total"
+          :page-sizes="pageSizes"
           :current-page="page"
           :page-size="pageSize"
           :total="total"
-          @current-change="(p:number)=>{ page=p; fetchGoods(); }"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
         />
       </div>
     </section>
 
     <!-- 弹窗：新增/编辑商品 -->
     <el-dialog v-model="dialogVisible" :title="dialogMode==='create' ? '新增商品' : '编辑商品'" width="640px">
-      <el-form :model="form" label-width="110px" v-loading="submitLoading">
+      <el-form :model="form" label-width="110px" v-loading="submitLoading" class="goods-form">
         <el-form-item label="商品名称">
-          <el-input v-model="form.name" maxlength="128" />
+          <div class="field-inline">
+            <el-input v-model="form.name" maxlength="128" />
+            <span class="required-mark">*</span>
+          </div>
         </el-form-item>
         <el-form-item label="编码(SKU)">
-          <el-input v-model="form.code" maxlength="64" />
+          <div class="field-inline">
+            <el-input v-model="form.code" maxlength="64" />
+            <span class="required-mark">*</span>
+          </div>
         </el-form-item>
         <el-form-item label="所属品类">
-          <el-select v-model="form.category_id" placeholder="选择品类" style="width:100%">
-            <el-option v-for="c in categories" :key="c.ID" :label="c.Name" :value="c.ID" />
-          </el-select>
+          <div class="field-inline">
+            <el-select v-model="form.category_id" placeholder="选择品类" style="width:100%">
+              <el-option v-for="c in categories" :key="c.ID" :label="c.Name" :value="c.ID" />
+            </el-select>
+            <span class="required-mark">*</span>
+          </div>
         </el-form-item>
         <el-form-item label="规格">
-          <el-select v-model="form.spec_id" placeholder="选择规格" style="width:100%">
-            <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
-          </el-select>
+          <div class="field-inline">
+            <el-select v-model="form.spec_id" placeholder="选择规格" style="width:100%">
+              <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
+            </el-select>
+            <span class="required-mark">*</span>
+          </div>
         </el-form-item>
         <el-form-item label="单位">
-          <el-select v-model="form.unit_id" placeholder="选择单位" style="width:100%">
-            <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
-          </el-select>
+          <div class="field-inline">
+            <el-select v-model="form.unit_id" placeholder="选择单位" style="width:100%">
+              <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
+            </el-select>
+            <span class="required-mark">*</span>
+          </div>
         </el-form-item>
         <el-form-item label="排序码">
-          <el-input-number v-model="form.sort" :min="0" :step="1" />
+          <div class="field-inline">
+            <el-input-number v-model="form.sort" :min="0" :step="1" />
+            <span class="optional-hint">缺省自动生成</span>
+          </div>
         </el-form-item>
         <el-form-item label="拼音">
-          <el-input v-model="form.pinyin" maxlength="128" clearable />
+          <div class="field-inline">
+            <el-input v-model="form.pinyin" maxlength="128" clearable />
+            <span class="optional-hint">缺省自动生成</span>
+          </div>
         </el-form-item>
         <el-form-item label="图片URL">
           <el-input v-model="form.image_url" maxlength="512" clearable />
@@ -163,7 +191,7 @@
       </template>
     </el-dialog>
     <!-- 弹窗：编辑品类 -->
-    <el-dialog v-model="catDialogVisible" title="编辑品类" width="420px">
+    <el-dialog v-model="catDialogVisible" :title="catDialogTitle" width="420px">
       <el-form :model="catForm" label-width="80px" v-loading="catSubmitLoading">
         <el-form-item label="品类名称">
           <el-input v-model="catForm.name" maxlength="64" />
@@ -270,12 +298,24 @@ const unitName = (id: string) => units.value.find(u=>u.ID===id)?.Name || '—'
 // 右侧：表格
 const page = ref(1)
 const pageSize = ref(15)
+const pageSizes = [10, 15, 20, 50]
 const total = ref(0)
 const keyword = ref('')
 const filterSpecId = ref<string|undefined>()
 const rows = ref<GoodsRow[]>([])
 const tableLoading = ref(false)
 const deletingId = ref('')
+
+const handlePageChange = (p: number) => {
+  page.value = p
+  fetchGoods()
+}
+
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  page.value = 1
+  fetchGoods()
+}
 
 const fetchGoods = async () => {
   if (!organId.value) { rows.value=[]; total.value=0; return }
@@ -362,6 +402,7 @@ const onSubmit = async () => {
   const name = form.name.trim()
   const code = form.code.trim()
   if (!name || !code) { ElMessage.warning('请输入商品名称和编码'); return }
+  if (!form.category_id) { ElMessage.warning('请选择品类'); return }
   if (!form.spec_id) { ElMessage.warning('请选择规格'); return }
   if (!form.unit_id) { ElMessage.warning('请选择单位'); return }
   if (!organId.value) { ElMessage.warning('缺少中队信息'); return }
@@ -433,7 +474,15 @@ const onDelete = async (row: GoodsRow) => {
 const catDialogVisible = ref(false)
 const catSubmitLoading = ref(false)
 const catEditing = ref<CategoryRow | null>(null)
+const catDialogTitle = computed(() => (catEditing.value ? '编辑品类' : '新增品类'))
 const catForm = reactive<{ id: string; name: string }>({ id: '', name: '' })
+
+const openCreateCategory = () => {
+  catEditing.value = null
+  catForm.id = ''
+  catForm.name = ''
+  catDialogVisible.value = true
+}
 
 const openEditCategory = (row: CategoryRow) => {
   catEditing.value = row
@@ -447,10 +496,21 @@ const onSubmitCategory = async () => {
   if (!name) { ElMessage.warning('请输入品类名称'); return }
   catSubmitLoading.value = true
   try {
-    await CategoryAPI.update({ id: catForm.id, name })
-    ElMessage.success('保存成功')
+    let createdId: string | undefined
+    if (catEditing.value) {
+      await CategoryAPI.update({ id: catForm.id, name })
+      ElMessage.success('保存成功')
+    } else {
+      if (!organId.value) { ElMessage.warning('缺少组织信息'); return }
+      const { data } = await CategoryAPI.create({ name, org_id: organId.value })
+      ElMessage.success('新增成功')
+      createdId = data?.ID
+    }
     catDialogVisible.value = false
     await fetchCategories()
+    if (createdId) {
+      selectedCategoryId.value = createdId
+    }
   } catch (e) { notifyError(e) }
   finally { catSubmitLoading.value = false }
 }
@@ -468,7 +528,8 @@ const onDeleteCategory = async (row: CategoryRow) => {
 }
 
 onMounted(() => { fetchSpecs(); fetchUnits(); })
-watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() })
+watch(() => organId.value, () => { fetchGoods() }, { immediate: true })
+watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() }, { immediate: true })
 </script>
 
 <style scoped>
@@ -482,9 +543,17 @@ watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() })
 .category-row.active { background:#409eff; color:#fff; }
 .category-row .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .category-row .ops .more { display:inline-block; width:18px; text-align:center; font-weight:600; color:#909399; }
+.category-footer { text-align:center; padding-top:4px; }
 .goods-content { flex:1; min-width:0; background:#fff; border:1px solid #ebeef5; border-radius:8px; padding:16px; display:flex; flex-direction:column }
 .toolbar { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
 .spacer { flex:1 }
 .img-ph { width:48px; height:48px; border-radius:6px; background:#f5f7fa; color:#909399; display:flex; align-items:center; justify-content:center; font-size:12px; }
 .pager { display:flex; justify-content:flex-end; padding-top:12px; }
+.goods-form .field-inline { display:flex; align-items:center; gap:8px; }
+.goods-form .field-inline :deep(.el-input),
+.goods-form .field-inline :deep(.el-select),
+.goods-form .field-inline :deep(.el-input-number) { flex:1; }
+.goods-form .field-inline :deep(.el-input-number) { width:100%; }
+.required-mark { color:#f56c6c; font-size:18px; line-height:1; }
+.optional-hint { color:#909399; font-size:12px; }
 </style>

@@ -90,17 +90,17 @@
         </el-table-column>
       </el-table>
       <div class="pager">
-      <el-pagination
-        background
-        layout="prev, pager, next, jumper, ->, total, sizes"
-        :current-page="page"
-        :page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 15, 20, 30, 50]"
-        @current-change="onPageChange"
-        @size-change="onPageSizeChange"
-      />
-    </div>
+        <el-pagination
+          background
+          layout="sizes, prev, pager, next, jumper, ->, total"
+          :page-sizes="pageSizes"
+          :current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          @current-change="onPageChange"
+          @size-change="onPageSizeChange"
+        />
+      </div>
     </aside>
 
     <!-- 右侧：单列详情 -->
@@ -202,6 +202,7 @@ import { ROLE_ADMIN } from '@/utils/role'
 
 const page = ref(1)
 const pageSize = ref(15)
+const pageSizes = [10, 15, 20, 50]
 const total = ref(0)
 const keywordInput = ref('')
 const filterKeyword = ref('')
