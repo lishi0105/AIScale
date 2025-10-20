@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';
 
 /* ---------- Base_询价记录 ---------- */
-CREATE TABLE IF NOT EXISTS price_inquiry (
+CREATE TABLE IF NOT EXISTS base_price_inquiry (
   id                 CHAR(36)     NOT NULL COMMENT 'UUID',
   inquiry_title      VARCHAR(64)  NOT NULL COMMENT '询价单标题',
   inquiry_date       DATE         NOT NULL COMMENT '询价单日期（业务日）',
@@ -105,7 +105,6 @@ CREATE TABLE IF NOT EXISTS price_inquiry (
   CONSTRAINT chk_time_order CHECK (inquiry_end_date > inquiry_start_date)
   -- ,CONSTRAINT chk_date_match CHECK (inquiry_date = DATE(inquiry_start_date))
 ) ENGINE=InnoDB COMMENT='询价记录';
-
 
 /* ---------- Base_商品均价明细 ---------- */
 /* 说明：
