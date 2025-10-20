@@ -38,7 +38,8 @@ export const CategoryAPI = {
   create: (data: CategoryCreatePayload) => http.post('/category/create_category', data),
   list: (params: CategoryListParams) => http.post('/category/list_category', null, { params }),
   update: (data: CategoryUpdatePayload) => http.post('/category/update_category', data),
-  remove: (id: string) => http.post('/category/udelete_category', { id }),
+  // 与后端路由保持一致：soft_delete_category
+  remove: (id: string) => http.post('/category/soft_delete_category', { id }),
 }
 
 export default CategoryAPI
