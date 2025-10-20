@@ -1,46 +1,40 @@
 package inquiry
 
 import (
-    "errors"
-    "time"
+	"errors"
+	"time"
 
-    "github.com/google/uuid"
-    "gorm.io/gorm"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // PriceInquiry represents a price inquiry header record.
 // It maps to table `base_price_inquiry`.
 type PriceInquiry struct {
-    ID               string    `gorm:"primaryKey;type:char(36)"`
-    InquiryTitle     string    `gorm:"column:inquiry_title;size:64;not null;comment:询价单标题"`
-    InquiryDate      time.Time `gorm:"column:inquiry_date;type:date;not null;comment:询价单日期（业务日）"`
+	ID           string    `gorm:"primaryKey;type:char(36)"`
+	InquiryTitle string    `gorm:"column:inquiry_title;size:64;not null;comment:询价单标题"`
+	InquiryDate  time.Time `gorm:"column:inquiry_date;type:date;not null;comment:询价单日期（业务日）"`
 
-    Market1 *string `gorm:"column:market_1;size:128;comment:市场1"`
-    Market2 *string `gorm:"column:market_2;size:128;comment:市场2"`
-    Market3 *string `gorm:"column:market_3;size:128;comment:市场3"`
+	Market1 *string `gorm:"column:market_1;size:128;comment:市场1"`
+	Market2 *string `gorm:"column:market_2;size:128;comment:市场2"`
+	Market3 *string `gorm:"column:market_3;size:128;comment:市场3"`
 
-    OrgID string `gorm:"column:org_id;type:char(36);not null;comment:中队ID"`
+	OrgID string `gorm:"column:org_id;type:char(36);not null;comment:中队ID"`
 
-    IsDeleted int `gorm:"column:is_deleted;not null;default:0;comment:软删：0=有效 1=删除"`
+	IsDeleted int `gorm:"column:is_deleted;not null;default:0;comment:软删：0=有效 1=删除"`
 
-    InquiryStartDate time.Time `gorm:"column:inquiry_start_date;type:datetime;not null;comment:开始时间"`
-    InquiryEndDate   time.Time `gorm:"column:inquiry_end_date;type:datetime;not null;comment:结束时间"`
-
-    CreatedAt time.Time `gorm:"autoCreateTime"`
-    UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 func (p *PriceInquiry) BeforeCreate(tx *gorm.DB) error {
-    if p.ID == "" {
-        p.ID = uuid.NewString()
-    }
-    if p.OrgID == "" {
-        return errors.New("OrgID(org_id) 不能为空")
-    }
-    if !p.InquiryEndDate.After(p.InquiryStartDate) {
-        return errors.New("结束时间必须晚于开始时间")
-    }
-    return nil
+	if p.ID == "" {
+		p.ID = uuid.NewString()
+	}
+	if p.OrgID == "" {
+		return errors.New("OrgID(org_id) 不能为空")
+	}
+	return nil
 }
 
 func (PriceInquiry) TableName() string { return "base_price_inquiry" }
