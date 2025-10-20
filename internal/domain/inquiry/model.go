@@ -23,9 +23,6 @@ type PriceInquiry struct {
 
     IsDeleted int `gorm:"column:is_deleted;not null;default:0;comment:软删：0=有效 1=删除"`
 
-    InquiryStartDate time.Time `gorm:"column:inquiry_start_date;type:datetime;not null;comment:开始时间"`
-    InquiryEndDate   time.Time `gorm:"column:inquiry_end_date;type:datetime;not null;comment:结束时间"`
-
     CreatedAt time.Time `gorm:"autoCreateTime"`
     UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
@@ -36,9 +33,6 @@ func (p *PriceInquiry) BeforeCreate(tx *gorm.DB) error {
     }
     if p.OrgID == "" {
         return errors.New("OrgID(org_id) 不能为空")
-    }
-    if !p.InquiryEndDate.After(p.InquiryStartDate) {
-        return errors.New("结束时间必须晚于开始时间")
     }
     return nil
 }

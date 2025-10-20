@@ -77,8 +77,7 @@ CREATE TABLE IF NOT EXISTS base_price_inquiry (
   org_id             CHAR(36)     NOT NULL COMMENT '中队ID',
   is_deleted         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
 
-  inquiry_start_date DATETIME     NOT NULL COMMENT '开始时间',
-  inquiry_end_date   DATETIME     NOT NULL COMMENT '结束时间',
+  -- 询价开始/结束时间已废弃
 
   created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -101,9 +100,7 @@ CREATE TABLE IF NOT EXISTS base_price_inquiry (
   KEY idx_inquiry_date (inquiry_date),
   KEY idx_inquiry_org  (org_id),
 
-  -- 业务约束：结束时间必须晚于开始时间；若需要也可约束业务日一致
-  CONSTRAINT chk_time_order CHECK (inquiry_end_date > inquiry_start_date)
-  -- ,CONSTRAINT chk_date_match CHECK (inquiry_date = DATE(inquiry_start_date))
+  -- 业务约束：开始/结束时间已移除
 ) ENGINE=InnoDB COMMENT='询价记录';
 
 /* ---------- Base_商品均价明细 ---------- */

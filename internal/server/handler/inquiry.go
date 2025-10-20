@@ -33,8 +33,6 @@ type inquiryCreateReq struct {
     Market1          *string `json:"market_1" binding:"omitempty,max=128"`
     Market2          *string `json:"market_2" binding:"omitempty,max=128"`
     Market3          *string `json:"market_3" binding:"omitempty,max=128"`
-    InquiryStartDate string  `json:"inquiry_start_date" binding:"required"` // YYYY-MM-DD HH:MM:SS
-    InquiryEndDate   string  `json:"inquiry_end_date" binding:"required"`
 }
 
 type inquiryUpdateReq struct {
@@ -44,16 +42,10 @@ type inquiryUpdateReq struct {
     Market1          *string  `json:"market_1" binding:"omitempty,max=128"`
     Market2          *string  `json:"market_2" binding:"omitempty,max=128"`
     Market3          *string  `json:"market_3" binding:"omitempty,max=128"`
-    InquiryStartDate *string  `json:"inquiry_start_date"`
-    InquiryEndDate   *string  `json:"inquiry_end_date"`
 }
 
 func parseDate(raw string) (time.Time, error) {
     return time.ParseInLocation("2006-01-02", strings.TrimSpace(raw), time.Local)
-}
-
-func parseDateTime(raw string) (time.Time, error) {
-    return time.ParseInLocation("2006-01-02 15:04:05", strings.TrimSpace(raw), time.Local)
 }
 
 func parseOptionalDate(p *string) (*time.Time, error) {
@@ -61,17 +53,6 @@ func parseOptionalDate(p *string) (*time.Time, error) {
         return nil, nil
     }
     t, err := parseDate(*p)
-    if err != nil {
-        return nil, err
-    }
-    return &t, nil
-}
-
-func parseOptionalDateTime(p *string) (*time.Time, error) {
-    if p == nil {
-        return nil, nil
-    }
-    t, err := parseDateTime(*p)
     if err != nil {
         return nil, err
     }
@@ -101,17 +82,6 @@ func (h *InquiryHandler) create(c *gin.Context) {
         BadRequest(c, errTitle, "inquiry_date 格式应为 YYYY-MM-DD")
         return
     }
-    st, err := parseDateTime(req.InquiryStartDate)
-    if err != nil {
-        BadRequest(c, errTitle, "inquiry_start_date 格式应为 YYYY-MM-DD HH:MM:SS")
-        return
-    }
-    et, err := parseDateTime(req.InquiryEndDate)
-    if err != nil {
-        BadRequest(c, errTitle, "inquiry_end_date 格式应为 YYYY-MM-DD HH:MM:SS")
-        return
-    }
-
     params := svc.CreateParams{
         OrgID:            req.OrgID,
         InquiryTitle:     req.InquiryTitle,
@@ -119,8 +89,6 @@ func (h *InquiryHandler) create(c *gin.Context) {
         Market1:          req.Market1,
         Market2:          req.Market2,
         Market3:          req.Market3,
-        InquiryStartDate: st,
-        InquiryEndDate:   et,
     }
     out, err := h.s.Create(c, params)
     if err != nil {
@@ -219,17 +187,6 @@ func (h *InquiryHandler) update(c *gin.Context) {
         BadRequest(c, errTitle, "inquiry_date 格式应为 YYYY-MM-DD")
         return
     }
-    stPtr, err := parseOptionalDateTime(req.InquiryStartDate)
-    if err != nil {
-        BadRequest(c, errTitle, "inquiry_start_date 格式应为 YYYY-MM-DD HH:MM:SS")
-        return
-    }
-    etPtr, err := parseOptionalDateTime(req.InquiryEndDate)
-    if err != nil {
-        BadRequest(c, errTitle, "inquiry_end_date 格式应为 YYYY-MM-DD HH:MM:SS")
-        return
-    }
-
     params := svc.UpdateParams{
         ID:               req.ID,
         InquiryTitle:     req.InquiryTitle,
@@ -237,8 +194,6 @@ func (h *InquiryHandler) update(c *gin.Context) {
         Market1:          req.Market1,
         Market2:          req.Market2,
         Market3:          req.Market3,
-        InquiryStartDate: stPtr,
-        InquiryEndDate:   etPtr,
     }
     if err := h.s.Update(c, params); err != nil {
         ConflictError(c, errTitle, "更新询价失败: "+err.Error())

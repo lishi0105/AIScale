@@ -72,12 +72,7 @@ func (r *repo) Update(ctx context.Context, params UpdateParams) error {
     if params.Market3 != nil {
         updates["market_3"] = *params.Market3
     }
-    if params.InquiryStartDate != nil {
-        updates["inquiry_start_date"] = *params.InquiryStartDate
-    }
-    if params.InquiryEndDate != nil {
-        updates["inquiry_end_date"] = *params.InquiryEndDate
-    }
+    // start/end removed per requirement
     if len(updates) == 0 {
         return nil
     }

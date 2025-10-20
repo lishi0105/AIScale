@@ -15,8 +15,6 @@ type UpdateParams struct {
     Market1          *string
     Market2          *string
     Market3          *string
-    InquiryStartDate *time.Time
-    InquiryEndDate   *time.Time
 }
 
 type Repository interface {
