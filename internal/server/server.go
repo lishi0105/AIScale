@@ -170,6 +170,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerCategoryRoutes(r, gdb, authCfg)
     registerSupplierRoutes(r, gdb, authCfg)
     registerInquiryRoutes(r, gdb, authCfg)
+    registerInquiryImportRoutes(r, gdb, authCfg)
 	registerGoodsRoutes(r, gdb, authCfg)
 
 	return r
