@@ -10,6 +10,7 @@ import (
 	accrepo "hdzk.cn/foodapp/internal/repository/account"
 	categoryrepo "hdzk.cn/foodapp/internal/repository/category"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
+	goodsrepo "hdzk.cn/foodapp/internal/repository/goods"
 	organrepo "hdzk.cn/foodapp/internal/repository/organ"
 	supplierrepo "hdzk.cn/foodapp/internal/repository/supplier"
 	handler "hdzk.cn/foodapp/internal/server/handler"
@@ -17,6 +18,7 @@ import (
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
+	goodssvc "hdzk.cn/foodapp/internal/service/goods"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
 	suppliersvc "hdzk.cn/foodapp/internal/service/supplier"
 
@@ -92,6 +94,20 @@ func registerCategoryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthCon
 	categoryH.Register(protected)
 }
 
+func registerGoodsRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	goodsRepo := goodsrepo.NewRepository(gdb)
+	goodsSvc := goodssvc.NewService(goodsRepo)
+	goodsH := handler.NewGoodsHandler(goodsSvc)
+
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil), // 商品不强制每次刷新
+		middleware.ActiveGuard(),
+	)
+	goodsH.Register(protected)
+}
+
 func registerSupplierRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
 	supplierRepo := supplierrepo.NewRepository(gdb)
 	supplierSvc := suppliersvc.NewService(supplierRepo)
@@ -137,6 +153,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerOrganRoutes(r, gdb, authCfg)
 	registerCategoryRoutes(r, gdb, authCfg)
 	registerSupplierRoutes(r, gdb, authCfg)
+	registerGoodsRoutes(r, gdb, authCfg)
 
 	return r
 }
