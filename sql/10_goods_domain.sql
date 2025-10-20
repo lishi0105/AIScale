@@ -64,26 +64,48 @@ CREATE TABLE IF NOT EXISTS base_goods (
 ) ENGINE=InnoDB
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';
 
-  
-
 /* ---------- Base_询价记录 ---------- */
 CREATE TABLE IF NOT EXISTS price_inquiry (
-  id                  CHAR(36)    NOT NULL PRIMARY KEY COMMENT 'UUID',
-  inquiry_title       VARCHAR(64) NOT NULL COMMENT '询价单标题',
-  inquiry_date        DATE        NOT NULL COMMENT '询价单日期',
-  market_1            VARCHAR(128)    NULL COMMENT '市场1',
-  market_2            VARCHAR(128)    NULL COMMENT '市场2',
-  market_3            VARCHAR(128)    NULL COMMENT '市场3',
-  org_id              CHAR(36)   NOT NULL COMMENT '中队ID',
-  is_deleted          TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删标记',
-  inquiry_start_date  DATETIME    NOT NULL COMMENT '开始时间',
-  inquiry_end_date    DATETIME    NOT NULL COMMENT '结束时间',
-  created_at          DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at          DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id                 CHAR(36)     NOT NULL COMMENT 'UUID',
+  inquiry_title      VARCHAR(64)  NOT NULL COMMENT '询价单标题',
+  inquiry_date       DATE         NOT NULL COMMENT '询价单日期（业务日）',
+
+  market_1           VARCHAR(128)     NULL COMMENT '市场1',
+  market_2           VARCHAR(128)     NULL COMMENT '市场2',
+  market_3           VARCHAR(128)     NULL COMMENT '市场3',
+
+  org_id             CHAR(36)     NOT NULL COMMENT '中队ID',
+  is_deleted         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
+
+  inquiry_start_date DATETIME     NOT NULL COMMENT '开始时间',
+  inquiry_end_date   DATETIME     NOT NULL COMMENT '结束时间',
+
+  created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+  -- 仅对未删除行生效的唯一：利用 NULL 不参与唯一的特性
+  active_title VARCHAR(64) AS (CASE WHEN is_deleted = 0 THEN inquiry_title ELSE NULL END) STORED,
+
+  PRIMARY KEY (id),
+
+  -- 仅“有效行”的唯一：同 org + 标题 + 业务日期 不能重复
+  UNIQUE KEY uk_org_active_title_date (org_id, active_title, inquiry_date),
+
+  -- 常用检索：组织 + 有效 + 日期倒序（InnoDB 索引默认升序，配合 ORDER BY DESC 仍可用）
+  KEY idx_org_valid_date (org_id, is_deleted, inquiry_date),
+
+  -- 如果常按标题前缀搜，可加：
+  KEY idx_org_title (org_id, inquiry_title),
+
+  -- 你原来的索引如果确实需要也可保留（但注意不要与上面的重复）
   KEY idx_inquiry_date (inquiry_date),
-  KEY idx_inquiry_org (org_id)
-) ENGINE=InnoDB
-  COMMENT='询价记录（抬头）';
+  KEY idx_inquiry_org  (org_id),
+
+  -- 业务约束：结束时间必须晚于开始时间；若需要也可约束业务日一致
+  CONSTRAINT chk_time_order CHECK (inquiry_end_date > inquiry_start_date)
+  -- ,CONSTRAINT chk_date_match CHECK (inquiry_date = DATE(inquiry_start_date))
+) ENGINE=InnoDB COMMENT='询价记录';
+
 
 /* ---------- Base_商品均价明细 ---------- */
 /* 说明：
