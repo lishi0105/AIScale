@@ -15,6 +15,7 @@ export interface GoodsCreatePayload {
   org_id: string
   spec_id: string
   category_id: string
+  unit_id?: string
   sort?: number
   pinyin?: string | null
   image_url?: string | null
@@ -28,6 +29,7 @@ export interface GoodsUpdatePayload {
   sort?: number
   spec_id?: string
   category_id?: string
+  unit_id?: string
   pinyin?: string | null
   image_url?: string | null
   acceptance_standard?: string | null
@@ -41,6 +43,7 @@ export interface GoodsRow {
   Pinyin: string | null
   SpecID: string
   CategoryID: string
+  UnitID: string | null
   OrgID: string
   ImageURL: string | null
   AcceptanceStandard: string | null

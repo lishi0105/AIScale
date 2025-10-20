@@ -3,43 +3,30 @@
     <!-- 左侧：品类列表 -->
     <aside class="category-panel">
       <div class="panel-header">
-        <div class="panel-title">
-          <h2>商品库管理</h2>
-          <p class="panel-sub">按品类浏览与维护商品</p>
-        </div>
-        <el-button size="small" type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增商品</el-button>
-      </div>
-
-      <div class="panel-search">
-        <el-input
-          v-model="categoryKeyword"
-          size="small"
-          clearable
-          placeholder="搜索品类名称/拼音/编码"
-          @clear="fetchCategories"
-          @keyup.enter="fetchCategories"
-        />
-        <el-button size="small" @click="fetchCategories">搜索</el-button>
+        <h3 class="panel-title">商品品类</h3>
       </div>
 
       <div class="category-list" v-loading="categoryLoading">
-        <el-empty v-if="!categoryLoading && !categories.length" description="暂无品类" />
-        <el-scrollbar v-else>
+        <el-scrollbar>
+          <!-- 全部商品选项 -->
           <div
-            v-for="item in cardCategories"
-            :key="item.id"
             class="category-item"
-            :class="{ active: item.id === selectedCategoryId }"
-            @click="selectCategory(item.id)"
+            :class="{ active: selectedCategoryId === '' }"
+            @click="selectCategory('')"
           >
-            <div class="item-info">
-              <div class="item-avatar">{{ item.avatar }}</div>
-              <div class="item-text">
-                <div class="item-name" :title="item.name">{{ item.name }}</div>
-              </div>
-            </div>
-            <div class="item-meta">
-              <el-tag size="small">{{ item.countLabel }}</el-tag>
+            <span class="category-name">全部商品</span>
+          </div>
+          <!-- 品类列表 -->
+          <div
+            v-for="item in categories"
+            :key="item.ID"
+            class="category-item"
+            :class="{ active: item.ID === selectedCategoryId }"
+          >
+            <span class="category-name" @click="selectCategory(item.ID)">{{ item.Name }}</span>
+            <div class="category-actions" v-if="isAdmin">
+              <el-button link size="small" @click.stop="openEditCategory(item)">编辑</el-button>
+              <el-button link size="small" type="danger" @click.stop="onDeleteCategory(item)">删除</el-button>
             </div>
           </div>
         </el-scrollbar>
@@ -48,20 +35,20 @@
 
     <!-- 右侧：商品表格 -->
     <section class="goods-content">
+      <h3 class="content-title">商品库列表</h3>
       <div class="toolbar">
         <el-input
           v-model="keyword"
-          placeholder="商品名/拼音/编码"
+          placeholder="请输入"
           clearable
           @clear="onSearch"
           @keyup.enter="onSearch"
-          style="width: 260px"
+          style="width: 200px"
         />
-        <el-select v-model="filterSpecId" clearable placeholder="规格" style="width: 180px" @change="onSearch">
-          <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
-        </el-select>
+        <el-button type="primary" @click="onSearch">查询</el-button>
         <div class="spacer" />
         <el-button type="primary" @click="openCreate" :disabled="!isAdmin">+ 新增商品</el-button>
+        <el-button @click="onImportGoods" :disabled="!isAdmin">导入商品库</el-button>
       </div>
 
       <el-table
@@ -72,15 +59,44 @@
         :header-cell-style="{ background: '#f3f4f6' }"
       >
         <el-table-column type="index" label="序号" width="70" />
-        <el-table-column prop="Name" label="商品名" min-width="160" />
-        <el-table-column prop="Code" label="编码" width="150" />
-        <el-table-column label="规格" width="160">
+        <el-table-column label="商品图" width="100">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.ImageURL"
+              :src="row.ImageURL"
+              fit="cover"
+              style="width: 50px; height: 50px; border-radius: 4px"
+              :preview-src-list="[row.ImageURL]"
+            />
+            <div v-else style="width: 50px; height: 50px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #ccc;">
+              暂无
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="Name" label="品名" min-width="120" />
+        <el-table-column label="规格标准" width="120">
           <template #default="{ row }">
             {{ specName(row.SpecID) }}
           </template>
         </el-table-column>
-        <el-table-column prop="Sort" label="排序" width="100" />
-        <el-table-column label="操作" width="200">
+        <el-table-column label="单位" width="100">
+          <template #default="{ row }">
+            {{ unitName(row.UnitID) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="Pinyin" label="拼音首字母代码" width="140">
+          <template #default="{ row }">
+            {{ row.Pinyin || '—' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="商品描述" min-width="150">
+          <template #default="{ row }">
+            {{ row.AcceptanceStandard || '—' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="Code" label="商品编码" width="120" />
+        <el-table-column prop="Sort" label="排序码" width="100" />
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link @click="openEdit(row)" :disabled="!isAdmin">编辑</el-button>
             <el-button link type="danger" @click="onDelete(row)" :disabled="!isAdmin || deletingId===row.ID">
@@ -122,6 +138,11 @@
             <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
           </el-select>
         </el-form-item>
+        <el-form-item label="单位">
+          <el-select v-model="form.unit_id" placeholder="选择单位" style="width:100%">
+            <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="排序码">
           <el-input-number v-model="form.sort" :min="0" :step="1" />
         </el-form-item>
@@ -138,6 +159,28 @@
       <template #footer>
         <el-button @click="dialogVisible=false" :disabled="submitLoading">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="onSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 弹窗：新增/编辑品类 -->
+    <el-dialog v-model="categoryDialogVisible" :title="categoryDialogMode==='create' ? '新增品类' : '编辑品类'" width="500px">
+      <el-form :model="categoryForm" label-width="100px" v-loading="categorySubmitLoading">
+        <el-form-item label="品类名称">
+          <el-input v-model="categoryForm.name" maxlength="128" />
+        </el-form-item>
+        <el-form-item label="品类编码">
+          <el-input v-model="categoryForm.code" maxlength="64" />
+        </el-form-item>
+        <el-form-item label="拼音">
+          <el-input v-model="categoryForm.pinyin" maxlength="128" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="categoryForm.sort" :min="0" :step="1" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="categoryDialogVisible=false" :disabled="categorySubmitLoading">取消</el-button>
+        <el-button type="primary" :loading="categorySubmitLoading" @click="onSubmitCategory">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -163,19 +206,9 @@ const organId = computed(() => jwtPayload.value?.org_id || '')
 const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
 // 左侧：品类
-const categoryKeyword = ref('')
 const categories = ref<CategoryRow[]>([])
 const categoryLoading = ref(false)
 const selectedCategoryId = ref('')
-
-const cardCategories = computed(() =>
-  categories.value.map(item => ({
-    id: item.ID,
-    name: item.Name,
-    avatar: item.Name?.charAt(0)?.toUpperCase() || '#',
-    countLabel: '品类',
-  }))
-)
 
 const selectCategory = (id: string) => {
   selectedCategoryId.value = id
@@ -192,7 +225,6 @@ const fetchCategories = async () => {
   categoryLoading.value = true
   try {
     const params: CategoryListParams = { org_id: organId.value, page: 1, page_size: 100 }
-    if (categoryKeyword.value.trim()) params.keyword = categoryKeyword.value.trim()
     const { data } = await CategoryAPI.list(params)
     categories.value = data?.items || []
   } catch (e) {
@@ -208,8 +240,8 @@ watch(() => categories.value, (list: CategoryRow[]) => {
     selectedCategoryId.value = '';
     return;
   }
-  if (!list.some(i => i.ID === selectedCategoryId.value)) {
-    selectedCategoryId.value = list[0]!.ID; // 👈 加上非空断言 !
+  if (selectedCategoryId.value !== '' && !list.some(i => i.ID === selectedCategoryId.value)) {
+    selectedCategoryId.value = '';
   }
 }, { deep: true });
 
@@ -222,8 +254,18 @@ const fetchSpecs = async () => {
     specs.value = data?.items || []
   } catch (e) { /* ignore */ }
 }
-
 const specName = (id: string) => specs.value.find(s=>s.ID===id)?.Name || '—'
+
+// 单位
+interface UnitRow { ID: string; Name: string }
+const units = ref<UnitRow[]>([])
+const fetchUnits = async () => {
+  try {
+    const { data } = await DictAPI.listUnits({ page: 1, page_size: 200 })
+    units.value = data?.items || []
+  } catch (e) { /* ignore */ }
+}
+const unitName = (id: string) => units.value.find(u=>u.ID===id)?.Name || '—'
 
 // 右侧：表格
 const page = ref(1)
@@ -271,6 +313,7 @@ interface GoodsForm {
   code: string
   category_id: string
   spec_id: string
+  unit_id: string
   sort: number | null
   pinyin: string
   image_url: string
@@ -278,13 +321,13 @@ interface GoodsForm {
 }
 
 const form = reactive<GoodsForm>({
-  id: '', name: '', code: '', category_id: '', spec_id: '', sort: null, pinyin: '', image_url: '', acceptance_standard: ''
+  id: '', name: '', code: '', category_id: '', spec_id: '', unit_id: '', sort: null, pinyin: '', image_url: '', acceptance_standard: ''
 })
 
 const resetForm = () => {
   form.id=''; form.name=''; form.code='';
   form.category_id = selectedCategoryId.value || ''
-  form.spec_id=''; form.sort=null; form.pinyin=''; form.image_url=''; form.acceptance_standard=''
+  form.spec_id=''; form.unit_id=''; form.sort=null; form.pinyin=''; form.image_url=''; form.acceptance_standard=''
 }
 
 const openCreate = () => {
@@ -302,6 +345,7 @@ const openEdit = (row: GoodsRow) => {
   form.code = row.Code
   form.category_id = row.CategoryID
   form.spec_id = row.SpecID
+  form.unit_id = row.UnitID || ''
   form.sort = row.Sort
   form.pinyin = row.Pinyin || ''
   form.image_url = row.ImageURL || ''
@@ -323,6 +367,7 @@ const onSubmit = async () => {
         category_id: form.category_id,
         spec_id: form.spec_id,
       }
+      if (form.unit_id) payload.unit_id = form.unit_id
       if (form.sort !== null && form.sort !== undefined) payload.sort = Number(form.sort)
       if (form.pinyin.trim()) payload.pinyin = form.pinyin.trim()
       if (form.image_url.trim()) payload.image_url = form.image_url.trim()
@@ -340,6 +385,7 @@ const onSubmit = async () => {
       if (code !== editingRow.value.Code) payload.code = code
       if (form.category_id && form.category_id !== editingRow.value.CategoryID) payload.category_id = form.category_id
       if (form.spec_id && form.spec_id !== editingRow.value.SpecID) payload.spec_id = form.spec_id
+      if (form.unit_id && form.unit_id !== (editingRow.value.UnitID || '')) payload.unit_id = form.unit_id
       const sortNum = form.sort === null ? null : Number(form.sort)
       if (sortNum !== null && sortNum !== editingRow.value.Sort) payload.sort = sortNum
       const pinyinTrim = form.pinyin.trim()
@@ -374,25 +420,131 @@ const onDelete = async (row: GoodsRow) => {
   finally { deletingId.value = '' }
 }
 
-onMounted(() => { fetchSpecs(); })
+// 品类管理
+const categoryDialogVisible = ref(false)
+const categoryDialogMode = ref<'create'|'edit'>('create')
+const categorySubmitLoading = ref(false)
+const editingCategory = ref<CategoryRow | null>(null)
+
+interface CategoryForm {
+  id: string
+  name: string
+  code: string
+  pinyin: string
+  sort: number | null
+}
+
+const categoryForm = reactive<CategoryForm>({
+  id: '', name: '', code: '', pinyin: '', sort: null
+})
+
+const resetCategoryForm = () => {
+  categoryForm.id = ''
+  categoryForm.name = ''
+  categoryForm.code = ''
+  categoryForm.pinyin = ''
+  categoryForm.sort = null
+}
+
+const openEditCategory = (row: CategoryRow) => {
+  categoryDialogMode.value = 'edit'
+  editingCategory.value = row
+  categoryForm.id = row.ID
+  categoryForm.name = row.Name
+  categoryForm.code = row.Code || ''
+  categoryForm.pinyin = row.Pinyin || ''
+  categoryForm.sort = row.Sort
+  categoryDialogVisible.value = true
+}
+
+const onSubmitCategory = async () => {
+  const name = categoryForm.name.trim()
+  if (!name) { ElMessage.warning('请输入品类名称'); return }
+  if (!organId.value) { ElMessage.warning('缺少中队信息'); return }
+
+  categorySubmitLoading.value = true
+  try {
+    if (categoryDialogMode.value === 'edit' && editingCategory.value) {
+      const payload: any = { id: categoryForm.id, name }
+      if (categoryForm.code.trim()) payload.code = categoryForm.code.trim()
+      if (categoryForm.pinyin.trim()) payload.pinyin = categoryForm.pinyin.trim()
+      if (categoryForm.sort !== null) payload.sort = Number(categoryForm.sort)
+      await CategoryAPI.update(payload)
+      ElMessage.success('保存成功')
+    }
+    await fetchCategories()
+    categoryDialogVisible.value = false
+  } catch (e) {
+    notifyError(e)
+  } finally {
+    categorySubmitLoading.value = false
+  }
+}
+
+const onDeleteCategory = async (row: CategoryRow) => {
+  try {
+    await ElMessageBox.confirm(`确认删除品类 "${row.Name}" ?`, '提示', { type: 'warning' })
+  } catch { return }
+  try {
+    await CategoryAPI.remove(row.ID)
+    ElMessage.success('删除成功')
+    await fetchCategories()
+  } catch (e) { notifyError(e) }
+}
+
+// 导入商品库
+const onImportGoods = () => {
+  ElMessage.info('导入功能开发中...')
+}
+
+onMounted(() => { fetchSpecs(); fetchUnits(); })
 watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() })
 </script>
 
 <style scoped>
 .page-goods { display: flex; gap: 16px; height: calc(100vh - 120px); min-height: 520px; }
-.category-panel { width: 280px; background: #fff; border: 1px solid #ebeef5; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.panel-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-.panel-title h2 { font-size: 18px; margin: 0 0 4px; }
-.panel-sub { margin:0; font-size:12px; color:#909399 }
-.panel-search { display:flex; gap:8px; }
-.category-list { flex:1; min-height:0; }
-.category-item { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border:1px solid transparent; border-radius:10px; transition:all .2s ease; cursor:pointer; background:#f8fafc; margin-bottom:10px; }
-.category-item:hover, .category-item.active { border-color:#409eff; background:rgba(64,158,255,.08); box-shadow:0 4px 12px rgba(64,158,255,.12); }
-.item-info { display:flex; align-items:center; gap:12px; min-width:0; }
-.item-avatar { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg, #409eff, #66b1ff); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:16px; box-shadow:0 4px 10px rgba(64,158,255,.35); flex-shrink:0 }
-.item-name { font-size:16px; font-weight:600; color:#303133; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.goods-content { flex:1; min-width:0; background:#fff; border:1px solid #ebeef5; border-radius:8px; padding:16px; display:flex; flex-direction:column }
-.toolbar { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
-.spacer { flex:1 }
-.pager { display:flex; justify-content:flex-end; padding-top:12px; }
+.category-panel { width: 240px; background: #fff; border: 1px solid #ebeef5; border-radius: 4px; padding: 0; display: flex; flex-direction: column; }
+.panel-header { padding: 16px; border-bottom: 1px solid #ebeef5; }
+.panel-title { font-size: 16px; font-weight: 600; margin: 0; color: #303133; }
+.category-list { flex: 1; min-height: 0; padding: 8px 0; }
+.category-item { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 12px 20px; 
+  transition: all .2s ease; 
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.category-item:hover { background: #f5f7fa; }
+.category-item.active { 
+  background: #ecf5ff; 
+  border-left-color: #409eff;
+}
+.category-name { 
+  flex: 1;
+  font-size: 14px; 
+  color: #606266;
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}
+.category-item.active .category-name { 
+  color: #409eff;
+  font-weight: 500;
+}
+.category-actions { 
+  display: flex; 
+  gap: 4px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.category-item:hover .category-actions { 
+  opacity: 1;
+}
+.goods-content { flex: 1; min-width: 0; background: #fff; border: 1px solid #ebeef5; border-radius: 4px; padding: 16px; display: flex; flex-direction: column; }
+.content-title { font-size: 16px; font-weight: 600; margin: 0 0 16px; color: #303133; }
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+.spacer { flex: 1 }
+.pager { display: flex; justify-content: flex-end; padding-top: 12px; }
 </style>
