@@ -549,13 +549,12 @@ watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() }, { im
 
 /* 商品表单样式 */
 .goods-form .field-inline { display:flex; align-items:center; gap:8px; }
+/* 让所有输入控件在弹窗表单内占满可用宽度，保持一致 */
 .goods-form .field-inline :deep(.el-input),
 .goods-form .field-inline :deep(.el-select),
-.goods-form .field-inline :deep(.el-input-number) { flex:1; }
-
-.goods-form .field-inline :deep(.el-select) {width: 100%;}
-.goods-form .field-inline :deep(.el-select .el-input__wrapper) {width: 100%;}
-.goods-form .field-inline :deep(.el-input-number) { width:100%; }
+.goods-form .field-inline :deep(.el-input-number) { flex:1; width: 100%; }
+/* Element Plus 的 Select 内部包含一个 el-input，需要同时拉伸它 */
+.goods-form .field-inline :deep(.el-select .el-input) { width: 100%; }
 .required-mark { color:#f56c6c; font-size:18px; line-height:1; }
 .optional-hint { color:#909399; font-size:12px; }
 </style>
