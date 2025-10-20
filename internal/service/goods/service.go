@@ -18,11 +18,11 @@ func NewService(r repo.GoodsRepository) *Service { return &Service{r: r} }
 
 type CreateParams struct {
 	Name               string
-	Code               string
 	OrgID              string
 	SpecID             string
 	CategoryID         string
 	Sort               *int
+	Code               *string
 	Pinyin             *string
 	ImageURL           *string
 	AcceptanceStandard *string
@@ -45,10 +45,6 @@ func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain
 	if err != nil {
 		return nil, err
 	}
-	code, err := normalizeRequiredValue(params.Code, "code")
-	if err != nil {
-		return nil, err
-	}
 	orgID, err := normalizeRequiredValue(params.OrgID, "org_id")
 	if err != nil {
 		return nil, err
@@ -62,6 +58,7 @@ func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain
 		return nil, err
 	}
 
+	normalizedCode, _ := normalizeOptional(params.Code)
 	normalizedPinyin, _ := normalizeOptional(params.Pinyin)
 	normalizedImageURL, _ := normalizeOptional(params.ImageURL)
 	normalizedAcceptance, _ := normalizeOptional(params.AcceptanceStandard)
@@ -69,10 +66,10 @@ func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain
 	m := &domain.Goods{
 		ID:                 uuid.NewString(),
 		Name:               name,
-		Code:               code,
 		OrgID:              orgID,
 		SpecID:             specID,
 		CategoryID:         categoryID,
+		Code:               normalizedCode,
 		Pinyin:             normalizedPinyin,
 		ImageURL:           normalizedImageURL,
 		AcceptanceStandard: normalizedAcceptance,
@@ -176,6 +173,18 @@ func normalizeRequiredValue(val string, field string) (string, error) {
 		return "", fmt.Errorf("%s 不能为空", field)
 	}
 	return trimmed, nil
+}
+
+func normalizeRequiredOptional(str *string) (*string, bool) {
+	if str == nil {
+		return nil, false
+	}
+	trimmed := strings.TrimSpace(*str)
+	if trimmed == "" {
+		return nil, true
+	}
+	normalized := trimmed
+	return &normalized, true
 }
 
 func normalizeOptionalRequired(str *string, field string) (*string, error) {

@@ -15,7 +15,7 @@ import (
 type Goods struct {
 	ID                 string    `gorm:"primaryKey;type:char(36)"`
 	Name               string    `gorm:"size:128;not null;comment:商品名称"`
-	Code               string    `gorm:"size:64;not null;uniqueIndex:uq_goods_code;comment:SKU/条码"`
+	Code               *string   `gorm:"size:64;not null;uniqueIndex:uq_goods_code;comment:SKU/条码"`
 	Sort               int       `gorm:"not null;default:0;index;comment:排序码"`
 	Pinyin             *string   `gorm:"size:128;comment:商品拼音（检索用）"`
 	SpecID             string    `gorm:"column:spec_id;type:char(36);not null;comment:规格ID（base_spec.id）"`
@@ -53,7 +53,10 @@ func (g *Goods) BeforeCreate(tx *gorm.DB) error {
 		}
 		g.Sort = base + suf
 	}
-
+	if g.Code == nil || (g.Code != nil && *g.Code == "") {
+		code := codeFromSort(g.Sort)
+		g.Code = &code
+	}
 	if g.Pinyin == nil || (g.Pinyin != nil && *g.Pinyin == "") {
 		if utils.ContainsChinese(g.Name) {
 			p := utils.GeneratePinyin(g.Name)
@@ -64,6 +67,9 @@ func (g *Goods) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (Goods) TableName() string { return "base_goods" }
+func codeFromSort(sort int) string {
+	return fmt.Sprintf("%02d", sort)
+}
 
 func nextGoodsSortSuffix(tx *gorm.DB, orgID string, base int, forUpdate bool) (int, error) {
 	type rec struct{ Sort int }
