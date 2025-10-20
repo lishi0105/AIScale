@@ -132,13 +132,13 @@
       <el-form :model="form" label-width="110px" v-loading="submitLoading" class="goods-form">
         <el-form-item label="商品名称">
           <div class="field-inline">
-            <el-input v-model="form.name" maxlength="128" />
+            <el-input v-model="form.name" placeholder="缺省自动生成" maxlength="128" />
             <span class="required-mark">*</span>
           </div>
         </el-form-item>
         <el-form-item label="编码(SKU)">
           <div class="field-inline">
-            <el-input v-model="form.code" maxlength="64" />
+            <el-input v-model="form.code" placeholder="缺省自动生成" maxlength="64" />
             <span class="required-mark">*</span>
           </div>
         </el-form-item>
@@ -168,21 +168,19 @@
         </el-form-item>
         <el-form-item label="排序码">
           <div class="field-inline">
-            <el-input-number v-model="form.sort" :min="0" :step="1" />
-            <span class="optional-hint">缺省自动生成</span>
+            <el-input-number v-model="form.sort" placeholder="缺省自动生成" :min="0" :step="1" />
           </div>
         </el-form-item>
         <el-form-item label="拼音">
           <div class="field-inline">
-            <el-input v-model="form.pinyin" maxlength="128" clearable />
-            <span class="optional-hint">缺省自动生成</span>
+            <el-input v-model="form.pinyin" placeholder="缺省自动生成" maxlength="128" clearable />
           </div>
         </el-form-item>
-        <el-form-item label="图片URL">
+        <el-form-item label="图片">
           <el-input v-model="form.image_url" maxlength="512" clearable />
         </el-form-item>
         <el-form-item label="验收标准">
-          <el-input v-model="form.acceptance_standard" type="textarea" :rows="3" maxlength="512" show-word-limit />
+          <el-input v-model="form.acceptance_standard" placeholder="可选" type="textarea" :rows="3" maxlength="512" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
