@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
 
   -- 外键
   CONSTRAINT fk_gad_goods   FOREIGN KEY (goods_id)   REFERENCES base_goods(id),
-  CONSTRAINT fk_gad_inquiry FOREIGN KEY (inquiry_id) REFERENCES price_inquiry(id)
+  CONSTRAINT fk_gad_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id)
 ) ENGINE=InnoDB
   COMMENT='Base_商品均价明细（按询价记录保存各市场价并生成均价）';
 
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS base_goods_price (
   -- 外键
   CONSTRAINT fk_bgp_goods FOREIGN KEY (goods_id) REFERENCES base_goods(id),
   CONSTRAINT fk_bgp_supplier FOREIGN KEY (supplier_id) REFERENCES supplier(id),
-  CONSTRAINT fk_bgp_inquiry FOREIGN KEY (inquiry_id) REFERENCES price_inquiry(id),
+  CONSTRAINT fk_bgp_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id),
 
   -- 业务约束（可选）
   CONSTRAINT ck_bgp_ratio_pos CHECK (float_ratio > 0)
