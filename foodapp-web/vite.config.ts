@@ -11,17 +11,15 @@ export default defineConfig({
     },
   },
   server: {
-    host: "0.0.0.0", //代理人地址
-    cors: true, // 默认启用并允许任何源
-    open: true, // 在服务器启动时自动在浏览器中打开应用程序
-    //反向代理配置，注意rewrite写法，开始没看文档在这里踩了坑
-    port:7280,
+    host: "0.0.0.0",
+    cors: true,
+    open: true,
+    port: 7280,
     proxy: {
-      // 按需修改，转发到你的后端（比如 http://localhost:8080）
-      '/accounts': {
+      '/api/v1': {
         target: 'http://localhost:8080',
-        changeOrigin: true
-      }
-    }
+        changeOrigin: true,
+      },
+    },
   }
 })

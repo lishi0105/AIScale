@@ -27,13 +27,9 @@
             <el-icon><Collection /></el-icon>
             <span>基础数据管理</span>
           </template>
-          <el-menu-item index="/base/category">
-            <el-icon><Document /></el-icon>
-            <span>商品库管理</span>
-          </el-menu-item>
           <el-menu-item index="/base/goods">
             <el-icon><Document /></el-icon>
-            <span>商品价格管理</span>
+            <span>商品库管理</span>
           </el-menu-item>
           <el-menu-item index="/base/suppliers">
             <el-icon><Document /></el-icon>
