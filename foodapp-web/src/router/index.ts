@@ -9,6 +9,7 @@ import Organs from '@/pages/Organs.vue'
 import Accounts from '@/pages/Accounts.vue'
 import Category from '@/pages/Category.vue'
 import Suppliers from '@/pages/Suppliers.vue'
+import Goods from '@/pages/Goods.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -28,6 +29,10 @@ const routes = [
   { path: '/base/category',
     component: Category,
     meta: { requiresAuth: true, section: '基础数据管理', title: '商品库管理' }
+  },
+  { path: '/base/goods',
+    component: Goods,
+    meta: { requiresAuth: true, section: '基础数据管理', title: '商品价格管理' }
   },
   { path: '/base/suppliers',
     component: Suppliers,
