@@ -24,24 +24,6 @@ CREATE TABLE IF NOT EXISTS base_category (
 ) ENGINE=InnoDB
   COMMENT='商品品类（如 蔬菜/肉类/调味品 等）';
 
-/* ---------- Base_询价记录 ---------- */
-CREATE TABLE IF NOT EXISTS price_inquiry (
-  id            CHAR(36)    NOT NULL PRIMARY KEY COMMENT 'UUID',
-  created_by    VARCHAR(64)     NULL COMMENT '询价人',
-  inquiry_title VARCHAR(64) NOT NULL COMMENT '询价单标题',
-  inquiry_date  DATE        NOT NULL COMMENT '询价单日期',
-  market_1      VARCHAR(128)    NULL COMMENT '市场1',
-  market_2      VARCHAR(128)    NULL COMMENT '市场2',
-  market_3      VARCHAR(128)    NULL COMMENT '市场3',
-  org_id        CHAR(36)   NOT NULL COMMENT '中队ID',
-  is_deleted    TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删标记',
-  created_at    DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at    DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  KEY idx_inquiry_date (inquiry_date),
-  KEY idx_inquiry_org (org_id)
-) ENGINE=InnoDB
-  COMMENT='询价记录（抬头）';
-
 /* ---------- Base_商品库 ---------- */
 /* 说明：
    - spec_id     → base_spec.id（规格字典）
@@ -57,7 +39,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   spec_id       CHAR(36)      NOT NULL COMMENT '规格ID（base_spec.id）',
   unit_id       CHAR(36)      NOT NULL COMMENT '单位ID（base_spec.id）',
   image_url     VARCHAR(512)      NULL COMMENT '商品图片URL',
-  acceptance_standard VARCHAR(512) NULL COMMENT '验收标准',
+  description   VARCHAR(512)  NULL COMMENT     '商品描述',
   category_id   CHAR(36)      NOT NULL COMMENT '商品品类ID（base_category.id）',
   org_id        CHAR(36)      NOT NULL COMMENT '中队ID',
   is_deleted    TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=删除',
@@ -81,6 +63,27 @@ CREATE TABLE IF NOT EXISTS base_goods (
   CONSTRAINT fk_goods_category FOREIGN KEY (category_id) REFERENCES base_category(id)
 ) ENGINE=InnoDB
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';
+
+  
+
+/* ---------- Base_询价记录 ---------- */
+CREATE TABLE IF NOT EXISTS price_inquiry (
+  id                  CHAR(36)    NOT NULL PRIMARY KEY COMMENT 'UUID',
+  inquiry_title       VARCHAR(64) NOT NULL COMMENT '询价单标题',
+  inquiry_date        DATE        NOT NULL COMMENT '询价单日期',
+  market_1            VARCHAR(128)    NULL COMMENT '市场1',
+  market_2            VARCHAR(128)    NULL COMMENT '市场2',
+  market_3            VARCHAR(128)    NULL COMMENT '市场3',
+  org_id              CHAR(36)   NOT NULL COMMENT '中队ID',
+  is_deleted          TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删标记',
+  inquiry_start_date  DATETIME    NOT NULL COMMENT '开始时间',
+  inquiry_end_date    DATETIME    NOT NULL COMMENT '结束时间',
+  created_at          DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at          DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  KEY idx_inquiry_date (inquiry_date),
+  KEY idx_inquiry_org (org_id)
+) ENGINE=InnoDB
+  COMMENT='询价记录（抬头）';
 
 /* ---------- Base_商品均价明细 ---------- */
 /* 说明：

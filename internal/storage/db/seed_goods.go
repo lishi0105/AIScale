@@ -19,11 +19,11 @@ import (
 
 // 商品基础数据（根据默认品类、规格预制）
 var defaultGoods = []struct {
-	Name               string
-	CategoryName       string
-	UnitName           string
-	SpecName           string
-	AcceptanceStandard string
+	Name         string
+	CategoryName string
+	UnitName     string
+	SpecName     string
+	Description  string
 }{
 	// --- 肉类 ---
 	{"边散猪肉", "肉类", "斤", "新鲜", "肉质有弹性, 手指轻按, 凹陷地方马上恢复, 脂肪为白色或乳白色, 整体色泽光润, 切面红色、微微湿润但不沾手; 无淤血、无注水, 无寄生虫。"},
@@ -277,10 +277,10 @@ func upsertGoods(ctx context.Context, db *gorm.DB, row *goods.Goods) error {
 	} else {
 		assignments["image_url"] = nil
 	}
-	if row.AcceptanceStandard != nil {
-		assignments["acceptance_standard"] = *row.AcceptanceStandard
+	if row.Description != nil {
+		assignments["description"] = *row.Description
 	} else {
-		assignments["acceptance_standard"] = nil
+		assignments["description"] = nil
 	}
 
 	return db.WithContext(ctx).
@@ -319,13 +319,13 @@ func EnsureDefaultGoods(ctx context.Context, gdb *gorm.DB) error {
 	success := 0
 	for _, item := range defaultGoods {
 		row := &goods.Goods{
-			Name:               item.Name,
-			OrgID:              DefaultOrgID,
-			SpecID:             specIDs[item.SpecName],
-			UnitID:             unitIDs[item.UnitName],
-			CategoryID:         categoryIDs[item.CategoryName],
-			AcceptanceStandard: toPtr(item.AcceptanceStandard),
-			Sort:               0,
+			Name:        item.Name,
+			OrgID:       DefaultOrgID,
+			SpecID:      specIDs[item.SpecName],
+			UnitID:      unitIDs[item.UnitName],
+			CategoryID:  categoryIDs[item.CategoryName],
+			Description: toPtr(item.Description),
+			Sort:        0,
 		}
 		if err := upsertGoods(ctx, gdb, row); err != nil {
 			logger.L().Error("Failed to seed goods", zap.Error(err),

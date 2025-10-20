@@ -97,8 +97,8 @@
         <el-table-column prop="Pinyin" label="拼音" width="160">
           <template #default="{ row }">{{ row.Pinyin || '—' }}</template>
         </el-table-column>
-        <el-table-column label="验收标准" min-width="280" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.AcceptanceStandard || '—' }}</template>
+        <el-table-column label="商品描述" min-width="280" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.Description || '—' }}</template>
         </el-table-column>
         <el-table-column prop="Code" label="商品编码" width="140" />
         <el-table-column prop="Sort" label="排序码" width="100" />
@@ -187,8 +187,8 @@
         <el-form-item label="图片">
           <el-input v-model="form.image_url" maxlength="512" clearable />
         </el-form-item>
-        <el-form-item label="验收标准">
-          <el-input v-model="form.acceptance_standard" placeholder="可选" type="textarea" :rows="3" maxlength="512" show-word-limit />
+        <el-form-item label="商品描述">
+          <el-input v-model="form.description" placeholder="可选" type="textarea" :rows="3" maxlength="512" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -368,17 +368,17 @@ interface GoodsForm {
   sort: number | null
   pinyin: string
   image_url: string
-  acceptance_standard: string
+  description: string
 }
 
 const form = reactive<GoodsForm>({
-  id: '', name: '', code: '', category_id: '', spec_id: '', unit_id: '', sort: null, pinyin: '', image_url: '', acceptance_standard: ''
+  id: '', name: '', code: '', category_id: '', spec_id: '', unit_id: '', sort: null, pinyin: '', image_url: '', description: ''
 })
 
 const resetForm = () => {
   form.id=''; form.name=''; form.code='';
   form.category_id = selectedCategoryId.value || ''
-  form.spec_id=''; form.unit_id=''; form.sort=null; form.pinyin=''; form.image_url=''; form.acceptance_standard=''
+  form.spec_id=''; form.unit_id=''; form.sort=null; form.pinyin=''; form.image_url=''; form.description=''
 }
 
 const openCreate = () => {
@@ -400,7 +400,7 @@ const openEdit = (row: GoodsRow) => {
   form.sort = row.Sort
   form.pinyin = row.Pinyin || ''
   form.image_url = row.ImageURL || ''
-  form.acceptance_standard = row.AcceptanceStandard || ''
+  form.description = row.Description || ''
   dialogVisible.value = true
 }
 
@@ -427,7 +427,7 @@ const onSubmit = async () => {
       if (form.sort !== null && form.sort !== undefined) payload.sort = Number(form.sort)
       if (form.pinyin.trim()) payload.pinyin = form.pinyin.trim()
       if (form.image_url.trim()) payload.image_url = form.image_url.trim()
-      if (form.acceptance_standard.trim()) payload.acceptance_standard = form.acceptance_standard.trim()
+      if (form.description.trim()) payload.description = form.description.trim()
       const { data } = await GoodsAPI.create(payload)
       ElMessage.success('创建成功')
       await fetchGoods()
@@ -448,8 +448,8 @@ const onSubmit = async () => {
       if (pinyinTrim !== (editingRow.value.Pinyin || '')) payload.pinyin = pinyinTrim || null
       const imgTrim = form.image_url.trim()
       if (imgTrim !== (editingRow.value.ImageURL || '')) payload.image_url = imgTrim || null
-      const asTrim = form.acceptance_standard.trim()
-      if (asTrim !== (editingRow.value.AcceptanceStandard || '')) payload.acceptance_standard = asTrim || null
+      const asTrim = form.description.trim()
+      if (asTrim !== (editingRow.value.Description || '')) payload.description = asTrim || null
       if (Object.keys(payload).length === 1) { ElMessage.info('未检测到需要保存的修改'); return }
       await GoodsAPI.update(payload)
       ElMessage.success('保存成功')

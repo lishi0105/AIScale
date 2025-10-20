@@ -19,7 +19,7 @@ export interface GoodsCreatePayload {
   sort?: number
   pinyin?: string | null
   image_url?: string | null
-  acceptance_standard?: string | null
+  description?: string | null
 }
 
 export interface GoodsUpdatePayload {
@@ -32,7 +32,7 @@ export interface GoodsUpdatePayload {
   category_id?: string
   pinyin?: string | null
   image_url?: string | null
-  acceptance_standard?: string | null
+  description?: string | null
 }
 
 export interface GoodsRow {
@@ -46,7 +46,7 @@ export interface GoodsRow {
   CategoryID: string
   OrgID: string
   ImageURL: string | null
-  AcceptanceStandard: string | null
+  Description: string | null
   CreatedAt: string
   UpdatedAt: string
 }

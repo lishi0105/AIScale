@@ -8,19 +8,19 @@ import (
 )
 
 type UpdateParams struct {
-	ID                 string
-	Name               *string
-	Code               *string
-	Pinyin             *string
-	Sort               *int
-	SpecID             *string
-	UnitID             *string
-	CategoryID         *string
-	ImageURL           *string
-	UpdatePinyin       bool
-	UpdateImageURL     bool
-	AcceptanceStandard *string
-	UpdateAcceptance   bool
+	ID                string
+	Name              *string
+	Code              *string
+	Pinyin            *string
+	Sort              *int
+	SpecID            *string
+	UnitID            *string
+	CategoryID        *string
+	ImageURL          *string
+	UpdatePinyin      bool
+	UpdateImageURL    bool
+	Description       *string
+	UpdateDescription bool
 }
 
 type GoodsRepository interface {
