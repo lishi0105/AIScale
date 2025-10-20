@@ -244,7 +244,6 @@ func loadCategoryIDs(ctx context.Context, db *gorm.DB, names []string) (map[stri
 
 func upsertGoods(ctx context.Context, db *gorm.DB, row *goods.Goods) error {
 	assignments := map[string]any{
-		"code":        row.Code,
 		"category_id": row.CategoryID,
 		"spec_id":     row.SpecID,
 		"is_deleted":  0,

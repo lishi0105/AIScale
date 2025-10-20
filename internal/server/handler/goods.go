@@ -32,7 +32,7 @@ type goodsCreateReq struct {
 	SpecID             string  `json:"spec_id" binding:"required,uuid4"`
 	CategoryID         string  `json:"category_id" binding:"required,uuid4"`
 	Sort               *int    `json:"sort" binding:"omitempty,min=0"`
-	Code               *string `json:"code" binding:"min=1,max=64"`
+	Code               *string `json:"code" binding:"omitempty,min=1,max=64"`
 	Pinyin             *string `json:"pinyin" binding:"omitempty,max=128"`
 	ImageURL           *string `json:"image_url" binding:"omitempty,max=512"`
 	AcceptanceStandard *string `json:"acceptance_standard" binding:"omitempty,max=512"`
@@ -69,7 +69,7 @@ func (h *GoodsHandler) create(c *gin.Context) {
 	}
 
 	if strings.TrimSpace(req.Name) == "" {
-		BadRequest(c, errTitle, "name 或 code 不能为空")
+		BadRequest(c, errTitle, "name 不能为空")
 		return
 	}
 
