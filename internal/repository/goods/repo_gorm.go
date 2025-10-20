@@ -90,6 +90,13 @@ func (r *goodsRepo) UpdateGoods(ctx context.Context, params UpdateParams) error 
 			updates["image_url"] = nil
 		}
 	}
+	if params.UpdateAcceptance {
+		if params.AcceptanceStandard != nil {
+			updates["acceptance_standard"] = *params.AcceptanceStandard
+		} else {
+			updates["acceptance_standard"] = nil
+		}
+	}
 	if len(updates) == 0 {
 		return nil
 	}

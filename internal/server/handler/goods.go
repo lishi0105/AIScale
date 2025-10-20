@@ -27,25 +27,27 @@ func (h *GoodsHandler) Register(rg *gin.RouterGroup) {
 }
 
 type goodsCreateReq struct {
-	Name       string  `json:"name" binding:"required,min=1,max=128"`
-	Code       string  `json:"code" binding:"required,min=1,max=64"`
-	OrgID      string  `json:"org_id" binding:"required,uuid4"`
-	SpecID     string  `json:"spec_id" binding:"required,uuid4"`
-	CategoryID string  `json:"category_id" binding:"required,uuid4"`
-	Sort       *int    `json:"sort" binding:"omitempty,min=0"`
-	Pinyin     *string `json:"pinyin" binding:"omitempty,max=128"`
-	ImageURL   *string `json:"image_url" binding:"omitempty,max=512"`
+	Name               string  `json:"name" binding:"required,min=1,max=128"`
+	Code               string  `json:"code" binding:"required,min=1,max=64"`
+	OrgID              string  `json:"org_id" binding:"required,uuid4"`
+	SpecID             string  `json:"spec_id" binding:"required,uuid4"`
+	CategoryID         string  `json:"category_id" binding:"required,uuid4"`
+	Sort               *int    `json:"sort" binding:"omitempty,min=0"`
+	Pinyin             *string `json:"pinyin" binding:"omitempty,max=128"`
+	ImageURL           *string `json:"image_url" binding:"omitempty,max=512"`
+	AcceptanceStandard *string `json:"acceptance_standard" binding:"omitempty,max=512"`
 }
 
 type goodsUpdateReq struct {
-	ID         string  `json:"id" binding:"required,uuid4"`
-	Name       *string `json:"name" binding:"omitempty,min=1,max=128"`
-	Code       *string `json:"code" binding:"omitempty,min=1,max=64"`
-	Sort       *int    `json:"sort" binding:"omitempty,min=0"`
-	SpecID     *string `json:"spec_id" binding:"omitempty,uuid4"`
-	CategoryID *string `json:"category_id" binding:"omitempty,uuid4"`
-	Pinyin     *string `json:"pinyin" binding:"omitempty,max=128"`
-	ImageURL   *string `json:"image_url" binding:"omitempty,max=512"`
+	ID                 string  `json:"id" binding:"required,uuid4"`
+	Name               *string `json:"name" binding:"omitempty,min=1,max=128"`
+	Code               *string `json:"code" binding:"omitempty,min=1,max=64"`
+	Sort               *int    `json:"sort" binding:"omitempty,min=0"`
+	SpecID             *string `json:"spec_id" binding:"omitempty,uuid4"`
+	CategoryID         *string `json:"category_id" binding:"omitempty,uuid4"`
+	Pinyin             *string `json:"pinyin" binding:"omitempty,max=128"`
+	ImageURL           *string `json:"image_url" binding:"omitempty,max=512"`
+	AcceptanceStandard *string `json:"acceptance_standard" binding:"omitempty,max=512"`
 }
 
 func (h *GoodsHandler) create(c *gin.Context) {
@@ -72,14 +74,15 @@ func (h *GoodsHandler) create(c *gin.Context) {
 	}
 
 	params := svc.CreateParams{
-		Name:       req.Name,
-		Code:       req.Code,
-		OrgID:      req.OrgID,
-		SpecID:     req.SpecID,
-		CategoryID: req.CategoryID,
-		Sort:       req.Sort,
-		Pinyin:     req.Pinyin,
-		ImageURL:   req.ImageURL,
+		Name:               req.Name,
+		Code:               req.Code,
+		OrgID:              req.OrgID,
+		SpecID:             req.SpecID,
+		CategoryID:         req.CategoryID,
+		Sort:               req.Sort,
+		Pinyin:             req.Pinyin,
+		ImageURL:           req.ImageURL,
+		AcceptanceStandard: req.AcceptanceStandard,
 	}
 	goods, err := h.s.CreateGoods(c, params)
 	if err != nil {
@@ -168,14 +171,15 @@ func (h *GoodsHandler) update(c *gin.Context) {
 	}
 
 	params := svc.UpdateParams{
-		ID:         req.ID,
-		Name:       req.Name,
-		Code:       req.Code,
-		Sort:       req.Sort,
-		SpecID:     req.SpecID,
-		CategoryID: req.CategoryID,
-		Pinyin:     req.Pinyin,
-		ImageURL:   req.ImageURL,
+		ID:                 req.ID,
+		Name:               req.Name,
+		Code:               req.Code,
+		Sort:               req.Sort,
+		SpecID:             req.SpecID,
+		CategoryID:         req.CategoryID,
+		Pinyin:             req.Pinyin,
+		ImageURL:           req.ImageURL,
+		AcceptanceStandard: req.AcceptanceStandard,
 	}
 	if err := h.s.UpdateGoods(c, params); err != nil {
 		ConflictError(c, errTitle, "更新商品失败: "+err.Error())

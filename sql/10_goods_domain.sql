@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   pinyin        VARCHAR(128)      NULL COMMENT '商品拼音（检索用）',
   spec_id       CHAR(36)      NOT NULL COMMENT '规格ID（base_spec.id）',
   image_url     VARCHAR(512)      NULL COMMENT '商品图片URL',
+  acceptance_standard VARCHAR(512) NULL COMMENT '验收标准',
   category_id   CHAR(36)      NOT NULL COMMENT '商品品类ID（base_category.id）',
   org_id        CHAR(36)      NOT NULL COMMENT '中队ID',
   is_deleted    TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=删除',
@@ -69,7 +70,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   KEY idx_goods_spec      (spec_id),
 
   -- 可避免同一中队下名字+规格重复
-  UNIQUE KEY uq_goods_code (code)
+  UNIQUE KEY uq_goods_code (code),
   UNIQUE KEY uq_goods_org_name_spec (org_id, name, spec_id),
 
   -- 外键（确保依赖表已创建）

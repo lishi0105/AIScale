@@ -17,25 +17,27 @@ type Service struct {
 func NewService(r repo.GoodsRepository) *Service { return &Service{r: r} }
 
 type CreateParams struct {
-	Name       string
-	Code       string
-	OrgID      string
-	SpecID     string
-	CategoryID string
-	Sort       *int
-	Pinyin     *string
-	ImageURL   *string
+	Name               string
+	Code               string
+	OrgID              string
+	SpecID             string
+	CategoryID         string
+	Sort               *int
+	Pinyin             *string
+	ImageURL           *string
+	AcceptanceStandard *string
 }
 
 type UpdateParams struct {
-	ID         string
-	Name       *string
-	Code       *string
-	Pinyin     *string
-	Sort       *int
-	SpecID     *string
-	CategoryID *string
-	ImageURL   *string
+	ID                 string
+	Name               *string
+	Code               *string
+	Pinyin             *string
+	Sort               *int
+	SpecID             *string
+	CategoryID         *string
+	ImageURL           *string
+	AcceptanceStandard *string
 }
 
 func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain.Goods, error) {
@@ -62,16 +64,18 @@ func (s *Service) CreateGoods(ctx context.Context, params CreateParams) (*domain
 
 	normalizedPinyin, _ := normalizeOptional(params.Pinyin)
 	normalizedImageURL, _ := normalizeOptional(params.ImageURL)
+	normalizedAcceptance, _ := normalizeOptional(params.AcceptanceStandard)
 
 	m := &domain.Goods{
-		ID:         uuid.NewString(),
-		Name:       name,
-		Code:       code,
-		OrgID:      orgID,
-		SpecID:     specID,
-		CategoryID: categoryID,
-		Pinyin:     normalizedPinyin,
-		ImageURL:   normalizedImageURL,
+		ID:                 uuid.NewString(),
+		Name:               name,
+		Code:               code,
+		OrgID:              orgID,
+		SpecID:             specID,
+		CategoryID:         categoryID,
+		Pinyin:             normalizedPinyin,
+		ImageURL:           normalizedImageURL,
+		AcceptanceStandard: normalizedAcceptance,
 	}
 	if params.Sort != nil {
 		m.Sort = *params.Sort
@@ -127,18 +131,21 @@ func (s *Service) UpdateGoods(ctx context.Context, params UpdateParams) error {
 	}
 	normalizedPinyin, updatePinyin := normalizeOptional(params.Pinyin)
 	normalizedImage, updateImage := normalizeOptional(params.ImageURL)
+	normalizedAcceptance, updateAcceptance := normalizeOptional(params.AcceptanceStandard)
 
 	repoParams := repo.UpdateParams{
-		ID:             strings.TrimSpace(params.ID),
-		Name:           normalizedName,
-		Code:           normalizedCode,
-		Pinyin:         normalizedPinyin,
-		Sort:           params.Sort,
-		SpecID:         normalizedSpec,
-		CategoryID:     normalizedCategory,
-		ImageURL:       normalizedImage,
-		UpdatePinyin:   updatePinyin,
-		UpdateImageURL: updateImage,
+		ID:                 strings.TrimSpace(params.ID),
+		Name:               normalizedName,
+		Code:               normalizedCode,
+		Pinyin:             normalizedPinyin,
+		Sort:               params.Sort,
+		SpecID:             normalizedSpec,
+		CategoryID:         normalizedCategory,
+		ImageURL:           normalizedImage,
+		UpdatePinyin:       updatePinyin,
+		UpdateImageURL:     updateImage,
+		AcceptanceStandard: normalizedAcceptance,
+		UpdateAcceptance:   updateAcceptance,
 	}
 	return s.r.UpdateGoods(ctx, repoParams)
 }
