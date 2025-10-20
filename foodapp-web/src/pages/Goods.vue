@@ -94,7 +94,7 @@
         <el-table-column label="单位" width="100">
           <template #default="{ row }">{{ unitName(row.UnitID) }}</template>
         </el-table-column>
-        <el-table-column prop="Pinyin" label="拼音首字母代码" width="160">
+        <el-table-column prop="Pinyin" label="拼音" width="160">
           <template #default="{ row }">{{ row.Pinyin || '—' }}</template>
         </el-table-column>
         <el-table-column label="验收标准" min-width="280" show-overflow-tooltip>
