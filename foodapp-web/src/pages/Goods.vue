@@ -143,7 +143,11 @@
         </el-form-item>
         <el-form-item label="所属品类">
           <div class="field-inline">
-            <el-select v-model="form.category_id" placeholder="选择品类" class="full-width-select">
+            <el-select
+              v-model="form.category_id"
+              placeholder="选择品类"
+              class="full-width-select"
+            >
               <el-option v-for="c in categories" :key="c.ID" :label="c.Name" :value="c.ID" />
             </el-select>
             <span class="required-mark">*</span>
@@ -151,7 +155,11 @@
         </el-form-item>
         <el-form-item label="规格">
           <div class="field-inline">
-            <el-select v-model="form.spec_id" placeholder="选择规格" class="full-width-select">
+            <el-select
+              v-model="form.spec_id"
+              placeholder="选择规格"
+              class="full-width-select"
+            >
               <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
             </el-select>
             <span class="required-mark">*</span>
@@ -159,7 +167,11 @@
         </el-form-item>
         <el-form-item label="单位">
           <div class="field-inline">
-            <el-select v-model="form.unit_id" placeholder="选择单位" class="full-width-select">
+            <el-select
+              v-model="form.unit_id"
+              placeholder="选择单位"
+              class="full-width-select"
+            >
               <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
             </el-select>
             <span class="required-mark">*</span>
@@ -553,16 +565,12 @@ watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() }, { im
 .goods-form .field-inline :deep(.el-select),
 .goods-form .field-inline :deep(.el-input-number) { flex:1; }
 
-.goods-form .field-inline :deep(.el-select) {width: 100%;}
-.goods-form .field-inline :deep(.el-select .el-input__wrapper) {width: 100%;}
-.goods-form .field-inline :deep(.full-width-select) {
+.goods-form .field-inline .full-width-select {
   flex: 1;
-  width: 100%;
-  --el-select-width: 100%;
-  --el-select-input-height: 40px;
+  width: 100% !important;
 }
-.goods-form .field-inline :deep(.full-width-select .el-select__wrapper) {
-  min-height: 40px;
+.goods-form .field-inline .full-width-select :deep(.el-select__wrapper) {
+  width: 100%;
 }
 .goods-form .field-inline :deep(.el-input-number) { width:100%; }
 .required-mark { color:#f56c6c; font-size:18px; line-height:1; }
