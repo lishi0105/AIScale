@@ -10,8 +10,8 @@ import (
 	accrepo "hdzk.cn/foodapp/internal/repository/account"
 	categoryrepo "hdzk.cn/foodapp/internal/repository/category"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
-    goodsrepo "hdzk.cn/foodapp/internal/repository/goods"
-    inquiryrepo "hdzk.cn/foodapp/internal/repository/inquiry"
+	goodsrepo "hdzk.cn/foodapp/internal/repository/goods"
+	inquiryrepo "hdzk.cn/foodapp/internal/repository/inquiry"
 	organrepo "hdzk.cn/foodapp/internal/repository/organ"
 	supplierrepo "hdzk.cn/foodapp/internal/repository/supplier"
 	handler "hdzk.cn/foodapp/internal/server/handler"
@@ -19,8 +19,8 @@ import (
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
-    goodssvc "hdzk.cn/foodapp/internal/service/goods"
-    inquirysvc "hdzk.cn/foodapp/internal/service/inquiry"
+	goodssvc "hdzk.cn/foodapp/internal/service/goods"
+	inquirysvc "hdzk.cn/foodapp/internal/service/inquiry"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
 	suppliersvc "hdzk.cn/foodapp/internal/service/supplier"
 
@@ -111,17 +111,17 @@ func registerGoodsRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig
 }
 
 func registerInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-    repo := inquiryrepo.NewRepository(gdb)
-    svc := inquirysvc.NewService(repo)
-    h := handler.NewInquiryHandler(svc)
+	repo := inquiryrepo.NewRepository(gdb)
+	svc := inquirysvc.NewService(repo, gdb)
+	h := handler.NewInquiryHandler(svc)
 
-    v1 := r.Group("/api/v1")
-    protected := v1.Group("/")
-    protected.Use(
-        middleware.RequireAuth(authCfg.JWTSecret, nil),
-        middleware.ActiveGuard(),
-    )
-    h.Register(protected)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	h.Register(protected)
 }
 
 func registerSupplierRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
@@ -168,8 +168,8 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerDictRoutes(r, gdb, authCfg)
 	registerOrganRoutes(r, gdb, authCfg)
 	registerCategoryRoutes(r, gdb, authCfg)
-    registerSupplierRoutes(r, gdb, authCfg)
-    registerInquiryRoutes(r, gdb, authCfg)
+	registerSupplierRoutes(r, gdb, authCfg)
+	registerInquiryRoutes(r, gdb, authCfg)
 	registerGoodsRoutes(r, gdb, authCfg)
 
 	return r

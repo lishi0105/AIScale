@@ -8,11 +8,16 @@ import (
 
 	domain "hdzk.cn/foodapp/internal/domain/inquiry"
 	repo "hdzk.cn/foodapp/internal/repository/inquiry"
+
+	"gorm.io/gorm"
 )
 
-type Service struct{ r repo.Repository }
+type Service struct {
+	r  repo.Repository
+	db *gorm.DB
+}
 
-func NewService(r repo.Repository) *Service { return &Service{r: r} }
+func NewService(r repo.Repository, db *gorm.DB) *Service { return &Service{r: r, db: db} }
 
 type CreateParams struct {
 	OrgID        string

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,6 +26,7 @@ func (h *InquiryHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/update_inquiry", h.update)
 	g.POST("/soft_delete_inquiry", h.softDelete)
 	g.POST("/hard_delete_inquiry", h.hardDelete)
+	g.POST("/import_excel", h.importExcel)
 }
 
 type inquiryCreateReq struct {
@@ -178,6 +181,56 @@ func (h *InquiryHandler) list(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+}
+
+func (h *InquiryHandler) importExcel(c *gin.Context) {
+	const errTitle = "导入询价失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可导入询价")
+		return
+	}
+
+	orgID := strings.TrimSpace(c.PostForm("org_id"))
+	if orgID == "" {
+		BadRequest(c, errTitle, "缺少 org_id")
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		BadRequest(c, errTitle, "请上传 Excel 文件")
+		return
+	}
+	fh, err := file.Open()
+	if err != nil {
+		InternalError(c, errTitle, "读取文件失败")
+		return
+	}
+	defer fh.Close()
+
+	data, err := io.ReadAll(fh)
+	if err != nil {
+		InternalError(c, errTitle, "读取文件内容失败")
+		return
+	}
+
+	results, err := h.s.ImportExcel(c, orgID, data)
+	if err != nil {
+		var ve *svc.ValidationError
+		if errors.As(err, &ve) {
+			BadRequest(c, errTitle, err.Error())
+			return
+		}
+		ConflictError(c, errTitle, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"results": results})
 }
 
 func (h *InquiryHandler) update(c *gin.Context) {
