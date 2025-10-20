@@ -87,7 +87,7 @@
           <template #default="{ row }">{{ specName(row.SpecID) }}</template>
         </el-table-column>
         <el-table-column label="单位" width="100">
-          <template #default>—</template>
+          <template #default="{ row }">{{ unitName(row.UnitID) }}</template>
         </el-table-column>
         <el-table-column prop="Pinyin" label="拼音首字母代码" width="160">
           <template #default="{ row }">{{ row.Pinyin || '—' }}</template>
@@ -137,6 +137,11 @@
         <el-form-item label="规格">
           <el-select v-model="form.spec_id" placeholder="选择规格" style="width:100%">
             <el-option v-for="s in specs" :key="s.ID" :label="s.Name" :value="s.ID" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="单位">
+          <el-select v-model="form.unit_id" placeholder="选择单位" style="width:100%">
+            <el-option v-for="u in units" :key="u.ID" :label="u.Name" :value="u.ID" />
           </el-select>
         </el-form-item>
         <el-form-item label="排序码">
@@ -250,6 +255,18 @@ const fetchSpecs = async () => {
 
 const specName = (id: string) => specs.value.find(s=>s.ID===id)?.Name || '—'
 
+// 单位
+interface UnitRow { ID: string; Name: string }
+const units = ref<UnitRow[]>([])
+const fetchUnits = async () => {
+  try {
+    const { data } = await DictAPI.listUnits({ page: 1, page_size: 200 })
+    units.value = data?.items || []
+  } catch (e) { /* ignore */ }
+}
+
+const unitName = (id: string) => units.value.find(u=>u.ID===id)?.Name || '—'
+
 // 右侧：表格
 const page = ref(1)
 const pageSize = ref(15)
@@ -301,6 +318,7 @@ interface GoodsForm {
   code: string
   category_id: string
   spec_id: string
+  unit_id: string
   sort: number | null
   pinyin: string
   image_url: string
@@ -308,13 +326,13 @@ interface GoodsForm {
 }
 
 const form = reactive<GoodsForm>({
-  id: '', name: '', code: '', category_id: '', spec_id: '', sort: null, pinyin: '', image_url: '', acceptance_standard: ''
+  id: '', name: '', code: '', category_id: '', spec_id: '', unit_id: '', sort: null, pinyin: '', image_url: '', acceptance_standard: ''
 })
 
 const resetForm = () => {
   form.id=''; form.name=''; form.code='';
   form.category_id = selectedCategoryId.value || ''
-  form.spec_id=''; form.sort=null; form.pinyin=''; form.image_url=''; form.acceptance_standard=''
+  form.spec_id=''; form.unit_id=''; form.sort=null; form.pinyin=''; form.image_url=''; form.acceptance_standard=''
 }
 
 const openCreate = () => {
@@ -332,6 +350,7 @@ const openEdit = (row: GoodsRow) => {
   form.code = row.Code
   form.category_id = row.CategoryID
   form.spec_id = row.SpecID
+  form.unit_id = row.UnitID
   form.sort = row.Sort
   form.pinyin = row.Pinyin || ''
   form.image_url = row.ImageURL || ''
@@ -343,15 +362,20 @@ const onSubmit = async () => {
   const name = form.name.trim()
   const code = form.code.trim()
   if (!name || !code) { ElMessage.warning('请输入商品名称和编码'); return }
+  if (!form.spec_id) { ElMessage.warning('请选择规格'); return }
+  if (!form.unit_id) { ElMessage.warning('请选择单位'); return }
   if (!organId.value) { ElMessage.warning('缺少中队信息'); return }
 
   submitLoading.value = true
   try {
     if (dialogMode.value === 'create') {
       const payload: GoodsCreatePayload = {
-        name, code, org_id: organId.value,
+        name,
+        code,
+        org_id: organId.value,
         category_id: form.category_id,
         spec_id: form.spec_id,
+        unit_id: form.unit_id,
       }
       if (form.sort !== null && form.sort !== undefined) payload.sort = Number(form.sort)
       if (form.pinyin.trim()) payload.pinyin = form.pinyin.trim()
@@ -370,6 +394,7 @@ const onSubmit = async () => {
       if (code !== editingRow.value.Code) payload.code = code
       if (form.category_id && form.category_id !== editingRow.value.CategoryID) payload.category_id = form.category_id
       if (form.spec_id && form.spec_id !== editingRow.value.SpecID) payload.spec_id = form.spec_id
+      if (form.unit_id && form.unit_id !== editingRow.value.UnitID) payload.unit_id = form.unit_id
       const sortNum = form.sort === null ? null : Number(form.sort)
       if (sortNum !== null && sortNum !== editingRow.value.Sort) payload.sort = sortNum
       const pinyinTrim = form.pinyin.trim()
@@ -442,7 +467,7 @@ const onDeleteCategory = async (row: CategoryRow) => {
   } catch (e) { notifyError(e) }
 }
 
-onMounted(() => { fetchSpecs(); })
+onMounted(() => { fetchSpecs(); fetchUnits(); })
 watch(() => selectedCategoryId.value, () => { page.value=1; fetchGoods() })
 </script>
 

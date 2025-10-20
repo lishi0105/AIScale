@@ -14,6 +14,7 @@ export interface GoodsCreatePayload {
   code: string
   org_id: string
   spec_id: string
+  unit_id: string
   category_id: string
   sort?: number
   pinyin?: string | null
@@ -27,6 +28,7 @@ export interface GoodsUpdatePayload {
   code?: string
   sort?: number
   spec_id?: string
+  unit_id?: string
   category_id?: string
   pinyin?: string | null
   image_url?: string | null
@@ -40,6 +42,7 @@ export interface GoodsRow {
   Sort: number
   Pinyin: string | null
   SpecID: string
+  UnitID: string
   CategoryID: string
   OrgID: string
   ImageURL: string | null
