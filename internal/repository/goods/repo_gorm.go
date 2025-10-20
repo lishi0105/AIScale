@@ -126,3 +126,14 @@ func (r *goodsRepo) HardDeleteGoods(ctx context.Context, id string) error {
 		Where("id = ?", id).
 		Delete(&domain.Goods{}).Error
 }
+
+func (r *goodsRepo) FindByNameAndSpec(ctx context.Context, name string, specID string, unitID string, orgID string) (*domain.Goods, error) {
+	var out domain.Goods
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND spec_id = ? AND unit_id = ? AND org_id = ? AND is_deleted = 0", name, specID, unitID, orgID).
+		First(&out).Error
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

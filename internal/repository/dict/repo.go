@@ -14,6 +14,7 @@ type DictRepository interface {
 	ListUnits(ctx context.Context, keyword string, page, pageSize int) ([]dict.Unit, int64, error)
 	UpdateUnit(ctx context.Context, id string, name string, code *string, sort int, updateCode bool) error
 	DeleteUnit(ctx context.Context, id string) error
+	FindUnitByName(ctx context.Context, name string) (*dict.Unit, error)
 
 	// Spec
 	CreateSpec(ctx context.Context, m *dict.Spec) error
@@ -21,6 +22,7 @@ type DictRepository interface {
 	ListSpecs(ctx context.Context, keyword string, page, pageSize int) ([]dict.Spec, int64, error)
 	UpdateSpec(ctx context.Context, id string, name string, code *string, sort int, updateCode bool) error
 	DeleteSpec(ctx context.Context, id string) error
+	FindSpecByName(ctx context.Context, name string) (*dict.Spec, error)
 
 	// MealTime
 	CreateMealTime(ctx context.Context, m *dict.MealTime) error

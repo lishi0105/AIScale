@@ -174,3 +174,14 @@ func (r *supplierRepo) HardDeleteSupplier(ctx context.Context, id string) error 
 		Where("id = ?", id).
 		Delete(&domain.Supplier{}).Error
 }
+
+func (r *supplierRepo) FindByName(ctx context.Context, name string, orgID string) (*domain.Supplier, error) {
+	var out domain.Supplier
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND org_id = ? AND is_deleted = 0", name, orgID).
+		First(&out).Error
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

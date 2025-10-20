@@ -178,3 +178,25 @@ func (r *dictRepo) DeleteMealTime(ctx context.Context, id string) error {
 		Where("id = ?", id).
 		Update("is_deleted", 1).Error
 }
+
+func (r *dictRepo) FindUnitByName(ctx context.Context, name string) (*dict.Unit, error) {
+	var out dict.Unit
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND is_deleted = 0", name).
+		First(&out).Error
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (r *dictRepo) FindSpecByName(ctx context.Context, name string) (*dict.Spec, error) {
+	var out dict.Spec
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND is_deleted = 0", name).
+		First(&out).Error
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

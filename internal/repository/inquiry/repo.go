@@ -24,6 +24,11 @@ type Repository interface {
 	Update(ctx context.Context, params UpdateParams) error
 	SoftDelete(ctx context.Context, id string) error
 	HardDelete(ctx context.Context, id string) error
+	
+	// Import related methods
+	CreateGoodsAvgDetail(ctx context.Context, m *domain.GoodsAvgDetail) error
+	CreateGoodsPrice(ctx context.Context, m *domain.GoodsPrice) error
+	GetDB() *gorm.DB
 }
 
 func NewRepository(db *gorm.DB) Repository { return &repo{db: db} }

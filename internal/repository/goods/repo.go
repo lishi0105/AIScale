@@ -30,6 +30,7 @@ type GoodsRepository interface {
 	UpdateGoods(ctx context.Context, params UpdateParams) error
 	SoftDeleteGoods(ctx context.Context, id string) error
 	HardDeleteGoods(ctx context.Context, id string) error
+	FindByNameAndSpec(ctx context.Context, name string, specID string, unitID string, orgID string) (*domain.Goods, error)
 }
 
 func NewRepository(db *gorm.DB) GoodsRepository { return &goodsRepo{db: db} }

@@ -24,6 +24,7 @@ func (h *InquiryHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/update_inquiry", h.update)
 	g.POST("/soft_delete_inquiry", h.softDelete)
 	g.POST("/hard_delete_inquiry", h.hardDelete)
+	g.POST("/import_excel", h.importExcel)
 }
 
 type inquiryCreateReq struct {
@@ -263,4 +264,54 @@ func (h *InquiryHandler) hardDelete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+type importExcelReq struct {
+	OrgID string `json:"org_id" binding:"required,uuid4"`
+}
+
+func (h *InquiryHandler) importExcel(c *gin.Context) {
+	const errTitle = "导入Excel失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可导入询价")
+		return
+	}
+
+	// Get org_id from form
+	orgID := c.PostForm("org_id")
+	if orgID == "" {
+		BadRequest(c, errTitle, "参数错误：缺少 org_id")
+		return
+	}
+
+	// Get uploaded file
+	file, err := c.FormFile("file")
+	if err != nil {
+		BadRequest(c, errTitle, "上传文件失败: "+err.Error())
+		return
+	}
+
+	// Save uploaded file to temporary location
+	tempPath := "/tmp/" + file.Filename
+	if err := c.SaveUploadedFile(file, tempPath); err != nil {
+		InternalError(c, errTitle, "保存上传文件失败: "+err.Error())
+		return
+	}
+
+	// Import from Excel
+	params := svc.ExcelImportParams{
+		FilePath: tempPath,
+		OrgID:    orgID,
+	}
+	if err := h.s.ImportFromExcel(c, params); err != nil {
+		InternalError(c, errTitle, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "导入成功"})
 }

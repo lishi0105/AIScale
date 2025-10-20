@@ -14,6 +14,7 @@ type CategoryRepository interface {
 	Update(ctx context.Context, id string, name string, code *string, pinyin *string, sort *int, updateCode bool, updatePinyin bool, updateSort bool) error
 	SoftDelete(ctx context.Context, id string) error
 	HardDelete(ctx context.Context, id string) error
+	FindByName(ctx context.Context, name string, orgID string) (*category.Category, error)
 }
 
 func NewRepository(db *gorm.DB) CategoryRepository { return &categoryRepo{db: db} }

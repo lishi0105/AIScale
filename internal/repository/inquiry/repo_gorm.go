@@ -89,3 +89,15 @@ func (r *repo) HardDelete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Unscoped().
 		Where("id = ?", id).Delete(&domain.PriceInquiry{}).Error
 }
+
+func (r *repo) CreateGoodsAvgDetail(ctx context.Context, m *domain.GoodsAvgDetail) error {
+	return r.db.WithContext(ctx).Create(m).Error
+}
+
+func (r *repo) CreateGoodsPrice(ctx context.Context, m *domain.GoodsPrice) error {
+	return r.db.WithContext(ctx).Create(m).Error
+}
+
+func (r *repo) GetDB() *gorm.DB {
+	return r.db
+}

@@ -92,3 +92,14 @@ func (r *categoryRepo) HardDelete(ctx context.Context, id string) error {
 		Where("id = ?", id).
 		Delete(&category.Category{}).Error
 }
+
+func (r *categoryRepo) FindByName(ctx context.Context, name string, orgID string) (*category.Category, error) {
+	var out category.Category
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND org_id = ? AND is_deleted = 0", name, orgID).
+		First(&out).Error
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

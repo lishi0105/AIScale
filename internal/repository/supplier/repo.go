@@ -41,6 +41,7 @@ type SupplierRepository interface {
 	UpdateSupplier(ctx context.Context, params UpdateParams) error
 	SoftDeleteSupplier(ctx context.Context, id string) error
 	HardDeleteSupplier(ctx context.Context, id string) error
+	FindByName(ctx context.Context, name string, orgID string) (*domain.Supplier, error)
 }
 
 func NewRepository(db *gorm.DB) SupplierRepository { return &supplierRepo{db: db} }
