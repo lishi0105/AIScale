@@ -6,6 +6,7 @@ import (
 	acc "hdzk.cn/foodapp/internal/domain/account"
 	category "hdzk.cn/foodapp/internal/domain/category"
 	dict "hdzk.cn/foodapp/internal/domain/dict"
+	market "hdzk.cn/foodapp/internal/domain/market"
 	organ "hdzk.cn/foodapp/internal/domain/organ"
 )
 
@@ -17,7 +18,10 @@ func AutoMigrate(gdb *gorm.DB) error {
 		&dict.Spec{},
 		&dict.MealTime{},
 		&category.Category{},
-		// 其他模型
-		// 以后新增模型都放这里
+		&market.BaseMarket{},
+		&market.BasePriceInquiry{},
+		&market.PriceInquiryItem{},
+		&market.PriceMarketInquiry{},
+		&market.PriceSupplierSettlement{},
 	)
 }
