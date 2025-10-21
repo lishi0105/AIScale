@@ -183,6 +183,51 @@ func (r *inquiryRepo) HardDeleteInquiry(ctx context.Context, id string) error {
 		Delete(&domain.BasePriceInquiry{}).Error
 }
 
+func (r *inquiryRepo) DeleteInquiryWithCascade(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("id 不能为空")
+	}
+	
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 检查询价单是否存在
+		var inquiry domain.BasePriceInquiry
+		if err := tx.Where("id = ? AND is_deleted = 0", id).First(&inquiry).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return errors.New("询价单不存在")
+			}
+			return err
+		}
+		
+		// 2. 软删除询价单
+		if err := tx.Model(&inquiry).Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		
+		// 3. 软删除询价商品明细
+		if err := tx.Model(&domain.PriceInquiryItem{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		
+		// 4. 软删除市场报价
+		if err := tx.Model(&domain.PriceMarketInquiry{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		
+		// 5. 软删除供应商结算
+		if err := tx.Model(&domain.PriceSupplierSettlement{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		
+		return nil
+	})
+}
+
 // ========== PriceInquiryItem Repository ==========
 
 type inquiryItemRepo struct{ db *gorm.DB }

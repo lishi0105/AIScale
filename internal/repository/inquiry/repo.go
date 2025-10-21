@@ -40,6 +40,7 @@ type InquiryRepository interface {
 	UpdateInquiry(ctx context.Context, params InquiryUpdateParams) error
 	SoftDeleteInquiry(ctx context.Context, id string) error
 	HardDeleteInquiry(ctx context.Context, id string) error
+	DeleteInquiryWithCascade(ctx context.Context, id string) error
 }
 
 // ========== PriceInquiryItem ==========

@@ -203,6 +203,10 @@ func (s *InquiryService) HardDeleteInquiry(ctx context.Context, id string) error
 	return s.r.HardDeleteInquiry(ctx, strings.TrimSpace(id))
 }
 
+func (s *InquiryService) DeleteInquiryWithCascade(ctx context.Context, id string) error {
+	return s.r.DeleteInquiryWithCascade(ctx, strings.TrimSpace(id))
+}
+
 // ImportExcel 从Excel文件导入询价单和商品明细
 func (s *InquiryService) ImportExcel(ctx context.Context, reader io.Reader, orgID string) (*domain.BasePriceInquiry, int, error) {
 	// 读取Excel文件

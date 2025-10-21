@@ -359,7 +359,12 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		logger.L().Debug("事务已开启，准备创建询价单")
 
-		// 1. 创建或获取询价单
+		// 1. 检查是否已存在相同org_id的inquiry_title或inquiry_date
+		if err := s.checkDuplicateInquiry(tx, orgID, excelData.Title, excelData.InquiryDate); err != nil {
+			return err
+		}
+
+		// 2. 创建或获取询价单
 		inquiry := &inquiryDomain.BasePriceInquiry{
 			OrgID:        orgID,
 			InquiryTitle: excelData.Title,
@@ -909,4 +914,93 @@ func (s *InquiryImportService) getOrCreateSupplier(tx *gorm.DB, name string, flo
 
 	logger.L().Info("创建供应商成功", zap.String("supplier_id", supplier.ID), zap.String("name", name), zap.Float64("ratio", floatRatio))
 	return supplier.ID, nil
+}
+
+// checkDuplicateInquiry 检查是否已存在相同org_id的inquiry_title或inquiry_date
+func (s *InquiryImportService) checkDuplicateInquiry(tx *gorm.DB, orgID, title string, date time.Time) error {
+	logger.L().Debug("检查重复询价单", zap.String("org_id", orgID), zap.String("title", title), zap.Time("date", date))
+	
+	var count int64
+	// 检查相同org_id和inquiry_title的记录
+	if err := tx.Model(&inquiryDomain.BasePriceInquiry{}).
+		Where("org_id = ? AND inquiry_title = ? AND is_deleted = 0", orgID, title).
+		Count(&count).Error; err != nil {
+		logger.L().Error("检查重复标题失败", zap.Error(err))
+		return fmt.Errorf("检查重复标题失败: %w", err)
+	}
+	
+	if count > 0 {
+		logger.L().Warn("发现重复询价单标题", zap.String("org_id", orgID), zap.String("title", title))
+		return &ValidationError{Field: "inquiry_title", Message: fmt.Sprintf("该组织下已存在标题为 '%s' 的询价单", title)}
+	}
+	
+	// 检查相同org_id和inquiry_date的记录
+	if err := tx.Model(&inquiryDomain.BasePriceInquiry{}).
+		Where("org_id = ? AND inquiry_date = ? AND is_deleted = 0", orgID, date).
+		Count(&count).Error; err != nil {
+		logger.L().Error("检查重复日期失败", zap.Error(err))
+		return fmt.Errorf("检查重复日期失败: %w", err)
+	}
+	
+	if count > 0 {
+		logger.L().Warn("发现重复询价单日期", zap.String("org_id", orgID), zap.Time("date", date))
+		return &ValidationError{Field: "inquiry_date", Message: fmt.Sprintf("该组织下已存在日期为 '%s' 的询价单", date.Format("2006-01-02"))}
+	}
+	
+	logger.L().Debug("未发现重复询价单")
+	return nil
+}
+
+// DeleteInquiryWithCascade 根据base_price_inquiry.id删除询价单，联合删除相关数据
+func (s *InquiryImportService) DeleteInquiryWithCascade(ctx context.Context, inquiryID string) error {
+	logger.L().Info("开始删除询价单及相关数据", zap.String("inquiry_id", inquiryID))
+	
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 检查询价单是否存在
+		var inquiry inquiryDomain.BasePriceInquiry
+		if err := tx.Where("id = ? AND is_deleted = 0", inquiryID).First(&inquiry).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("询价单不存在")
+			}
+			logger.L().Error("查询询价单失败", zap.Error(err))
+			return fmt.Errorf("查询询价单失败: %w", err)
+		}
+		
+		// 2. 软删除询价单
+		if err := tx.Model(&inquiry).Update("is_deleted", 1).Error; err != nil {
+			logger.L().Error("软删除询价单失败", zap.Error(err))
+			return fmt.Errorf("软删除询价单失败: %w", err)
+		}
+		logger.L().Info("询价单软删除成功", zap.String("inquiry_id", inquiryID))
+		
+		// 3. 软删除询价商品明细
+		if err := tx.Model(&inquiryDomain.PriceInquiryItem{}).
+			Where("inquiry_id = ?", inquiryID).
+			Update("is_deleted", 1).Error; err != nil {
+			logger.L().Error("软删除询价商品明细失败", zap.Error(err))
+			return fmt.Errorf("软删除询价商品明细失败: %w", err)
+		}
+		logger.L().Info("询价商品明细软删除成功", zap.String("inquiry_id", inquiryID))
+		
+		// 4. 软删除市场报价
+		if err := tx.Model(&inquiryDomain.PriceMarketInquiry{}).
+			Where("inquiry_id = ?", inquiryID).
+			Update("is_deleted", 1).Error; err != nil {
+			logger.L().Error("软删除市场报价失败", zap.Error(err))
+			return fmt.Errorf("软删除市场报价失败: %w", err)
+		}
+		logger.L().Info("市场报价软删除成功", zap.String("inquiry_id", inquiryID))
+		
+		// 5. 软删除供应商结算
+		if err := tx.Model(&inquiryDomain.PriceSupplierSettlement{}).
+			Where("inquiry_id = ?", inquiryID).
+			Update("is_deleted", 1).Error; err != nil {
+			logger.L().Error("软删除供应商结算失败", zap.Error(err))
+			return fmt.Errorf("软删除供应商结算失败: %w", err)
+		}
+		logger.L().Info("供应商结算软删除成功", zap.String("inquiry_id", inquiryID))
+		
+		logger.L().Info("询价单及相关数据删除完成", zap.String("inquiry_id", inquiryID))
+		return nil
+	})
 }

@@ -232,6 +232,7 @@ func (h *InquiryHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/update_inquiry", h.updateInquiry)
 	g.POST("/soft_delete_inquiry", h.softDeleteInquiry)
 	g.POST("/hard_delete_inquiry", h.hardDeleteInquiry)
+	g.POST("/delete_inquiry_with_cascade", h.deleteInquiryWithCascade)
 }
 
 type inquiryCreateReq struct {
@@ -419,6 +420,30 @@ func (h *InquiryHandler) hardDeleteInquiry(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *InquiryHandler) deleteInquiryWithCascade(c *gin.Context) {
+	const errTitle = "删除询价单失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可删除询价单")
+		return
+	}
+
+	var req types.IDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, errTitle, "输入格式非法")
+		return
+	}
+	if err := h.s.DeleteInquiryWithCascade(c, req.ID); err != nil {
+		ForbiddenError(c, errTitle, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "message": "询价单及相关数据删除成功"})
 }
 
 // ========== PriceInquiryItem Handler ==========
