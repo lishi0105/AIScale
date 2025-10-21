@@ -3,10 +3,13 @@ package market
 import (
 	"context"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 	domain "hdzk.cn/foodapp/internal/domain/market"
 	repo "hdzk.cn/foodapp/internal/repository/market"
 )
@@ -102,11 +105,12 @@ func (s *MarketService) HardDeleteMarket(ctx context.Context, id string) error {
 // ========== BasePriceInquiry Service ==========
 
 type InquiryService struct {
-	r repo.InquiryRepository
+	r     repo.InquiryRepository
+	itemR repo.InquiryItemRepository
 }
 
-func NewInquiryService(r repo.InquiryRepository) *InquiryService {
-	return &InquiryService{r: r}
+func NewInquiryService(r repo.InquiryRepository, itemR repo.InquiryItemRepository) *InquiryService {
+	return &InquiryService{r: r, itemR: itemR}
 }
 
 type InquiryCreateParams struct {
@@ -197,6 +201,170 @@ func (s *InquiryService) SoftDeleteInquiry(ctx context.Context, id string) error
 
 func (s *InquiryService) HardDeleteInquiry(ctx context.Context, id string) error {
 	return s.r.HardDeleteInquiry(ctx, strings.TrimSpace(id))
+}
+
+// ImportExcel 从Excel文件导入询价单和商品明细
+func (s *InquiryService) ImportExcel(ctx context.Context, reader io.Reader, orgID string) (*domain.BasePriceInquiry, int, error) {
+	// 读取Excel文件
+	f, err := excelize.OpenReader(reader)
+	if err != nil {
+		return nil, 0, fmt.Errorf("打开Excel文件失败: %w", err)
+	}
+	defer f.Close()
+
+	// 获取第一个工作表
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		return nil, 0, fmt.Errorf("Excel文件中没有工作表")
+	}
+	sheetName := sheets[0]
+
+	// 读取所有行
+	rows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, 0, fmt.Errorf("读取Excel数据失败: %w", err)
+	}
+
+	if len(rows) < 2 {
+		return nil, 0, fmt.Errorf("Excel文件数据不足，至少需要标题行和一行数据")
+	}
+
+	// 第一行是标题信息，例如: "2025年9月上旬都匀市场参考价" (最近一次更新时间: 2025-08-31) (单位: 元)
+	titleRow := rows[0]
+	if len(titleRow) == 0 {
+		return nil, 0, fmt.Errorf("Excel文件缺少标题行")
+	}
+
+	// 解析标题，提取询价单标题和日期
+	inquiryTitle, inquiryDate, err := parseExcelTitle(titleRow[0])
+	if err != nil {
+		return nil, 0, fmt.Errorf("解析标题失败: %w", err)
+	}
+
+	// 创建询价单
+	inquiry := &domain.BasePriceInquiry{
+		ID:           uuid.NewString(),
+		OrgID:        orgID,
+		InquiryTitle: inquiryTitle,
+		InquiryDate:  inquiryDate,
+	}
+
+	if err := s.r.CreateInquiry(ctx, inquiry); err != nil {
+		return nil, 0, fmt.Errorf("创建询价单失败: %w", err)
+	}
+
+	// 第二行是表头，跳过
+	// 从第三行开始是数据
+	itemCount := 0
+	for i := 2; i < len(rows); i++ {
+		row := rows[i]
+		if len(row) < 10 {
+			continue // 跳过数据不完整的行
+		}
+
+		// 解析商品数据
+		// 假设列顺序为：序号、商品图、品名、拼音首字母、编码、规格标准、单位、指导价、上期均价、本期均价
+		goodsName := strings.TrimSpace(row[2])
+		if goodsName == "" {
+			continue
+		}
+
+		categoryName := "未分类" // 默认分类，可以根据需要调整
+		specName := ""
+		unitName := ""
+		if len(row) > 5 {
+			specName = strings.TrimSpace(row[5])
+		}
+		if len(row) > 6 {
+			unitName = strings.TrimSpace(row[6])
+		}
+
+		var guidePrice, lastMonthAvgPrice, currentAvgPrice *float64
+		if len(row) > 7 && row[7] != "" {
+			if price, err := strconv.ParseFloat(strings.TrimSpace(row[7]), 64); err == nil {
+				guidePrice = &price
+			}
+		}
+		if len(row) > 8 && row[8] != "" {
+			if price, err := strconv.ParseFloat(strings.TrimSpace(row[8]), 64); err == nil {
+				lastMonthAvgPrice = &price
+			}
+		}
+		if len(row) > 9 && row[9] != "" {
+			if price, err := strconv.ParseFloat(strings.TrimSpace(row[9]), 64); err == nil {
+				currentAvgPrice = &price
+			}
+		}
+
+		// 创建询价商品明细（使用快照，不关联具体的商品ID）
+		item := &domain.PriceInquiryItem{
+			ID:                uuid.NewString(),
+			InquiryID:         inquiry.ID,
+			GoodsID:           uuid.NewString(), // 临时ID，表示未关联
+			CategoryID:        uuid.NewString(), // 临时ID，表示未关联
+			GoodsNameSnap:     goodsName,
+			CategoryNameSnap:  categoryName,
+			GuidePrice:        guidePrice,
+			LastMonthAvgPrice: lastMonthAvgPrice,
+			CurrentAvgPrice:   currentAvgPrice,
+			Sort:              i - 2,
+		}
+
+		if specName != "" {
+			item.SpecNameSnap = &specName
+		}
+		if unitName != "" {
+			item.UnitNameSnap = &unitName
+		}
+
+		// 创建询价商品明细
+		if err := s.itemR.CreateInquiryItem(ctx, item); err != nil {
+			// 忽略创建失败的项，继续处理下一项
+			continue
+		}
+		itemCount++
+	}
+
+	return inquiry, itemCount, nil
+}
+
+// parseExcelTitle 解析Excel标题，提取询价单标题和日期
+// 例如: "2025年9月上旬都匀市场参考价 (最近一次更新时间: 2025-08-31) (单位: 元)"
+func parseExcelTitle(titleStr string) (string, time.Time, error) {
+	titleStr = strings.TrimSpace(titleStr)
+	if titleStr == "" {
+		return "", time.Time{}, fmt.Errorf("标题为空")
+	}
+
+	// 提取日期（在括号中）
+	dateStr := ""
+	if strings.Contains(titleStr, "(最近一次更新时间:") {
+		start := strings.Index(titleStr, "(最近一次更新时间:") + len("(最近一次更新时间:")
+		end := strings.Index(titleStr[start:], ")")
+		if end > 0 {
+			dateStr = strings.TrimSpace(titleStr[start : start+end])
+		}
+	}
+
+	// 如果没有找到日期，使用当前日期
+	var inquiryDate time.Time
+	var err error
+	if dateStr != "" {
+		inquiryDate, err = time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			inquiryDate = time.Now()
+		}
+	} else {
+		inquiryDate = time.Now()
+	}
+
+	// 提取标题（去除括号部分）
+	inquiryTitle := titleStr
+	if idx := strings.Index(titleStr, "("); idx > 0 {
+		inquiryTitle = strings.TrimSpace(titleStr[:idx])
+	}
+
+	return inquiryTitle, inquiryDate, nil
 }
 
 // ========== PriceInquiryItem Service ==========

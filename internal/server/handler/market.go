@@ -226,6 +226,7 @@ func (h *InquiryHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/update_inquiry", h.updateInquiry)
 	g.POST("/soft_delete_inquiry", h.softDeleteInquiry)
 	g.POST("/hard_delete_inquiry", h.hardDeleteInquiry)
+	g.POST("/import_excel", h.importExcel)
 }
 
 type inquiryCreateReq struct {
@@ -413,6 +414,54 @@ func (h *InquiryHandler) hardDeleteInquiry(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *InquiryHandler) importExcel(c *gin.Context) {
+	const errTitle = "导入Excel失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可导入询价单")
+		return
+	}
+
+	// 获取org_id
+	orgID := strings.TrimSpace(c.PostForm("org_id"))
+	if orgID == "" {
+		BadRequest(c, errTitle, "缺少org_id参数")
+		return
+	}
+
+	// 获取上传的文件
+	file, err := c.FormFile("file")
+	if err != nil {
+		BadRequest(c, errTitle, "获取上传文件失败: "+err.Error())
+		return
+	}
+
+	// 打开文件
+	src, err := file.Open()
+	if err != nil {
+		InternalError(c, errTitle, "打开文件失败: "+err.Error())
+		return
+	}
+	defer src.Close()
+
+	// 调用service导入
+	inquiry, itemCount, err := h.s.ImportExcel(c, src, orgID)
+	if err != nil {
+		ConflictError(c, errTitle, "导入失败: "+err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "导入成功",
+		"inquiry_id": inquiry.ID,
+		"item_count": itemCount,
+	})
 }
 
 // ========== PriceInquiryItem Handler ==========
