@@ -359,6 +359,38 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		logger.L().Debug("事务已开启，准备创建询价单")
 
+        // 0. 导入前检查：同一 org_id 下，询价单标题或日期不得重复
+        var dupTitleCount int64
+        if err := tx.Model(&inquiryDomain.BasePriceInquiry{}).
+            Where("org_id = ? AND is_deleted = 0 AND inquiry_title = ?", orgID, excelData.Title).
+            Count(&dupTitleCount).Error; err != nil {
+            logger.L().Error("检查标题重复失败", zap.Error(err),
+                zap.String("org_id", orgID), zap.String("title", excelData.Title))
+            return fmt.Errorf("检查标题重复失败: %w", err)
+        }
+
+        var dupDateCount int64
+        if err := tx.Model(&inquiryDomain.BasePriceInquiry{}).
+            Where("org_id = ? AND is_deleted = 0 AND inquiry_date = ?", orgID, excelData.InquiryDate).
+            Count(&dupDateCount).Error; err != nil {
+            logger.L().Error("检查日期重复失败", zap.Error(err),
+                zap.String("org_id", orgID), zap.Time("inquiry_date", excelData.InquiryDate))
+            return fmt.Errorf("检查日期重复失败: %w", err)
+        }
+
+        if dupTitleCount > 0 || dupDateCount > 0 {
+            // 更友好的错误提示
+            switch {
+            case dupTitleCount > 0 && dupDateCount > 0:
+                return fmt.Errorf("导入失败：该组织已存在相同标题和日期的询价单（title=%s, date=%s）",
+                    excelData.Title, excelData.InquiryDate.Format("2006-01-02"))
+            case dupTitleCount > 0:
+                return fmt.Errorf("导入失败：该组织已存在相同标题的询价单（title=%s）", excelData.Title)
+            default:
+                return fmt.Errorf("导入失败：该组织已存在相同日期的询价单（date=%s）", excelData.InquiryDate.Format("2006-01-02"))
+            }
+        }
+
 		// 1. 创建或获取询价单
 		inquiry := &inquiryDomain.BasePriceInquiry{
 			OrgID:        orgID,

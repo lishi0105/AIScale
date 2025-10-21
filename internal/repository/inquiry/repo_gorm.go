@@ -168,19 +168,64 @@ func (r *inquiryRepo) UpdateInquiry(ctx context.Context, params InquiryUpdatePar
 }
 
 func (r *inquiryRepo) SoftDeleteInquiry(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Model(&domain.BasePriceInquiry{}).
-		Where("id = ?", id).
-		Update("is_deleted", 1).Error
+    return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+        // 软删表头
+        if err := tx.Model(&domain.BasePriceInquiry{}).
+            Where("id = ?", id).
+            Update("is_deleted", 1).Error; err != nil {
+            return err
+        }
+        // 软删明细
+        if err := tx.Model(&domain.PriceInquiryItem{}).
+            Where("inquiry_id = ?", id).
+            Update("is_deleted", 1).Error; err != nil {
+            return err
+        }
+        // 软删市场报价
+        if err := tx.Model(&domain.PriceMarketInquiry{}).
+            Where("inquiry_id = ?", id).
+            Update("is_deleted", 1).Error; err != nil {
+            return err
+        }
+        // 软删供应商结算
+        if err := tx.Model(&domain.PriceSupplierSettlement{}).
+            Where("inquiry_id = ?", id).
+            Update("is_deleted", 1).Error; err != nil {
+            return err
+        }
+        return nil
+    })
 }
 
 func (r *inquiryRepo) HardDeleteInquiry(ctx context.Context, id string) error {
-	if id == "" {
-		return errors.New("id 不能为空")
-	}
-	return r.db.WithContext(ctx).
-		Unscoped().
-		Where("id = ?", id).
-		Delete(&domain.BasePriceInquiry{}).Error
+    if id == "" {
+        return errors.New("id 不能为空")
+    }
+    return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+        // 先删依赖（按 inquiry_id）
+        if err := tx.Unscoped().
+            Where("inquiry_id = ?", id).
+            Delete(&domain.PriceMarketInquiry{}).Error; err != nil {
+            return err
+        }
+        if err := tx.Unscoped().
+            Where("inquiry_id = ?", id).
+            Delete(&domain.PriceSupplierSettlement{}).Error; err != nil {
+            return err
+        }
+        if err := tx.Unscoped().
+            Where("inquiry_id = ?", id).
+            Delete(&domain.PriceInquiryItem{}).Error; err != nil {
+            return err
+        }
+        // 最后删表头
+        if err := tx.Unscoped().
+            Where("id = ?", id).
+            Delete(&domain.BasePriceInquiry{}).Error; err != nil {
+            return err
+        }
+        return nil
+    })
 }
 
 // ========== PriceInquiryItem Repository ==========
