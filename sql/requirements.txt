@@ -1,0 +1,11 @@
+# 市场价格导入脚本所需的Python依赖
+
+# Excel文件读取
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# MySQL数据库连接
+pymysql>=1.1.0
+
+# 可选：数据验证
+numpy>=1.24.0
