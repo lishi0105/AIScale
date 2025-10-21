@@ -119,33 +119,3 @@ CREATE TABLE IF NOT EXISTS base_market (
   CONSTRAINT fk_market_org FOREIGN KEY (org_id) REFERENCES base_org(id)
 ) ENGINE=InnoDB
   COMMENT='Base_市场（基础市场主数据：名称）';
-
-/* ---------- Base_询价记录 ---------- */
-CREATE TABLE IF NOT EXISTS base_inquiry (
-  id               CHAR(36)       NOT NULL COMMENT 'UUID',
-  goods_id         CHAR(36)       NOT NULL COMMENT '商品ID',
-  goods_unit_id    CHAR(36)       NOT NULL COMMENT '单位ID',
-  goods_spec_id    CHAR(36)       NOT NULL COMMENT '规格ID',
-  goods_name       VARCHAR(128)   NOT NULL COMMENT '商品名称',
-  guide_price      DECIMAL(10,2)  NOT NULL COMMENT '指导价',
-  inquiry_price    DECIMAL(10,2)  NOT NULL COMMENT '询价单价',
-  org_id           CHAR(36)       NOT NULL COMMENT '中队ID',
-  is_deleted       TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
-
-  created_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
-  PRIMARY KEY (id),
-  -- 外键
-  CONSTRAINT fk_price_inquiry_goods FOREIGN KEY (goods_id) REFERENCES base_goods(id),
-  CONSTRAINT fk_price_inquiry_unit FOREIGN KEY (goods_unit_id) REFERENCES base_unit(id),
-  CONSTRAINT fk_price_inquiry_spec FOREIGN KEY (goods_spec_id) REFERENCES base_spec(id)
-  -- 常用检索索引
-  KEY idx_price_inquiry_goods_spec_unit (goods_id, goods_spec_id, goods_unit_id)
-  UNIQUE KEY uq_price_inquiry_goods_spec_unit (goods_id, goods_spec_id, goods_unit_id)
-  KEY idx_price_inquiry_org_id (org_id)
-  UNIQUE KEY uq_price_inquiry_org_id (org_id)
-  KEY idx_price_inquiry_goods_name (goods_name)
-  UNIQUE KEY uq_price_inquiry_goods_name (goods_name)
-) ENGINE=InnoDB COMMENT='商品询价记录(市场、询价单价、指导价)';
-
