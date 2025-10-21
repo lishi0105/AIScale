@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS price_supplier_settlement (
   supplier_name_snap    VARCHAR(128)    NOT NULL COMMENT '供应商名称快照（如：胡坤/贵海）',
   float_ratio_snap      DECIMAL(6,4)    NOT NULL COMMENT '浮动比例快照（如：0.88 表示下浮12%）',
   settlement_price      DECIMAL(12,2)       NULL COMMENT '本期结算价',
+  is_deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=已删除',
   created_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
