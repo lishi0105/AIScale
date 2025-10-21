@@ -188,6 +188,17 @@ func registerSupplierSettlementRoutes(r *gin.Engine, gdb *gorm.DB, authCfg confi
 	settlementH.Register(protected)
 }
 
+func registerExcelImportRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+    v1 := r.Group("/api/v1")
+    protected := v1.Group("/")
+    protected.Use(
+        middleware.RequireAuth(authCfg.JWTSecret, nil),
+        middleware.ActiveGuard(),
+    )
+    h := handler.NewExcelImportHandler(gdb)
+    h.Register(protected)
+}
+
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -214,13 +225,20 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 		c.File(filepath.Join(webDir, "index.html"))
 	})
 
-	// API
-	registerAccountRoutes(r, gdb, authCfg)
-	registerDictRoutes(r, gdb, authCfg)
-	registerOrganRoutes(r, gdb, authCfg)
-	registerCategoryRoutes(r, gdb, authCfg)
-	registerSupplierRoutes(r, gdb, authCfg)
-	registerGoodsRoutes(r, gdb, authCfg)
+    // API
+    registerAccountRoutes(r, gdb, authCfg)
+    registerDictRoutes(r, gdb, authCfg)
+    registerOrganRoutes(r, gdb, authCfg)
+    registerCategoryRoutes(r, gdb, authCfg)
+    registerSupplierRoutes(r, gdb, authCfg)
+    registerGoodsRoutes(r, gdb, authCfg)
+    registerMarketRoutes(r, gdb, authCfg)
+    registerInquiryRoutes(r, gdb, authCfg)
+    registerInquiryItemRoutes(r, gdb, authCfg)
+    registerMarketInquiryRoutes(r, gdb, authCfg)
+    registerSupplierSettlementRoutes(r, gdb, authCfg)
+
+    registerExcelImportRoutes(r, gdb, authCfg)
 
 	return r
 }

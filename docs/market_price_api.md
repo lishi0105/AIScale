@@ -215,6 +215,43 @@
 
 ---
 
+## 6. Excel 导入
+
+- URL: `POST /api/v1/excel/chunk`
+  - multipart 表单字段：
+    - `upload_id`: 同一文件的唯一ID
+    - `index`: 分片序号（从0开始）
+    - `md5`: 分片 MD5（hex）
+    - `chunk`: 文件分片
+
+- URL: `POST /api/v1/excel/merge`
+  - 表单字段：
+    - `upload_id`: 上述ID
+    - `total`: 分片总数
+    - `filename`: 原始文件名
+    - `file_md5`: 整文件 MD5（hex）
+  - 返回：`{"path":"/tmp/..."}` 用于后续导入
+
+- URL: `POST /api/v1/excel/import`
+  - JSON：
+  ```json
+  { "path": "/tmp/xxx.xlsx", "org_id": "uuid", "date": "2025-09-05" }
+  ```
+  - 规则校验：
+    - A1 必须存在标题（包含“参考价”）
+    - 每个 sheet 至少包含列：`品名`、`规格标准`、`单位`、`本期均价`
+    - 每个 sheet 必须至少包含1个询价市场列（任意名称）
+    - 每个 sheet 必须至少包含1个供应商列，形如：`胡坤本期结算价（下浮12%）`
+  - 行为：
+    - 按文件标题创建一张询价单（`base_price_inquiry`）
+    - sheet 名作为品类，自动创建缺失的 `base_category`
+    - 自动创建缺失的 `base_spec`、`base_unit`、`base_goods`
+    - 识别市场列，写入 `price_market_inquiry`
+    - 识别供应商列（抽取名称与上下浮比例），写入 `price_supplier_settlement`（不保存结算价）
+    - `上月均价`→`price_inquiry_item.last_month_avg_price`
+    - `本期均价`→`price_inquiry_item.current_avg_price`
+
+
 ## 权限说明
 
 - 所有接口都需要登录认证（JWT Token）
