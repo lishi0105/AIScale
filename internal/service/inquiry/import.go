@@ -359,7 +359,26 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		logger.L().Debug("事务已开启，准备创建询价单")
 
-		// 1. 创建或获取询价单
+		// 1. 检查是否已存在相同的询价单
+		var existingCount int64
+		err := tx.Model(&inquiryDomain.BasePriceInquiry{}).
+			Where("org_id = ? AND is_deleted = 0", orgID).
+			Where("inquiry_title = ? OR inquiry_date = ?", excelData.Title, excelData.InquiryDate).
+			Count(&existingCount).Error
+		if err != nil {
+			logger.L().Error("检查询价单重复失败", zap.Error(err))
+			return fmt.Errorf("检查询价单重复失败: %w", err)
+		}
+		if existingCount > 0 {
+			logger.L().Warn("检测到重复的询价单",
+				zap.String("org_id", orgID),
+				zap.String("inquiry_title", excelData.Title),
+				zap.Time("inquiry_date", excelData.InquiryDate))
+			return fmt.Errorf("已存在相同标题或日期的询价单，org_id=%s, title=%s, date=%s",
+				orgID, excelData.Title, excelData.InquiryDate.Format("2006-01-02"))
+		}
+
+		// 2. 创建询价单
 		inquiry := &inquiryDomain.BasePriceInquiry{
 			OrgID:        orgID,
 			InquiryTitle: excelData.Title,
@@ -371,7 +390,7 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 		}
 		logger.L().Info("询价单创建成功", zap.String("inquiry_id", inquiry.ID))
 
-		// 2. 处理市场
+		// 3. 处理市场
 		marketIDMap := make(map[string]string)
 		for _, marketName := range excelData.Markets {
 			marketID, err := s.getOrCreateMarket(tx, marketName, orgID)
@@ -383,7 +402,7 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 			logger.L().Debug("市场就绪", zap.String("market", marketName), zap.String("market_id", marketID))
 		}
 
-		// 3. 处理供应商
+		// 4. 处理供应商
 		supplierIDMap := make(map[string]string)
 		for _, supplier := range excelData.Suppliers {
 			supplierID, err := s.getOrCreateSupplier(tx, supplier.Name, supplier.FloatRatio, orgID)
@@ -398,7 +417,7 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 				zap.String("supplier_id", supplierID))
 		}
 
-		// 4. 遍历每个sheet（品类）
+		// 5. 遍历每个sheet（品类）
 		for _, sheet := range excelData.Sheets {
 			logger.L().Info("处理品类", zap.String("category_name", sheet.SheetName))
 
@@ -410,7 +429,7 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 			}
 			logger.L().Debug("品类就绪", zap.String("category", sheet.SheetName), zap.String("category_id", categoryID))
 
-			// 5. 遍历每个商品
+			// 6. 遍历每个商品
 			for idx, item := range sheet.Items {
 				logger.L().Debug("处理商品", zap.Int("sort", idx), zap.String("goods", item.GoodsName))
 

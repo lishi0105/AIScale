@@ -196,11 +196,21 @@ func (s *InquiryService) UpdateInquiry(ctx context.Context, params InquiryUpdate
 }
 
 func (s *InquiryService) SoftDeleteInquiry(ctx context.Context, id string) error {
-	return s.r.SoftDeleteInquiry(ctx, strings.TrimSpace(id))
+	return s.r.CascadeSoftDeleteInquiry(ctx, strings.TrimSpace(id))
 }
 
 func (s *InquiryService) HardDeleteInquiry(ctx context.Context, id string) error {
-	return s.r.HardDeleteInquiry(ctx, strings.TrimSpace(id))
+	return s.r.CascadeHardDeleteInquiry(ctx, strings.TrimSpace(id))
+}
+
+// CascadeSoftDeleteInquiry 级联软删除询价单及其所有关联数据
+func (s *InquiryService) CascadeSoftDeleteInquiry(ctx context.Context, id string) error {
+	return s.r.CascadeSoftDeleteInquiry(ctx, strings.TrimSpace(id))
+}
+
+// CascadeHardDeleteInquiry 级联硬删除询价单及其所有关联数据
+func (s *InquiryService) CascadeHardDeleteInquiry(ctx context.Context, id string) error {
+	return s.r.CascadeHardDeleteInquiry(ctx, strings.TrimSpace(id))
 }
 
 // ImportExcel 从Excel文件导入询价单和商品明细

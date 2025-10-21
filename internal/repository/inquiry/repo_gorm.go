@@ -183,6 +183,84 @@ func (r *inquiryRepo) HardDeleteInquiry(ctx context.Context, id string) error {
 		Delete(&domain.BasePriceInquiry{}).Error
 }
 
+// CascadeSoftDeleteInquiry 级联软删除询价单及其关联数据
+func (r *inquiryRepo) CascadeSoftDeleteInquiry(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("id 不能为空")
+	}
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 软删除供应商结算记录
+		if err := tx.Model(&domain.PriceSupplierSettlement{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return errors.New("软删除供应商结算记录失败: " + err.Error())
+		}
+
+		// 2. 软删除市场报价记录
+		if err := tx.Model(&domain.PriceMarketInquiry{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return errors.New("软删除市场报价记录失败: " + err.Error())
+		}
+
+		// 3. 软删除询价商品明细
+		if err := tx.Model(&domain.PriceInquiryItem{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return errors.New("软删除询价商品明细失败: " + err.Error())
+		}
+
+		// 4. 软删除询价单
+		if err := tx.Model(&domain.BasePriceInquiry{}).
+			Where("id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return errors.New("软删除询价单失败: " + err.Error())
+		}
+
+		return nil
+	})
+}
+
+// CascadeHardDeleteInquiry 级联硬删除询价单及其关联数据
+func (r *inquiryRepo) CascadeHardDeleteInquiry(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("id 不能为空")
+	}
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 硬删除供应商结算记录
+		if err := tx.Unscoped().
+			Where("inquiry_id = ?", id).
+			Delete(&domain.PriceSupplierSettlement{}).Error; err != nil {
+			return errors.New("硬删除供应商结算记录失败: " + err.Error())
+		}
+
+		// 2. 硬删除市场报价记录
+		if err := tx.Unscoped().
+			Where("inquiry_id = ?", id).
+			Delete(&domain.PriceMarketInquiry{}).Error; err != nil {
+			return errors.New("硬删除市场报价记录失败: " + err.Error())
+		}
+
+		// 3. 硬删除询价商品明细
+		if err := tx.Unscoped().
+			Where("inquiry_id = ?", id).
+			Delete(&domain.PriceInquiryItem{}).Error; err != nil {
+			return errors.New("硬删除询价商品明细失败: " + err.Error())
+		}
+
+		// 4. 硬删除询价单
+		if err := tx.Unscoped().
+			Where("id = ?", id).
+			Delete(&domain.BasePriceInquiry{}).Error; err != nil {
+			return errors.New("硬删除询价单失败: " + err.Error())
+		}
+
+		return nil
+	})
+}
+
 // ========== PriceInquiryItem Repository ==========
 
 type inquiryItemRepo struct{ db *gorm.DB }
