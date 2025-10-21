@@ -19,6 +19,7 @@ import (
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
+	excelsvc "hdzk.cn/foodapp/internal/service/excel"
 	goodssvc "hdzk.cn/foodapp/internal/service/goods"
 	marketsvc "hdzk.cn/foodapp/internal/service/market"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
@@ -188,6 +189,18 @@ func registerSupplierSettlementRoutes(r *gin.Engine, gdb *gorm.DB, authCfg confi
 	settlementH.Register(protected)
 }
 
+func registerExcelRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig, uploadDir string) {
+	excelSvc := excelsvc.NewExcelImportService(gdb)
+	excelH := handler.NewExcelHandler(excelSvc, uploadDir)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	excelH.Register(protected)
+}
+
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -221,6 +234,15 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerCategoryRoutes(r, gdb, authCfg)
 	registerSupplierRoutes(r, gdb, authCfg)
 	registerGoodsRoutes(r, gdb, authCfg)
+	registerMarketRoutes(r, gdb, authCfg)
+	registerInquiryRoutes(r, gdb, authCfg)
+	registerInquiryItemRoutes(r, gdb, authCfg)
+	registerMarketInquiryRoutes(r, gdb, authCfg)
+	registerSupplierSettlementRoutes(r, gdb, authCfg)
+	
+	// Excel导入（使用./uploads目录）
+	uploadDir := "./uploads"
+	registerExcelRoutes(r, gdb, authCfg, uploadDir)
 
 	return r
 }
