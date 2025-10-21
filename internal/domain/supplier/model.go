@@ -81,4 +81,4 @@ func (s *Supplier) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-func (Supplier) TableName() string { return "supplier" }
+func (Supplier) TableName() string { return "base_supplier" }

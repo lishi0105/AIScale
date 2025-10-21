@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS base_price_inquiry (
   KEY idx_inquiry_date (inquiry_date),
   KEY idx_inquiry_period (org_id, inquiry_year, inquiry_month, inquiry_ten_day),
   KEY idx_inquiry_title (inquiry_title),
-  KEY idx_inquiry_markets (market_1, market_2, market_3),
   CONSTRAINT fk_inquiry_org FOREIGN KEY (org_id) REFERENCES base_org(id)
 ) ENGINE=InnoDB
   COMMENT='询价单（表头）';
@@ -136,32 +135,32 @@ CREATE TABLE IF NOT EXISTS price_supplier_settlement (
   KEY idx_settle_supplier (supplier_id),
   CONSTRAINT fk_settle_inquiry  FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id) ON DELETE CASCADE,
   CONSTRAINT fk_settle_item     FOREIGN KEY (item_id)    REFERENCES price_inquiry_item(id) ON DELETE CASCADE,
-  CONSTRAINT fk_settle_supplier FOREIGN KEY (supplier_id) REFERENCES supplier(id)
+  CONSTRAINT fk_settle_supplier FOREIGN KEY (supplier_id) REFERENCES base_supplier(id)
 ) ENGINE=InnoDB
   COMMENT='供应商结算（按供应商下浮比例计算的结算价）';
 
 /* ---------- 汇总/搜索视图：便于按日期/品类/标题检索 ---------- */
 CREATE OR REPLACE VIEW vw_price_inquiry_item_search AS
 SELECT
-  h.id                AS inquiry_id,
-  h.org_id            AS org_id,
-  h.inquiry_title     AS inquiry_title,
-  h.inquiry_date      AS inquiry_date,
-  h.inquiry_year      AS inquiry_year,
-  h.inquiry_month     AS inquiry_month,
-  h.inquiry_ten_day   AS inquiry_ten_day,
-  i.id                AS item_id,
-  i.goods_id          AS goods_id,
-  i.goods_name_snap   AS goods_name,
-  i.category_id       AS category_id,
-  i.category_name_snap AS category_name,
-  i.spec_name_snap    AS spec_name,
-  i.unit_name_snap    AS unit_name,
+  h.id                  AS inquiry_id,
+  h.org_id              AS org_id,
+  h.inquiry_title       AS inquiry_title,
+  h.inquiry_date        AS inquiry_date,
+  h.inquiry_year        AS inquiry_year,
+  h.inquiry_month       AS inquiry_month,
+  h.inquiry_ten_day     AS inquiry_ten_day,
+  i.id                  AS item_id,
+  i.goods_id            AS goods_id,
+  i.goods_name_snap     AS goods_name,
+  i.category_id         AS category_id,
+  i.category_name_snap  AS category_name,
+  i.spec_name_snap      AS spec_name,
+  i.unit_name_snap      AS unit_name,
   i.guide_price,
   i.last_month_avg_price,
   -- 如果未回填 current_avg_price，则以市场报价实算
   COALESCE(i.current_avg_price,
-           (SELECT AVG(q.price) FROM price_market_quote q WHERE q.item_id = i.id)) AS current_avg_price
+           (SELECT AVG(q.price) FROM price_market_inquiry q WHERE q.item_id = i.id)) AS current_avg_price
 FROM base_price_inquiry h
 JOIN price_inquiry_item i ON i.inquiry_id = h.id
 WHERE h.is_deleted = 0 AND i.is_deleted = 0;

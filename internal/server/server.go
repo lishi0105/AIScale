@@ -139,7 +139,8 @@ func registerMarketRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfi
 
 func registerInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
 	inquiryRepo := marketrepo.NewInquiryRepository(gdb)
-	inquirySvc := marketsvc.NewInquiryService(inquiryRepo)
+	itemRepo := marketrepo.NewInquiryItemRepository(gdb)
+	inquirySvc := marketsvc.NewInquiryService(inquiryRepo, itemRepo)
 	inquiryH := handler.NewInquiryHandler(inquirySvc)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -234,12 +235,14 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	registerCategoryRoutes(r, gdb, authCfg)
 	registerSupplierRoutes(r, gdb, authCfg)
 	registerGoodsRoutes(r, gdb, authCfg)
+
+	// Market routes
 	registerMarketRoutes(r, gdb, authCfg)
 	registerInquiryRoutes(r, gdb, authCfg)
 	registerInquiryItemRoutes(r, gdb, authCfg)
 	registerMarketInquiryRoutes(r, gdb, authCfg)
 	registerSupplierSettlementRoutes(r, gdb, authCfg)
-	
+
 	// Excel导入（使用./uploads目录）
 	uploadDir := "./uploads"
 	registerExcelRoutes(r, gdb, authCfg, uploadDir)

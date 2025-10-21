@@ -26,7 +26,7 @@
           <el-sub-menu index="base">
             <template #title>
               <el-icon><Collection /></el-icon>
-              <span>基础数据管理</span>
+              <span>基础库管理</span>
             </template>
             <el-menu-item index="/base/goods">
               <el-icon><Document /></el-icon>
@@ -35,6 +35,10 @@
             <el-menu-item index="/base/suppliers">
               <el-icon><Document /></el-icon>
               <span>供货商管理</span>
+            </el-menu-item>
+            <el-menu-item index="/base/market-price">
+              <el-icon><Document /></el-icon>
+              <span>商品价格管理</span>
             </el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="acl">

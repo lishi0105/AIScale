@@ -9,6 +9,7 @@ import Organs from '@/pages/Organs.vue'
 import Accounts from '@/pages/Accounts.vue'
 import Suppliers from '@/pages/Suppliers.vue'
 import Goods from '@/pages/Goods.vue'
+import MarketPrice from '@/pages/MarketPrice.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -27,15 +28,15 @@ const routes = [
   },
   { path: '/base/goods',
     component: Goods,
-    meta: { requiresAuth: true, section: '基础数据管理', title: '商品库管理' }
+    meta: { requiresAuth: true, section: '基础库管理', title: '商品库管理' }
   },
   { path: '/base/suppliers',
     component: Suppliers,
-    meta: { requiresAuth: true, section: '基础数据管理', title: '供货商管理' }
+    meta: { requiresAuth: true, section: '基础库管理', title: '供货商管理' }
   },
-  { path: '/base/goods',
-    component: Goods,
-    meta: { requiresAuth: true, section: '基础数据管理', title: '商品价格管理' }
+  { path: '/base/market-price',
+    component: MarketPrice,
+    meta: { requiresAuth: true, section: '基础库管理', title: '商品价格管理' }
   },
   { path: '/acl/orgs',
     component: Organs,
