@@ -64,95 +64,6 @@ CREATE TABLE IF NOT EXISTS base_goods (
 ) ENGINE=InnoDB
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';
 
-/* ---------- Base_询价记录 ---------- */
-CREATE TABLE IF NOT EXISTS base_price_inquiry (
-  id                 CHAR(36)     NOT NULL COMMENT 'UUID',
-  inquiry_title      VARCHAR(64)  NOT NULL COMMENT '询价单标题',
-  inquiry_date       DATE         NOT NULL COMMENT '询价单日期（业务日）',
-
-  market_1           VARCHAR(128)     NULL COMMENT '市场1',
-  market_2           VARCHAR(128)     NULL COMMENT '市场2',
-  market_3           VARCHAR(128)     NULL COMMENT '市场3',
-
-  org_id             CHAR(36)     NOT NULL COMMENT '中队ID',
-  is_deleted         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
-
-  created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
-  -- 仅对未删除行生效的唯一：利用 NULL 不参与唯一的特性
-  active_title VARCHAR(64) AS (CASE WHEN is_deleted = 0 THEN inquiry_title ELSE NULL END) STORED,
-
-  PRIMARY KEY (id),
-
-  -- 仅“有效行”的唯一：同 org + 标题 + 业务日期 不能重复
-  UNIQUE KEY uk_org_active_title_date (org_id, active_title, inquiry_date),
-
-  -- 常用检索：组织 + 有效 + 日期倒序（InnoDB 索引默认升序，配合 ORDER BY DESC 仍可用）
-  KEY idx_org_valid_date (org_id, is_deleted, inquiry_date),
-
-  -- 如果常按标题前缀搜，可加：
-  KEY idx_org_title (org_id, inquiry_title),
-
-  -- 你原来的索引如果确实需要也可保留（但注意不要与上面的重复）
-  KEY idx_inquiry_date (inquiry_date),
-  KEY idx_inquiry_org  (org_id),
-
-  -- ,CONSTRAINT chk_date_match CHECK (inquiry_date = DATE(inquiry_start_date))
-) ENGINE=InnoDB COMMENT='询价记录';
-
-/* ---------- Base_商品均价明细 ---------- */
-/* 说明：
-   - goods_id   → base_goods.id（商品库）
-   - inquiry_id → price_inquiry.id（询价抬头）
-   - avg_price  按已填写的市场价自动算“非空项平均”，都为空则为 NULL
-*/
-CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
-  id              CHAR(36)      NOT NULL COMMENT '商品均价明细Id(UUID)',
-  goods_id        CHAR(36)      NOT NULL COMMENT '商品Id（base_goods.id）',
-  guide_price     DECIMAL(10,2)     NULL COMMENT '指导价',
-
-  market1_price   DECIMAL(10,2)     NULL COMMENT '市场1价格',
-  market2_price   DECIMAL(10,2)     NULL COMMENT '市场2价格',
-  market3_price   DECIMAL(10,2)     NULL COMMENT '市场3价格',
-
-  -- 非空平均：有几项填几项求平均；若都为空则为 NULL
-  avg_price       DECIMAL(10,2)
-    GENERATED ALWAYS AS (
-      CASE
-        WHEN NULLIF(
-               (market1_price IS NOT NULL) +
-               (market2_price IS NOT NULL) +
-               (market3_price IS NOT NULL), 0
-             ) IS NULL
-        THEN NULL
-        ELSE ROUND(
-          (IFNULL(market1_price,0) + IFNULL(market2_price,0) + IFNULL(market3_price,0)) /
-          ((market1_price IS NOT NULL) + (market2_price IS NOT NULL) + (market3_price IS NOT NULL))
-        , 2)
-      END
-    ) STORED COMMENT '商品均价（自动按非空项求平均，保留2位）',
-
-  inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录Id（price_inquiry.id）',
-  org_id          CHAR(36)          NULL COMMENT '中队Id',
-  is_deleted      TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
-  created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
-  PRIMARY KEY (id),
-
-  -- 同一询价单内，同一商品仅一条均价明细（按需保留）
-  UNIQUE KEY uq_gad_inquiry_goods (inquiry_id, goods_id),
-
-  -- 常用检索索引
-  KEY idx_gad_inquiry (inquiry_id),
-  KEY idx_gad_goods   (goods_id),
-
-  -- 外键
-  CONSTRAINT fk_gad_goods   FOREIGN KEY (goods_id)   REFERENCES base_goods(id),
-  CONSTRAINT fk_gad_inquiry FOREIGN KEY (inquiry_id) REFERENCES price_inquiry(id)
-) ENGINE=InnoDB
-  COMMENT='Base_商品均价明细（按询价记录保存各市场价并生成均价）';
 
 CREATE TABLE IF NOT EXISTS supplier (
   id              CHAR(36)     NOT NULL COMMENT '主键UUID',
@@ -195,44 +106,46 @@ CREATE TABLE IF NOT EXISTS supplier (
 ) ENGINE=InnoDB
   COMMENT='供货商';
 
-/* ---------- Base_商品单价 ----------
-   同一询价(inquiry) × 同一供应商 × 同一商品 只允许一条报价
-   采购明细从这里取“商品单价”，再结合 supplier.float_ratio 计算结算价/金额
-   - goods_id     -> base_goods.id
-   - supplier_id  -> supplier.id
-   - inquiry_id   -> price_inquiry.id
-*/
-CREATE TABLE IF NOT EXISTS base_goods_price (
-  id              CHAR(36)      NOT NULL COMMENT '主键UUID',
-  goods_id        CHAR(36)      NOT NULL COMMENT '商品ID（base_goods.id）',
-  supplier_id     CHAR(36)      NOT NULL COMMENT '供应商ID（supplier.id）',
-  inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录ID（price_inquiry.id）',
+CREATE TABLE IF NOT EXISTS base_market (
+  id            CHAR(36)     NOT NULL COMMENT 'UUID',
+  name          VARCHAR(64)  NOT NULL COMMENT '市场名称',
+  org_id        CHAR(36)     NOT NULL COMMENT '中队ID',
+  is_deleted    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=已删除',
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  -- 外键
+  UNIQUE KEY uq_market_org_name (org_id, name),
+  CONSTRAINT fk_market_org FOREIGN KEY (org_id) REFERENCES base_org(id)
+) ENGINE=InnoDB
+  COMMENT='Base_市场（基础市场主数据：名称）';
 
-  unit_price      DECIMAL(10,2) NOT NULL COMMENT '商品单价（本次报价）',
-  float_ratio     DECIMAL(6,4)  NOT NULL DEFAULT 1.0000 COMMENT '浮动比例快照（来自 supplier.float_ratio）',
+/* ---------- Base_询价记录 ---------- */
+CREATE TABLE IF NOT EXISTS base_inquiry (
+  id               CHAR(36)       NOT NULL COMMENT 'UUID',
+  goods_id         CHAR(36)       NOT NULL COMMENT '商品ID',
+  goods_unit_id    CHAR(36)       NOT NULL COMMENT '单位ID',
+  goods_spec_id    CHAR(36)       NOT NULL COMMENT '规格ID',
+  goods_name       VARCHAR(128)   NOT NULL COMMENT '商品名称',
+  guide_price      DECIMAL(10,2)  NOT NULL COMMENT '指导价',
+  inquiry_price    DECIMAL(10,2)  NOT NULL COMMENT '询价单价',
+  org_id           CHAR(36)       NOT NULL COMMENT '中队ID',
+  is_deleted       TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
 
-  org_id         CHAR(36)          NULL COMMENT '中队ID',
-  is_deleted      TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
-  created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  created_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
   PRIMARY KEY (id),
-
-  -- 同一询价+供应商+商品 只允许一条报价
-  UNIQUE KEY uq_bgp_inquiry_supplier_goods (inquiry_id, supplier_id, goods_id),
-
-  -- 常用检索
-  KEY idx_bgp_goods    (goods_id),
-  KEY idx_bgp_supplier (supplier_id),
-  KEY idx_bgp_inquiry  (inquiry_id),
-
   -- 外键
-  CONSTRAINT fk_bgp_goods FOREIGN KEY (goods_id) REFERENCES base_goods(id),
-  CONSTRAINT fk_bgp_supplier FOREIGN KEY (supplier_id) REFERENCES supplier(id),
-  CONSTRAINT fk_bgp_inquiry FOREIGN KEY (inquiry_id) REFERENCES price_inquiry(id),
-
-  -- 业务约束（可选）
-  CONSTRAINT ck_bgp_ratio_pos CHECK (float_ratio > 0)
-) ENGINE=InnoDB
-  COMMENT='Base_商品单价：按 询价×供应商×商品 的报价记录';
+  CONSTRAINT fk_price_inquiry_goods FOREIGN KEY (goods_id) REFERENCES base_goods(id),
+  CONSTRAINT fk_price_inquiry_unit FOREIGN KEY (goods_unit_id) REFERENCES base_unit(id),
+  CONSTRAINT fk_price_inquiry_spec FOREIGN KEY (goods_spec_id) REFERENCES base_spec(id)
+  -- 常用检索索引
+  KEY idx_price_inquiry_goods_spec_unit (goods_id, goods_spec_id, goods_unit_id)
+  UNIQUE KEY uq_price_inquiry_goods_spec_unit (goods_id, goods_spec_id, goods_unit_id)
+  KEY idx_price_inquiry_org_id (org_id)
+  UNIQUE KEY uq_price_inquiry_org_id (org_id)
+  KEY idx_price_inquiry_goods_name (goods_name)
+  UNIQUE KEY uq_price_inquiry_goods_name (goods_name)
+) ENGINE=InnoDB COMMENT='商品询价记录(市场、询价单价、指导价)';
 
