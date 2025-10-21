@@ -11,6 +11,7 @@ import (
 	categoryrepo "hdzk.cn/foodapp/internal/repository/category"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
 	goodsrepo "hdzk.cn/foodapp/internal/repository/goods"
+	marketrepo "hdzk.cn/foodapp/internal/repository/market"
 	organrepo "hdzk.cn/foodapp/internal/repository/organ"
 	supplierrepo "hdzk.cn/foodapp/internal/repository/supplier"
 	handler "hdzk.cn/foodapp/internal/server/handler"
@@ -19,6 +20,7 @@ import (
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
 	goodssvc "hdzk.cn/foodapp/internal/service/goods"
+	marketsvc "hdzk.cn/foodapp/internal/service/market"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
 	suppliersvc "hdzk.cn/foodapp/internal/service/supplier"
 
@@ -119,6 +121,71 @@ func registerSupplierRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthCon
 		middleware.ActiveGuard(),
 	)
 	supplierH.Register(protected)
+}
+
+func registerMarketRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	marketRepo := marketrepo.NewMarketRepository(gdb)
+	marketSvc := marketsvc.NewMarketService(marketRepo)
+	marketH := handler.NewMarketHandler(marketSvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	marketH.Register(protected)
+}
+
+func registerInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	inquiryRepo := marketrepo.NewInquiryRepository(gdb)
+	inquirySvc := marketsvc.NewInquiryService(inquiryRepo)
+	inquiryH := handler.NewInquiryHandler(inquirySvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	inquiryH.Register(protected)
+}
+
+func registerInquiryItemRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	itemRepo := marketrepo.NewInquiryItemRepository(gdb)
+	itemSvc := marketsvc.NewInquiryItemService(itemRepo)
+	itemH := handler.NewInquiryItemHandler(itemSvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	itemH.Register(protected)
+}
+
+func registerMarketInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	marketInquiryRepo := marketrepo.NewMarketInquiryRepository(gdb)
+	marketInquirySvc := marketsvc.NewMarketInquiryService(marketInquiryRepo)
+	marketInquiryH := handler.NewMarketInquiryHandler(marketInquirySvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	marketInquiryH.Register(protected)
+}
+
+func registerSupplierSettlementRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
+	settlementRepo := marketrepo.NewSupplierSettlementRepository(gdb)
+	settlementSvc := marketsvc.NewSupplierSettlementService(settlementRepo)
+	settlementH := handler.NewSupplierSettlementHandler(settlementSvc)
+	v1 := r.Group("/api/v1")
+	protected := v1.Group("/")
+	protected.Use(
+		middleware.RequireAuth(authCfg.JWTSecret, nil),
+		middleware.ActiveGuard(),
+	)
+	settlementH.Register(protected)
 }
 
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
