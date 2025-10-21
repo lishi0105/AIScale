@@ -95,16 +95,17 @@ CREATE TABLE IF NOT EXISTS price_inquiry_item (
 ) ENGINE=InnoDB
   COMMENT='询价商品明细（每行一个商品）';
 
-/* ---------- 市场报价（N 个市场可变） ---------- */
+/* ---------- 市场报价 ---------- */
 CREATE TABLE IF NOT EXISTS price_market_inquiry (
-  id               CHAR(36)     NOT NULL COMMENT '主键UUID',
-  inquiry_id       CHAR(36)     NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
-  item_id          CHAR(36)     NOT NULL COMMENT 'price_inquiry_item.id',
+  id               CHAR(36)         NOT NULL COMMENT '主键UUID',
+  inquiry_id       CHAR(36)         NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
+  item_id          CHAR(36)         NOT NULL COMMENT 'price_inquiry_item.id',
   market_id        CHAR(36)         NULL COMMENT 'base_market.id（可为空，仅保存名称）',
-  market_name_snap VARCHAR(64)  NOT NULL COMMENT '市场名称快照（如：富万家/育英巷/大润发）',
-  price            DECIMAL(12,2) NOT NULL COMMENT '该市场的单价',
-  created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  market_name_snap VARCHAR(64)      NOT NULL COMMENT '市场名称快照（如：富万家/育英巷/大润发）',
+  price            DECIMAL(12,2)        NULL COMMENT '该市场的单价,可能因为缺货而为NULL',
+  is_deleted       TINYINT(1)       NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=已删除',
+  created_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_quote_item_market (item_id, market_name_snap),
   KEY idx_quote_inquiry (inquiry_id),
@@ -118,15 +119,15 @@ CREATE TABLE IF NOT EXISTS price_market_inquiry (
 
 /* ---------- 供应商结算（N 个供应商可变） ---------- */
 CREATE TABLE IF NOT EXISTS price_supplier_settlement (
-  id                    CHAR(36)     NOT NULL COMMENT '主键UUID',
-  inquiry_id            CHAR(36)     NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
-  item_id               CHAR(36)     NOT NULL COMMENT 'price_inquiry_item.id',
-  supplier_id           CHAR(36)         NULL COMMENT 'supplier.id（可为空，仅保存名称与比例）',
-  supplier_name_snap    VARCHAR(128) NOT NULL COMMENT '供应商名称快照（如：胡坤/贵海）',
-  float_ratio_snap      DECIMAL(6,4) NOT NULL COMMENT '浮动比例快照（如：0.88 表示下浮12%）',
-  settlement_price      DECIMAL(12,2) NOT NULL COMMENT '本期结算价',
-  created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id                    CHAR(36)        NOT NULL COMMENT '主键UUID',
+  inquiry_id            CHAR(36)        NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
+  item_id               CHAR(36)        NOT NULL COMMENT 'price_inquiry_item.id',
+  supplier_id           CHAR(36)            NULL COMMENT 'supplier.id（可为空，仅保存名称与比例）',
+  supplier_name_snap    VARCHAR(128)    NOT NULL COMMENT '供应商名称快照（如：胡坤/贵海）',
+  float_ratio_snap      DECIMAL(6,4)    NOT NULL COMMENT '浮动比例快照（如：0.88 表示下浮12%）',
+  settlement_price      DECIMAL(12,2)       NULL COMMENT '本期结算价',
+  created_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_settle_item_supplier (item_id, supplier_name_snap),
   KEY idx_settle_inquiry (inquiry_id),
