@@ -105,17 +105,3 @@ CREATE TABLE IF NOT EXISTS supplier (
   CONSTRAINT ck_supplier_active_range CHECK (start_time IS NULL OR end_time IS NULL OR end_time >= start_time)
 ) ENGINE=InnoDB
   COMMENT='供货商';
-
-CREATE TABLE IF NOT EXISTS base_market (
-  id            CHAR(36)     NOT NULL COMMENT 'UUID',
-  name          VARCHAR(64)  NOT NULL COMMENT '市场名称',
-  org_id        CHAR(36)     NOT NULL COMMENT '中队ID',
-  is_deleted    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=已删除',
-  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  -- 外键
-  UNIQUE KEY uq_market_org_name (org_id, name),
-  CONSTRAINT fk_market_org FOREIGN KEY (org_id) REFERENCES base_org(id)
-) ENGINE=InnoDB
-  COMMENT='Base_市场（基础市场主数据：名称）';
