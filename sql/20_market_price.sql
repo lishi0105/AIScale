@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS price_inquiry_item (
   COMMENT='询价商品明细（每行一个商品）';
 
 /* ---------- 市场报价（N 个市场可变） ---------- */
-CREATE TABLE IF NOT EXISTS price_market_quote (
+CREATE TABLE IF NOT EXISTS price_market_inquiry (
   id               CHAR(36)     NOT NULL COMMENT '主键UUID',
   inquiry_id       CHAR(36)     NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
   item_id          CHAR(36)     NOT NULL COMMENT 'price_inquiry_item.id',
