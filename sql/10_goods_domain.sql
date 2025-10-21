@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   COMMENT='Base_商品库（基础商品主数据：名称/拼音/规格/SKU/图片/品类）';
 
 
-CREATE TABLE IF NOT EXISTS supplier (
+CREATE TABLE IF NOT EXISTS base_supplier (
   id              CHAR(36)     NOT NULL COMMENT '主键UUID',
   name            VARCHAR(128) NOT NULL COMMENT '供货商名称',
   code            VARCHAR(64)      NULL COMMENT '供货商编码',
