@@ -215,12 +215,19 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	})
 
 	// API
-	registerAccountRoutes(r, gdb, authCfg)
-	registerDictRoutes(r, gdb, authCfg)
-	registerOrganRoutes(r, gdb, authCfg)
-	registerCategoryRoutes(r, gdb, authCfg)
-	registerSupplierRoutes(r, gdb, authCfg)
-	registerGoodsRoutes(r, gdb, authCfg)
+    registerAccountRoutes(r, gdb, authCfg)
+    registerDictRoutes(r, gdb, authCfg)
+    registerOrganRoutes(r, gdb, authCfg)
+    registerCategoryRoutes(r, gdb, authCfg)
+    registerSupplierRoutes(r, gdb, authCfg)
+    registerGoodsRoutes(r, gdb, authCfg)
+
+    // 市场价格管理相关 API
+    registerMarketRoutes(r, gdb, authCfg)
+    registerInquiryRoutes(r, gdb, authCfg)
+    registerInquiryItemRoutes(r, gdb, authCfg)
+    registerMarketInquiryRoutes(r, gdb, authCfg)
+    registerSupplierSettlementRoutes(r, gdb, authCfg)
 
 	return r
 }

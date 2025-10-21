@@ -32,6 +32,10 @@
               <el-icon><Document /></el-icon>
               <span>商品库管理</span>
             </el-menu-item>
+            <el-menu-item index="/base/prices">
+              <el-icon><Document /></el-icon>
+              <span>商品价格管理</span>
+            </el-menu-item>
             <el-menu-item index="/base/suppliers">
               <el-icon><Document /></el-icon>
               <span>供货商管理</span>
