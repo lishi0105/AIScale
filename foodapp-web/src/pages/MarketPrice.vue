@@ -346,7 +346,7 @@ const onSubmitImport = async () => {
   uploading.value = true
   try {
     // 调用导入接口
-    const response = await fetch('/api/v1/inquiry/import_excel', {
+    const response = await fetch('/api/v1/inquiry_import/import_inquiry', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${getToken()}`,

@@ -1,37 +1,34 @@
-package excel
+package inquiry
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	categoryDomain "hdzk.cn/foodapp/internal/domain/category"
 	dictDomain "hdzk.cn/foodapp/internal/domain/dict"
 	goodsDomain "hdzk.cn/foodapp/internal/domain/goods"
-	marketDomain "hdzk.cn/foodapp/internal/domain/market"
+	inquiryDomain "hdzk.cn/foodapp/internal/domain/inquiry"
 	supplierDomain "hdzk.cn/foodapp/internal/domain/supplier"
+	"hdzk.cn/foodapp/pkg/logger"
 )
 
-type ExcelImportService struct {
+type InquiryImportService struct {
 	db *gorm.DB
 }
 
-func NewExcelImportService(db *gorm.DB) *ExcelImportService {
-	return &ExcelImportService{db: db}
+func NewInquiryImportService(db *gorm.DB) *InquiryImportService {
+	return &InquiryImportService{db: db}
 }
 
-// ValidationError Excel校验错误
+// ValidationError Market校验错误
 type ValidationError struct {
 	Field   string
 	Message string
@@ -41,28 +38,28 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Field, e.Message)
 }
 
-// ExcelData 解析后的Excel数据
+// MarketData 解析后的Excel数据
 type ExcelData struct {
-	Title        string
-	InquiryDate  time.Time
-	Sheets       []SheetData
-	Markets      []string      // 询价市场列表
-	Suppliers    []SupplierInfo // 供应商列表
+	Title       string
+	InquiryDate time.Time
+	Sheets      []SheetData
+	Markets     []string       // 询价市场列表
+	Suppliers   []SupplierInfo // 供应商列表
 }
 
 // SheetData 每个sheet的数据
 type SheetData struct {
-	SheetName   string        // 品类名称
-	Items       []ItemData    // 商品明细
+	SheetName string     // 品类名称
+	Items     []ItemData // 商品明细
 }
 
 // ItemData 商品明细数据
 type ItemData struct {
-	GoodsName         string             // 品名
-	SpecName          string             // 规格标准
-	UnitName          string             // 单位
-	LastMonthAvgPrice *float64           // 上月均价
-	CurrentAvgPrice   *float64           // 本期均价
+	GoodsName         string              // 品名
+	SpecName          string              // 规格标准
+	UnitName          string              // 单位
+	LastMonthAvgPrice *float64            // 上月均价
+	CurrentAvgPrice   *float64            // 本期均价
 	MarketPrices      map[string]*float64 // 市场报价 map[市场名称]价格
 }
 
@@ -72,35 +69,14 @@ type SupplierInfo struct {
 	FloatRatio float64 // 浮动比例（如0.88表示下浮12%）
 }
 
-// ValidateFile 校验上传的文件MD5
-func ValidateFile(filePath string, expectedMD5 string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("打开文件失败: %w", err)
-	}
-	defer file.Close()
-
-	hash := md5.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return fmt.Errorf("计算MD5失败: %w", err)
-	}
-
-	actualMD5 := hex.EncodeToString(hash.Sum(nil))
-	if actualMD5 != expectedMD5 {
-		return fmt.Errorf("文件MD5校验失败: 期望 %s, 实际 %s", expectedMD5, actualMD5)
-	}
-
-	return nil
-}
-
 // ValidateExcelStructure 校验Excel文件结构
-func (s *ExcelImportService) ValidateExcelStructure(filePath string) (*ExcelData, error) {
+func (s *InquiryImportService) ValidateExcelStructure(filePath string) (*ExcelData, error) {
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("打开Excel文件失败: %w", err)
 	}
 	defer f.Close()
-
+	logger.L().Warn("开始校验excel")
 	// 1. 检查标题（A1单元格）
 	firstSheet := f.GetSheetName(0)
 	if firstSheet == "" {
@@ -262,6 +238,8 @@ func (s *ExcelImportService) ValidateExcelStructure(filePath string) (*ExcelData
 			}
 		}
 
+		logger.L().Info("excel:", zap.String("sheet_name:", sheetData.SheetName))
+
 		excelData.Sheets = append(excelData.Sheets, sheetData)
 	}
 
@@ -269,10 +247,10 @@ func (s *ExcelImportService) ValidateExcelStructure(filePath string) (*ExcelData
 }
 
 // ImportExcelData 导入Excel数据到数据库
-func (s *ExcelImportService) ImportExcelData(ctx context.Context, excelData *ExcelData, orgID string) error {
+func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *ExcelData, orgID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. 创建或获取询价单
-		inquiry := &marketDomain.BasePriceInquiry{
+		inquiry := &inquiryDomain.BasePriceInquiry{
 			OrgID:        orgID,
 			InquiryTitle: excelData.Title,
 			InquiryDate:  excelData.InquiryDate,
@@ -330,7 +308,7 @@ func (s *ExcelImportService) ImportExcelData(ctx context.Context, excelData *Exc
 				}
 
 				// 创建询价商品明细
-				inquiryItem := &marketDomain.PriceInquiryItem{
+				inquiryItem := &inquiryDomain.PriceInquiryItem{
 					InquiryID:         inquiry.ID,
 					GoodsID:           goodsID,
 					CategoryID:        categoryID,
@@ -351,7 +329,7 @@ func (s *ExcelImportService) ImportExcelData(ctx context.Context, excelData *Exc
 				// 创建市场报价
 				for marketName, price := range item.MarketPrices {
 					marketID := marketIDMap[marketName]
-					marketInquiry := &marketDomain.PriceMarketInquiry{
+					marketInquiry := &inquiryDomain.PriceMarketInquiry{
 						InquiryID:      inquiry.ID,
 						ItemID:         inquiryItem.ID,
 						MarketID:       &marketID,
@@ -372,7 +350,7 @@ func (s *ExcelImportService) ImportExcelData(ctx context.Context, excelData *Exc
 						settlementPrice = &price
 					}
 
-					settlement := &marketDomain.PriceSupplierSettlement{
+					settlement := &inquiryDomain.PriceSupplierSettlement{
 						InquiryID:        inquiry.ID,
 						ItemID:           inquiryItem.ID,
 						SupplierID:       &supplierID,
@@ -404,7 +382,7 @@ func extractDateFromTitle(title string) (time.Time, error) {
 
 	year, _ := strconv.Atoi(matches[1])
 	month, _ := strconv.Atoi(matches[2])
-	
+
 	// 根据旬确定日期
 	var day int
 	switch matches[3] {
@@ -428,7 +406,7 @@ func parseHeader(headerRow []string) (map[string]int, []string, []SupplierInfo, 
 	suppliers := []SupplierInfo{}
 
 	requiredCols := []string{"品名", "规格标准", "单位", "本期均价"}
-	
+
 	for idx, cell := range headerRow {
 		cell = strings.TrimSpace(cell)
 		if cell == "" {
@@ -535,7 +513,7 @@ func parseFloat(s string) *float64 {
 }
 
 // getOrCreateCategory 获取或创建品类
-func (s *ExcelImportService) getOrCreateCategory(tx *gorm.DB, name string, orgID string) (string, error) {
+func (s *InquiryImportService) getOrCreateCategory(tx *gorm.DB, name string, orgID string) (string, error) {
 	var category categoryDomain.Category
 	err := tx.Where("name = ? AND org_id = ? AND is_deleted = 0", name, orgID).First(&category).Error
 	if err == nil {
@@ -559,7 +537,7 @@ func (s *ExcelImportService) getOrCreateCategory(tx *gorm.DB, name string, orgID
 }
 
 // getOrCreateSpec 获取或创建规格
-func (s *ExcelImportService) getOrCreateSpec(tx *gorm.DB, name string) (string, error) {
+func (s *InquiryImportService) getOrCreateSpec(tx *gorm.DB, name string) (string, error) {
 	if name == "" {
 		name = "默认"
 	}
@@ -586,7 +564,7 @@ func (s *ExcelImportService) getOrCreateSpec(tx *gorm.DB, name string) (string, 
 }
 
 // getOrCreateUnit 获取或创建单位
-func (s *ExcelImportService) getOrCreateUnit(tx *gorm.DB, name string) (string, error) {
+func (s *InquiryImportService) getOrCreateUnit(tx *gorm.DB, name string) (string, error) {
 	if name == "" {
 		name = "个"
 	}
@@ -613,7 +591,7 @@ func (s *ExcelImportService) getOrCreateUnit(tx *gorm.DB, name string) (string, 
 }
 
 // getOrCreateGoods 获取或创建商品
-func (s *ExcelImportService) getOrCreateGoods(tx *gorm.DB, name string, categoryID, specID, unitID, orgID string) (string, error) {
+func (s *InquiryImportService) getOrCreateGoods(tx *gorm.DB, name string, categoryID, specID, unitID, orgID string) (string, error) {
 	var goods goodsDomain.Goods
 	err := tx.Where("name = ? AND category_id = ? AND spec_id = ? AND unit_id = ? AND org_id = ? AND is_deleted = 0",
 		name, categoryID, specID, unitID, orgID).First(&goods).Error
@@ -641,8 +619,8 @@ func (s *ExcelImportService) getOrCreateGoods(tx *gorm.DB, name string, category
 }
 
 // getOrCreateMarket 获取或创建市场
-func (s *ExcelImportService) getOrCreateMarket(tx *gorm.DB, name string, orgID string) (string, error) {
-	var market marketDomain.BaseMarket
+func (s *InquiryImportService) getOrCreateMarket(tx *gorm.DB, name string, orgID string) (string, error) {
+	var market inquiryDomain.BaseMarket
 	err := tx.Where("name = ? AND org_id = ? AND is_deleted = 0", name, orgID).First(&market).Error
 	if err == nil {
 		return market.ID, nil
@@ -653,7 +631,7 @@ func (s *ExcelImportService) getOrCreateMarket(tx *gorm.DB, name string, orgID s
 	}
 
 	// 创建新市场
-	market = marketDomain.BaseMarket{
+	market = inquiryDomain.BaseMarket{
 		Name:  name,
 		OrgID: orgID,
 	}
@@ -665,10 +643,10 @@ func (s *ExcelImportService) getOrCreateMarket(tx *gorm.DB, name string, orgID s
 }
 
 // getOrCreateSupplier 获取或创建供应商，如果存在但浮动比例不同则更新
-func (s *ExcelImportService) getOrCreateSupplier(tx *gorm.DB, name string, floatRatio float64, orgID string) (string, error) {
+func (s *InquiryImportService) getOrCreateSupplier(tx *gorm.DB, name string, floatRatio float64, orgID string) (string, error) {
 	var supplier supplierDomain.Supplier
 	err := tx.Where("name = ? AND org_id = ? AND is_deleted = 0", name, orgID).First(&supplier).Error
-	
+
 	if err == nil {
 		// 存在但浮动比例不同，更新
 		if supplier.FloatRatio != floatRatio {
@@ -695,52 +673,4 @@ func (s *ExcelImportService) getOrCreateSupplier(tx *gorm.DB, name string, float
 	}
 
 	return supplier.ID, nil
-}
-
-// SaveUploadedChunk 保存上传的文件切片
-func SaveUploadedChunk(uploadDir, filename string, chunkIndex int, chunkData []byte) error {
-	// 创建临时目录
-	tmpDir := filepath.Join(uploadDir, "tmp")
-	if err := os.MkdirAll(tmpDir, 0755); err != nil {
-		return fmt.Errorf("创建临时目录失败: %w", err)
-	}
-
-	// 保存切片
-	chunkPath := filepath.Join(tmpDir, fmt.Sprintf("%s.part%d", filename, chunkIndex))
-	if err := os.WriteFile(chunkPath, chunkData, 0644); err != nil {
-		return fmt.Errorf("保存切片失败: %w", err)
-	}
-
-	return nil
-}
-
-// MergeChunks 合并文件切片
-func MergeChunks(uploadDir, filename string, totalChunks int) (string, error) {
-	tmpDir := filepath.Join(uploadDir, "tmp")
-	finalPath := filepath.Join(uploadDir, filename)
-
-	// 创建最终文件
-	finalFile, err := os.Create(finalPath)
-	if err != nil {
-		return "", fmt.Errorf("创建最终文件失败: %w", err)
-	}
-	defer finalFile.Close()
-
-	// 合并所有切片
-	for i := 0; i < totalChunks; i++ {
-		chunkPath := filepath.Join(tmpDir, fmt.Sprintf("%s.part%d", filename, i))
-		chunkData, err := os.ReadFile(chunkPath)
-		if err != nil {
-			return "", fmt.Errorf("读取切片 %d 失败: %w", i, err)
-		}
-
-		if _, err := finalFile.Write(chunkData); err != nil {
-			return "", fmt.Errorf("写入数据失败: %w", err)
-		}
-
-		// 删除切片文件
-		os.Remove(chunkPath)
-	}
-
-	return finalPath, nil
 }

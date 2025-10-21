@@ -11,7 +11,7 @@ import (
 	categoryrepo "hdzk.cn/foodapp/internal/repository/category"
 	dictrepo "hdzk.cn/foodapp/internal/repository/dict"
 	goodsrepo "hdzk.cn/foodapp/internal/repository/goods"
-	marketrepo "hdzk.cn/foodapp/internal/repository/market"
+	inquiryrepo "hdzk.cn/foodapp/internal/repository/inquiry"
 	organrepo "hdzk.cn/foodapp/internal/repository/organ"
 	supplierrepo "hdzk.cn/foodapp/internal/repository/supplier"
 	handler "hdzk.cn/foodapp/internal/server/handler"
@@ -19,9 +19,8 @@ import (
 	accsvc "hdzk.cn/foodapp/internal/service/account"
 	categorysvc "hdzk.cn/foodapp/internal/service/category"
 	dictsvc "hdzk.cn/foodapp/internal/service/dict"
-	excelsvc "hdzk.cn/foodapp/internal/service/excel"
 	goodssvc "hdzk.cn/foodapp/internal/service/goods"
-	marketsvc "hdzk.cn/foodapp/internal/service/market"
+	inquirysvc "hdzk.cn/foodapp/internal/service/inquiry"
 	organsvc "hdzk.cn/foodapp/internal/service/organ"
 	suppliersvc "hdzk.cn/foodapp/internal/service/supplier"
 
@@ -125,8 +124,8 @@ func registerSupplierRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthCon
 }
 
 func registerMarketRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	marketRepo := marketrepo.NewMarketRepository(gdb)
-	marketSvc := marketsvc.NewMarketService(marketRepo)
+	marketRepo := inquiryrepo.NewMarketRepository(gdb)
+	marketSvc := inquirysvc.NewMarketService(marketRepo)
 	marketH := handler.NewMarketHandler(marketSvc)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -138,9 +137,9 @@ func registerMarketRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfi
 }
 
 func registerInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	inquiryRepo := marketrepo.NewInquiryRepository(gdb)
-	itemRepo := marketrepo.NewInquiryItemRepository(gdb)
-	inquirySvc := marketsvc.NewInquiryService(inquiryRepo, itemRepo)
+	inquiryRepo := inquiryrepo.NewInquiryRepository(gdb)
+	itemRepo := inquiryrepo.NewInquiryItemRepository(gdb)
+	inquirySvc := inquirysvc.NewInquiryService(inquiryRepo, itemRepo)
 	inquiryH := handler.NewInquiryHandler(inquirySvc)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -152,8 +151,8 @@ func registerInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConf
 }
 
 func registerInquiryItemRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	itemRepo := marketrepo.NewInquiryItemRepository(gdb)
-	itemSvc := marketsvc.NewInquiryItemService(itemRepo)
+	itemRepo := inquiryrepo.NewInquiryItemRepository(gdb)
+	itemSvc := inquirysvc.NewInquiryItemService(itemRepo)
 	itemH := handler.NewInquiryItemHandler(itemSvc)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -165,8 +164,8 @@ func registerInquiryItemRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.Auth
 }
 
 func registerMarketInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	marketInquiryRepo := marketrepo.NewMarketInquiryRepository(gdb)
-	marketInquirySvc := marketsvc.NewMarketInquiryService(marketInquiryRepo)
+	marketInquiryRepo := inquiryrepo.NewMarketInquiryRepository(gdb)
+	marketInquirySvc := inquirysvc.NewMarketInquiryService(marketInquiryRepo)
 	marketInquiryH := handler.NewMarketInquiryHandler(marketInquirySvc)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -178,8 +177,8 @@ func registerMarketInquiryRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.Au
 }
 
 func registerSupplierSettlementRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig) {
-	settlementRepo := marketrepo.NewSupplierSettlementRepository(gdb)
-	settlementSvc := marketsvc.NewSupplierSettlementService(settlementRepo)
+	settlementRepo := inquiryrepo.NewSupplierSettlementRepository(gdb)
+	settlementSvc := inquirysvc.NewSupplierSettlementService(settlementRepo)
 	settlementH := handler.NewSupplierSettlementHandler(settlementSvc)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
@@ -190,16 +189,16 @@ func registerSupplierSettlementRoutes(r *gin.Engine, gdb *gorm.DB, authCfg confi
 	settlementH.Register(protected)
 }
 
-func registerExcelRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig, uploadDir string) {
-	excelSvc := excelsvc.NewExcelImportService(gdb)
-	excelH := handler.NewExcelHandler(excelSvc, uploadDir)
+func registerInquiryImportRoutes(r *gin.Engine, gdb *gorm.DB, authCfg configs.AuthConfig, uploadDir string) {
+	inquiryImportSvc := inquirysvc.NewInquiryImportService(gdb)
+	inquiryImportH := handler.NewInquiryImportHandler(inquiryImportSvc, uploadDir)
 	v1 := r.Group("/api/v1")
 	protected := v1.Group("/")
 	protected.Use(
 		middleware.RequireAuth(authCfg.JWTSecret, nil),
 		middleware.ActiveGuard(),
 	)
-	excelH.Register(protected)
+	inquiryImportH.Register(protected)
 }
 
 func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
@@ -245,7 +244,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 
 	// Excel导入（使用./uploads目录）
 	uploadDir := "./uploads"
-	registerExcelRoutes(r, gdb, authCfg, uploadDir)
+	registerInquiryImportRoutes(r, gdb, authCfg, uploadDir)
 
 	return r
 }

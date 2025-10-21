@@ -1,4 +1,4 @@
-package market
+package inquiry
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-	domain "hdzk.cn/foodapp/internal/domain/market"
+	domain "hdzk.cn/foodapp/internal/domain/inquiry"
 )
 
 // ========== BaseMarket Repository ==========

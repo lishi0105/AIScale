@@ -1,4 +1,4 @@
-package market
+package inquiry
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
-	domain "hdzk.cn/foodapp/internal/domain/market"
-	repo "hdzk.cn/foodapp/internal/repository/market"
+	domain "hdzk.cn/foodapp/internal/domain/inquiry"
+	repo "hdzk.cn/foodapp/internal/repository/inquiry"
 )
 
 // ========== BaseMarket Service ==========
@@ -172,7 +172,7 @@ func (s *InquiryService) UpdateInquiry(ctx context.Context, params InquiryUpdate
 	if err != nil {
 		return err
 	}
-	
+
 	var normalizedDate *string
 	if params.InquiryDate != nil {
 		dateStr := strings.TrimSpace(*params.InquiryDate)
@@ -378,35 +378,35 @@ func NewInquiryItemService(r repo.InquiryItemRepository) *InquiryItemService {
 }
 
 type InquiryItemCreateParams struct {
-	InquiryID          string
-	GoodsID            string
-	CategoryID         string
-	SpecID             *string
-	UnitID             *string
-	GoodsNameSnap      string
-	CategoryNameSnap   string
-	SpecNameSnap       *string
-	UnitNameSnap       *string
-	GuidePrice         *float64
-	LastMonthAvgPrice  *float64
-	CurrentAvgPrice    *float64
-	Sort               *int
+	InquiryID         string
+	GoodsID           string
+	CategoryID        string
+	SpecID            *string
+	UnitID            *string
+	GoodsNameSnap     string
+	CategoryNameSnap  string
+	SpecNameSnap      *string
+	UnitNameSnap      *string
+	GuidePrice        *float64
+	LastMonthAvgPrice *float64
+	CurrentAvgPrice   *float64
+	Sort              *int
 }
 
 type InquiryItemUpdateParams struct {
-	ID                 string
-	GoodsID            *string
-	CategoryID         *string
-	SpecID             *string
-	UnitID             *string
-	GoodsNameSnap      *string
-	CategoryNameSnap   *string
-	SpecNameSnap       *string
-	UnitNameSnap       *string
-	GuidePrice         *float64
-	LastMonthAvgPrice  *float64
-	CurrentAvgPrice    *float64
-	Sort               *int
+	ID                string
+	GoodsID           *string
+	CategoryID        *string
+	SpecID            *string
+	UnitID            *string
+	GoodsNameSnap     *string
+	CategoryNameSnap  *string
+	SpecNameSnap      *string
+	UnitNameSnap      *string
+	GuidePrice        *float64
+	LastMonthAvgPrice *float64
+	CurrentAvgPrice   *float64
+	Sort              *int
 }
 
 func (s *InquiryItemService) CreateInquiryItem(ctx context.Context, params InquiryItemCreateParams) (*domain.PriceInquiryItem, error) {
@@ -437,19 +437,19 @@ func (s *InquiryItemService) CreateInquiryItem(ctx context.Context, params Inqui
 	normalizedUnitNameSnap, _ := normalizeOptional(params.UnitNameSnap)
 
 	m := &domain.PriceInquiryItem{
-		ID:                 uuid.NewString(),
-		InquiryID:          inquiryID,
-		GoodsID:            goodsID,
-		CategoryID:         categoryID,
-		SpecID:             normalizedSpecID,
-		UnitID:             normalizedUnitID,
-		GoodsNameSnap:      goodsNameSnap,
-		CategoryNameSnap:   categoryNameSnap,
-		SpecNameSnap:       normalizedSpecNameSnap,
-		UnitNameSnap:       normalizedUnitNameSnap,
-		GuidePrice:         params.GuidePrice,
-		LastMonthAvgPrice:  params.LastMonthAvgPrice,
-		CurrentAvgPrice:    params.CurrentAvgPrice,
+		ID:                uuid.NewString(),
+		InquiryID:         inquiryID,
+		GoodsID:           goodsID,
+		CategoryID:        categoryID,
+		SpecID:            normalizedSpecID,
+		UnitID:            normalizedUnitID,
+		GoodsNameSnap:     goodsNameSnap,
+		CategoryNameSnap:  categoryNameSnap,
+		SpecNameSnap:      normalizedSpecNameSnap,
+		UnitNameSnap:      normalizedUnitNameSnap,
+		GuidePrice:        params.GuidePrice,
+		LastMonthAvgPrice: params.LastMonthAvgPrice,
+		CurrentAvgPrice:   params.CurrentAvgPrice,
 	}
 	if params.Sort != nil {
 		m.Sort = *params.Sort

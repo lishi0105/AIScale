@@ -1,10 +1,10 @@
-package market
+package inquiry
 
 import (
 	"context"
 
 	"gorm.io/gorm"
-	domain "hdzk.cn/foodapp/internal/domain/market"
+	domain "hdzk.cn/foodapp/internal/domain/inquiry"
 )
 
 // ========== BaseMarket ==========
@@ -99,13 +99,13 @@ type MarketInquiryRepository interface {
 // ========== PriceSupplierSettlement ==========
 
 type SupplierSettlementUpdateParams struct {
-	ID                string
-	SupplierID        *string
-	SupplierNameSnap  *string
-	FloatRatioSnap    *float64
-	SettlementPrice   *float64
-	UpdateSupplierID  bool
-	UpdateSettlement  bool
+	ID               string
+	SupplierID       *string
+	SupplierNameSnap *string
+	FloatRatioSnap   *float64
+	SettlementPrice  *float64
+	UpdateSupplierID bool
+	UpdateSettlement bool
 }
 
 type SupplierSettlementRepository interface {

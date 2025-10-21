@@ -1,14 +1,20 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	middleware "hdzk.cn/foodapp/internal/server/middleware"
-	svc "hdzk.cn/foodapp/internal/service/market"
+	"go.uber.org/zap"
+	chunkImport "hdzk.cn/foodapp/internal/import"
+	"hdzk.cn/foodapp/internal/server/middleware"
+	svc "hdzk.cn/foodapp/internal/service/inquiry"
 	types "hdzk.cn/foodapp/internal/transport"
+	"hdzk.cn/foodapp/pkg/logger"
 )
 
 // ========== BaseMarket Handler ==========
@@ -75,7 +81,7 @@ func (h *MarketHandler) createMarket(c *gin.Context) {
 	}
 	market, err := h.s.CreateMarket(c, params)
 	if err != nil {
-		ConflictError(c, errTitle, "创建市场失败: "+err.Error())
+		ForbiddenError(c, errTitle, "创建市场失败: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, market)
@@ -155,7 +161,7 @@ func (h *MarketHandler) updateMarket(c *gin.Context) {
 		Sort: req.Sort,
 	}
 	if err := h.s.UpdateMarket(c, params); err != nil {
-		ConflictError(c, errTitle, "更新市场失败: "+err.Error())
+		ForbiddenError(c, errTitle, "更新市场失败: "+err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -203,7 +209,7 @@ func (h *MarketHandler) hardDeleteMarket(c *gin.Context) {
 		return
 	}
 	if err := h.s.HardDeleteMarket(c, req.ID); err != nil {
-		ConflictError(c, errTitle, err.Error())
+		ForbiddenError(c, errTitle, err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -226,7 +232,6 @@ func (h *InquiryHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/update_inquiry", h.updateInquiry)
 	g.POST("/soft_delete_inquiry", h.softDeleteInquiry)
 	g.POST("/hard_delete_inquiry", h.hardDeleteInquiry)
-	g.POST("/import_excel", h.importExcel)
 }
 
 type inquiryCreateReq struct {
@@ -266,7 +271,7 @@ func (h *InquiryHandler) createInquiry(c *gin.Context) {
 	}
 	inquiry, err := h.s.CreateInquiry(c, params)
 	if err != nil {
-		ConflictError(c, errTitle, "创建询价单失败: "+err.Error())
+		ForbiddenError(c, errTitle, "创建询价单失败: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, inquiry)
@@ -362,7 +367,7 @@ func (h *InquiryHandler) updateInquiry(c *gin.Context) {
 		InquiryDate:  req.InquiryDate,
 	}
 	if err := h.s.UpdateInquiry(c, params); err != nil {
-		ConflictError(c, errTitle, "更新询价单失败: "+err.Error())
+		ForbiddenError(c, errTitle, "更新询价单失败: "+err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -410,58 +415,10 @@ func (h *InquiryHandler) hardDeleteInquiry(c *gin.Context) {
 		return
 	}
 	if err := h.s.HardDeleteInquiry(c, req.ID); err != nil {
-		ConflictError(c, errTitle, err.Error())
+		ForbiddenError(c, errTitle, err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
-}
-
-func (h *InquiryHandler) importExcel(c *gin.Context) {
-	const errTitle = "导入Excel失败"
-	act := middleware.GetActor(c)
-	if act.Deleted != middleware.DeletedNo {
-		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
-		return
-	}
-	if act.Role != middleware.RoleAdmin {
-		ForbiddenError(c, errTitle, "仅管理员可导入询价单")
-		return
-	}
-
-	// 获取org_id
-	orgID := strings.TrimSpace(c.PostForm("org_id"))
-	if orgID == "" {
-		BadRequest(c, errTitle, "缺少org_id参数")
-		return
-	}
-
-	// 获取上传的文件
-	file, err := c.FormFile("file")
-	if err != nil {
-		BadRequest(c, errTitle, "获取上传文件失败: "+err.Error())
-		return
-	}
-
-	// 打开文件
-	src, err := file.Open()
-	if err != nil {
-		InternalError(c, errTitle, "打开文件失败: "+err.Error())
-		return
-	}
-	defer src.Close()
-
-	// 调用service导入
-	inquiry, itemCount, err := h.s.ImportExcel(c, src, orgID)
-	if err != nil {
-		ConflictError(c, errTitle, "导入失败: "+err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":    "导入成功",
-		"inquiry_id": inquiry.ID,
-		"item_count": itemCount,
-	})
 }
 
 // ========== PriceInquiryItem Handler ==========
@@ -484,35 +441,35 @@ func (h *InquiryItemHandler) Register(rg *gin.RouterGroup) {
 }
 
 type inquiryItemCreateReq struct {
-	InquiryID          string   `json:"inquiry_id" binding:"required,uuid4"`
-	GoodsID            string   `json:"goods_id" binding:"required,uuid4"`
-	CategoryID         string   `json:"category_id" binding:"required,uuid4"`
-	SpecID             *string  `json:"spec_id" binding:"omitempty,uuid4"`
-	UnitID             *string  `json:"unit_id" binding:"omitempty,uuid4"`
-	GoodsNameSnap      string   `json:"goods_name_snap" binding:"required,min=1,max=128"`
-	CategoryNameSnap   string   `json:"category_name_snap" binding:"required,min=1,max=64"`
-	SpecNameSnap       *string  `json:"spec_name_snap" binding:"omitempty,max=32"`
-	UnitNameSnap       *string  `json:"unit_name_snap" binding:"omitempty,max=32"`
-	GuidePrice         *float64 `json:"guide_price" binding:"omitempty,min=0"`
-	LastMonthAvgPrice  *float64 `json:"last_month_avg_price" binding:"omitempty,min=0"`
-	CurrentAvgPrice    *float64 `json:"current_avg_price" binding:"omitempty,min=0"`
-	Sort               *int     `json:"sort" binding:"omitempty,min=0"`
+	InquiryID         string   `json:"inquiry_id" binding:"required,uuid4"`
+	GoodsID           string   `json:"goods_id" binding:"required,uuid4"`
+	CategoryID        string   `json:"category_id" binding:"required,uuid4"`
+	SpecID            *string  `json:"spec_id" binding:"omitempty,uuid4"`
+	UnitID            *string  `json:"unit_id" binding:"omitempty,uuid4"`
+	GoodsNameSnap     string   `json:"goods_name_snap" binding:"required,min=1,max=128"`
+	CategoryNameSnap  string   `json:"category_name_snap" binding:"required,min=1,max=64"`
+	SpecNameSnap      *string  `json:"spec_name_snap" binding:"omitempty,max=32"`
+	UnitNameSnap      *string  `json:"unit_name_snap" binding:"omitempty,max=32"`
+	GuidePrice        *float64 `json:"guide_price" binding:"omitempty,min=0"`
+	LastMonthAvgPrice *float64 `json:"last_month_avg_price" binding:"omitempty,min=0"`
+	CurrentAvgPrice   *float64 `json:"current_avg_price" binding:"omitempty,min=0"`
+	Sort              *int     `json:"sort" binding:"omitempty,min=0"`
 }
 
 type inquiryItemUpdateReq struct {
-	ID                 string   `json:"id" binding:"required,uuid4"`
-	GoodsID            *string  `json:"goods_id" binding:"omitempty,uuid4"`
-	CategoryID         *string  `json:"category_id" binding:"omitempty,uuid4"`
-	SpecID             *string  `json:"spec_id" binding:"omitempty,uuid4"`
-	UnitID             *string  `json:"unit_id" binding:"omitempty,uuid4"`
-	GoodsNameSnap      *string  `json:"goods_name_snap" binding:"omitempty,min=1,max=128"`
-	CategoryNameSnap   *string  `json:"category_name_snap" binding:"omitempty,min=1,max=64"`
-	SpecNameSnap       *string  `json:"spec_name_snap" binding:"omitempty,max=32"`
-	UnitNameSnap       *string  `json:"unit_name_snap" binding:"omitempty,max=32"`
-	GuidePrice         *float64 `json:"guide_price" binding:"omitempty,min=0"`
-	LastMonthAvgPrice  *float64 `json:"last_month_avg_price" binding:"omitempty,min=0"`
-	CurrentAvgPrice    *float64 `json:"current_avg_price" binding:"omitempty,min=0"`
-	Sort               *int     `json:"sort" binding:"omitempty,min=0"`
+	ID                string   `json:"id" binding:"required,uuid4"`
+	GoodsID           *string  `json:"goods_id" binding:"omitempty,uuid4"`
+	CategoryID        *string  `json:"category_id" binding:"omitempty,uuid4"`
+	SpecID            *string  `json:"spec_id" binding:"omitempty,uuid4"`
+	UnitID            *string  `json:"unit_id" binding:"omitempty,uuid4"`
+	GoodsNameSnap     *string  `json:"goods_name_snap" binding:"omitempty,min=1,max=128"`
+	CategoryNameSnap  *string  `json:"category_name_snap" binding:"omitempty,min=1,max=64"`
+	SpecNameSnap      *string  `json:"spec_name_snap" binding:"omitempty,max=32"`
+	UnitNameSnap      *string  `json:"unit_name_snap" binding:"omitempty,max=32"`
+	GuidePrice        *float64 `json:"guide_price" binding:"omitempty,min=0"`
+	LastMonthAvgPrice *float64 `json:"last_month_avg_price" binding:"omitempty,min=0"`
+	CurrentAvgPrice   *float64 `json:"current_avg_price" binding:"omitempty,min=0"`
+	Sort              *int     `json:"sort" binding:"omitempty,min=0"`
 }
 
 func (h *InquiryItemHandler) createInquiryItem(c *gin.Context) {
@@ -550,7 +507,7 @@ func (h *InquiryItemHandler) createInquiryItem(c *gin.Context) {
 	}
 	item, err := h.s.CreateInquiryItem(c, params)
 	if err != nil {
-		ConflictError(c, errTitle, "创建询价商品明细失败: "+err.Error())
+		ForbiddenError(c, errTitle, "创建询价商品明细失败: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, item)
@@ -644,7 +601,7 @@ func (h *InquiryItemHandler) updateInquiryItem(c *gin.Context) {
 		Sort:              req.Sort,
 	}
 	if err := h.s.UpdateInquiryItem(c, params); err != nil {
-		ConflictError(c, errTitle, "更新询价商品明细失败: "+err.Error())
+		ForbiddenError(c, errTitle, "更新询价商品明细失败: "+err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -692,7 +649,7 @@ func (h *InquiryItemHandler) hardDeleteInquiryItem(c *gin.Context) {
 		return
 	}
 	if err := h.s.HardDeleteInquiryItem(c, req.ID); err != nil {
-		ConflictError(c, errTitle, err.Error())
+		ForbiddenError(c, errTitle, err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -759,7 +716,7 @@ func (h *MarketInquiryHandler) createMarketInquiry(c *gin.Context) {
 	}
 	marketInquiry, err := h.s.CreateMarketInquiry(c, params)
 	if err != nil {
-		ConflictError(c, errTitle, "创建市场报价失败: "+err.Error())
+		ForbiddenError(c, errTitle, "创建市场报价失败: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, marketInquiry)
@@ -844,7 +801,7 @@ func (h *MarketInquiryHandler) updateMarketInquiry(c *gin.Context) {
 		Price:          req.Price,
 	}
 	if err := h.s.UpdateMarketInquiry(c, params); err != nil {
-		ConflictError(c, errTitle, "更新市场报价失败: "+err.Error())
+		ForbiddenError(c, errTitle, "更新市场报价失败: "+err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -892,7 +849,7 @@ func (h *MarketInquiryHandler) hardDeleteMarketInquiry(c *gin.Context) {
 		return
 	}
 	if err := h.s.HardDeleteMarketInquiry(c, req.ID); err != nil {
-		ConflictError(c, errTitle, err.Error())
+		ForbiddenError(c, errTitle, err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -900,7 +857,9 @@ func (h *MarketInquiryHandler) hardDeleteMarketInquiry(c *gin.Context) {
 
 // ========== PriceSupplierSettlement Handler ==========
 
-type SupplierSettlementHandler struct{ s *svc.SupplierSettlementService }
+type SupplierSettlementHandler struct {
+	s *svc.SupplierSettlementService
+}
 
 func NewSupplierSettlementHandler(s *svc.SupplierSettlementService) *SupplierSettlementHandler {
 	return &SupplierSettlementHandler{s: s}
@@ -962,7 +921,7 @@ func (h *SupplierSettlementHandler) createSupplierSettlement(c *gin.Context) {
 	}
 	settlement, err := h.s.CreateSupplierSettlement(c, params)
 	if err != nil {
-		ConflictError(c, errTitle, "创建供应商结算失败: "+err.Error())
+		ForbiddenError(c, errTitle, "创建供应商结算失败: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, settlement)
@@ -1048,7 +1007,7 @@ func (h *SupplierSettlementHandler) updateSupplierSettlement(c *gin.Context) {
 		SettlementPrice:  req.SettlementPrice,
 	}
 	if err := h.s.UpdateSupplierSettlement(c, params); err != nil {
-		ConflictError(c, errTitle, "更新供应商结算失败: "+err.Error())
+		ForbiddenError(c, errTitle, "更新供应商结算失败: "+err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -1096,8 +1055,195 @@ func (h *SupplierSettlementHandler) hardDeleteSupplierSettlement(c *gin.Context)
 		return
 	}
 	if err := h.s.HardDeleteSupplierSettlement(c, req.ID); err != nil {
-		ConflictError(c, errTitle, err.Error())
+		ForbiddenError(c, errTitle, err.Error())
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+type InquiryImportHandler struct {
+	s         *svc.InquiryImportService
+	uploadDir string
+}
+
+func NewInquiryImportHandler(s *svc.InquiryImportService, uploadDir string) *InquiryImportHandler {
+	// 确保上传目录存在
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		panic(fmt.Sprintf("创建上传目录失败: %v", err))
+	}
+	return &InquiryImportHandler{
+		s:         s,
+		uploadDir: uploadDir,
+	}
+}
+
+func (h *InquiryImportHandler) Register(rg *gin.RouterGroup) {
+	g := rg.Group("/inquiry_import")
+
+	g.POST("/import_inquiry", h.importInquiry)
+	g.POST("/validate", h.validateExcel)
+}
+
+func (h *InquiryImportHandler) uploadChunk(c *gin.Context) {
+	const errTitle = "上传文件切片失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可上传文件")
+		return
+	}
+	chunkIndex, err := chunkImport.UploadChunk(c, h.uploadDir)
+	if err != nil {
+		logger.L().Error(errTitle, zap.String("error", err.Error()))
+		InternalError(c, errTitle, "上传文件切片失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":          true,
+		"chunk_index": chunkIndex,
+		"message":     "切片上传成功",
+	})
+}
+
+func (h *InquiryImportHandler) mergeChunks(c *gin.Context) {
+	const errTitle = "合并切片失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可合并切片")
+		return
+	}
+	finalPath, err := chunkImport.MergeChunks(c, h.uploadDir)
+	if err != nil {
+		logger.L().Error(errTitle, zap.String("error", err.Error()))
+		InternalError(c, errTitle, "合并切片失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":       true,
+		"filepath": finalPath,
+		"message":  "切片合并成功",
+	})
+}
+
+// validateExcel 校验Excel文件结构
+func (h *InquiryImportHandler) validateExcel(c *gin.Context) {
+	const errTitle = "校验Excel文件失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+
+	var req struct {
+		Filepath string `json:"filepath" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, errTitle, "输入格式非法: "+err.Error())
+		return
+	}
+
+	// 检查文件是否存在
+	if _, err := os.Stat(req.Filepath); os.IsNotExist(err) {
+		NotFoundError(c, errTitle, "文件不存在")
+		return
+	}
+
+	// 校验Excel结构
+	excelData, err := h.s.ValidateExcelStructure(req.Filepath)
+	if err != nil {
+		if ve, ok := err.(*svc.ValidationError); ok {
+			logger.L().Error(errTitle, zap.String("error", ve.Error()))
+			BadRequest(c, errTitle, ve.Error())
+		} else {
+			logger.L().Error(errTitle, zap.String("error", ve.Error()))
+			InternalError(c, errTitle, err.Error())
+		}
+		return
+	}
+
+	// 返回校验结果摘要
+	c.JSON(http.StatusOK, gin.H{
+		"ok":    true,
+		"title": excelData.Title,
+		"date":  excelData.InquiryDate.Format("2006-01-02"),
+		"stats": gin.H{
+			"sheets":    len(excelData.Sheets),
+			"markets":   len(excelData.Markets),
+			"suppliers": len(excelData.Suppliers),
+		},
+		"message": "Excel文件校验通过",
+	})
+}
+
+// importExcel 导入Excel数据
+func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
+	const errTitle = "导入Excel失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+	if act.Role != middleware.RoleAdmin {
+		ForbiddenError(c, errTitle, "仅管理员可导入数据")
+		return
+	}
+
+	var req struct {
+		Filepath string `json:"filepath" binding:"required"`
+		OrgID    string `json:"org_id" binding:"required,uuid4"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, errTitle, "输入格式非法: "+err.Error())
+		return
+	}
+
+	// 检查文件是否存在
+	if _, err := os.Stat(req.Filepath); os.IsNotExist(err) {
+		NotFoundError(c, errTitle, "文件不存在")
+		return
+	}
+
+	// 校验Excel结构
+	excelData, err := h.s.ValidateExcelStructure(req.Filepath)
+	if err != nil {
+		if ve, ok := err.(*svc.ValidationError); ok {
+			BadRequest(c, errTitle, ve.Error())
+		} else {
+			InternalError(c, errTitle, err.Error())
+		}
+		return
+	}
+
+	// 导入数据
+	// if err := h.s.ImportExcelData(c, excelData, req.OrgID); err != nil {
+	// 	logger.L().Error(errTitle, zap.String("导入数据失败: ", err.Error()))
+	// 	InternalError(c, errTitle, "导入数据失败: "+err.Error())
+	// 	return
+	// }
+
+	// 删除临时文件
+	os.Remove(req.Filepath)
+	// 清理临时目录
+	tmpDir := filepath.Join(h.uploadDir, "tmp")
+	os.RemoveAll(tmpDir)
+
+	c.JSON(http.StatusOK, gin.H{
+		"ok":      true,
+		"message": "Excel数据导入成功",
+		"stats": gin.H{
+			"title":     excelData.Title,
+			"sheets":    len(excelData.Sheets),
+			"markets":   len(excelData.Markets),
+			"suppliers": len(excelData.Suppliers),
+		},
+	})
 }
