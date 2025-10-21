@@ -220,3 +220,14 @@ func GeneratePinyin(s string) string {
 	pinyinSlice := pinyin.LazyPinyin(s, args)
 	return strings.Join(pinyinSlice, "")
 }
+
+func RemoveAllSpaces(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\n', '\r', '\t', '\u00A0':
+			return -1 // 返回 -1 表示丢弃该字符
+		default:
+			return r
+		}
+	}, s)
+}

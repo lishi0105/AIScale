@@ -20,7 +20,7 @@
       :header-cell-style="{ background: '#f3f4f6' }"
       v-loading="tableLoading"
     >
-      <el-table-column type="index" label="序号" width="80" />
+      <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
       <el-table-column prop="Name" :label="label" min-width="160" />
       <el-table-column prop="Sort" label="排序码" width="120" />
       <el-table-column label="操作" width="180">
@@ -84,6 +84,8 @@ interface Row {
   Name: string
   Sort: number
 }
+const indexMethod = (rowIndex: number) =>
+  (page.value - 1) * pageSize.value + rowIndex + 1
 
 const props = defineProps<{
   label: string

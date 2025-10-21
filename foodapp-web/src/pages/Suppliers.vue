@@ -32,7 +32,7 @@
         @current-change="onRowChange"
         :style="{ '--el-font-size-base':'clamp(13.5px, 1.0vw, 16px)' }"
       >
-        <el-table-column type="index" label="序号" width="70" />
+        <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
 
         <el-table-column label="供应商名称" min-width="200">
           <template #header>
@@ -199,6 +199,8 @@ import { notifyError } from '@/utils/notify'
 import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
+const indexMethod = (rowIndex: number) =>
+  (page.value - 1) * pageSize.value + rowIndex + 1
 
 const page = ref(1)
 const pageSize = ref(15)

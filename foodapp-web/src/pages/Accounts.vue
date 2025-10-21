@@ -18,7 +18,7 @@
     </div>
 
     <el-table :data="rows" stripe v-loading="tableLoading">
-      <el-table-column type="index" label="序号" width="80" />
+      <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
       <el-table-column prop="Username" label="用户名" min-width="160" />
       <el-table-column label="所属机构" min-width="180">
         <template #default="{ row }">{{ orgName(row.OrgID) }}</template>
@@ -184,6 +184,8 @@ interface Row {
   CreatedAt?: string
   UpdatedAt?: string
 }
+const indexMethod = (rowIndex: number) =>
+  (page.value - 1) * pageSize.value + rowIndex + 1
 
 const jwtPayload = computed<JwtPayload | null>(() => {
   const token = getToken()

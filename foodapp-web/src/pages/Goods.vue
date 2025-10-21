@@ -80,7 +80,7 @@
         :header-cell-style="{ background: '#f3f4f6' }"
       >
         <el-table-column type="selection" width="48" />
-        <el-table-column type="index" label="序号" width="70" />
+        <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
         <el-table-column label="商品图" width="90">
           <template #default="{ row }">
             <el-image v-if="row.ImageURL" :src="row.ImageURL" fit="cover" style="width:48px;height:48px;border-radius:6px" />
@@ -222,6 +222,8 @@ import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
 import { notifyError } from '@/utils/notify'
+const indexMethod = (rowIndex: number) =>
+  (page.value - 1) * pageSize.value + rowIndex + 1
 
 // 登录信息
 const jwtPayload = computed<JwtPayload | null>(() => {

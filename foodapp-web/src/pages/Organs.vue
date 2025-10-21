@@ -17,7 +17,7 @@
     </div>
 
     <el-table :data="rows" stripe v-loading="tableLoading">
-      <el-table-column type="index" width="70" label="序号" />
+      <el-table-column type="index" width="70" label="序号" :index="indexMethod"/>
       <el-table-column prop="Name" label="中队名称" min-width="180" />
       <el-table-column prop="Code" label="编码" min-width="120">
         <template #default="{ row }">
@@ -150,7 +150,8 @@ interface FormState {
   description: string
   sort: number | null
 }
-
+const indexMethod = (rowIndex: number) =>
+  (page.value - 1) * pageSize.value + rowIndex + 1
 const rows = ref<OrganRow[]>([])
 const total = ref(0)
 const page = ref(1)

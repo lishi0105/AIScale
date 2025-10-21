@@ -70,16 +70,19 @@ func (m *BaseMarket) BeforeCreate(tx *gorm.DB) error {
 
 // BasePriceInquiry 询价单（表头）
 type BasePriceInquiry struct {
-	ID            string    `gorm:"primaryKey;type:char(36)"`
-	OrgID         string    `gorm:"column:org_id;type:char(36);not null;comment:中队ID"`
-	InquiryTitle  string    `gorm:"column:inquiry_title;size:64;not null;comment:询价单标题"`
-	InquiryDate   time.Time `gorm:"column:inquiry_date;type:date;not null;comment:业务日期"`
-	InquiryYear   *int16    `gorm:"column:inquiry_year;->;comment:询价年份（生成列）"`
-	InquiryMonth  *int8     `gorm:"column:inquiry_month;->;comment:询价月份（生成列）"`
-	InquiryTenDay *int8     `gorm:"column:inquiry_ten_day;->;comment:旬：1=上旬 2=中旬 3=下旬（生成列）"`
-	IsDeleted     int       `gorm:"column:is_deleted;not null;default:0;comment:软删：0=有效 1=删除"`
-	CreatedAt     time.Time `gorm:"autoCreateTime"`
-	UpdatedAt     time.Time `gorm:"autoUpdateTime"`
+	ID           string    `gorm:"primaryKey;type:char(36)"`
+	OrgID        string    `gorm:"column:org_id;type:char(36);not null;comment:中队ID"`
+	InquiryTitle string    `gorm:"column:inquiry_title;size:64;not null;comment:询价单标题"`
+	InquiryDate  time.Time `gorm:"column:inquiry_date;type:date;not null;comment:业务日期"`
+
+	// 改成 <-:create，允许创建时写入
+	InquiryYear   *int16 `gorm:"column:inquiry_year;<-:create;comment:询价年份（应用计算）"`
+	InquiryMonth  *int8  `gorm:"column:inquiry_month;<-:create;comment:询价月份（应用计算）"`
+	InquiryTenDay *int8  `gorm:"column:inquiry_ten_day;<-:create;comment:旬：1=上旬 2=中旬 3=下旬（应用计算）"`
+
+	IsDeleted int       `gorm:"column:is_deleted;not null;default:0;comment:软删：0=有效 1=删除"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 func (BasePriceInquiry) TableName() string { return "base_price_inquiry" }
@@ -91,6 +94,30 @@ func (m *BasePriceInquiry) BeforeCreate(tx *gorm.DB) error {
 	if m.OrgID == "" {
 		return errors.New("OrgID(org_id) 不能为空")
 	}
+	// 如果 InquiryDate 为空，则用今天
+	if m.InquiryDate.IsZero() {
+		m.InquiryDate = time.Now()
+	}
+
+	// 依据 InquiryDate 计算 年/月/旬
+	y, mm, d := m.InquiryDate.Date()
+	yy := int16(y)
+	mm8 := int8(mm)
+
+	var td int8
+	switch {
+	case d <= 10:
+		td = 1 // 上旬
+	case d <= 20:
+		td = 2 // 中旬
+	default:
+		td = 3 // 下旬
+	}
+
+	m.InquiryYear = &yy
+	m.InquiryMonth = &mm8
+	m.InquiryTenDay = &td
+
 	return nil
 }
 

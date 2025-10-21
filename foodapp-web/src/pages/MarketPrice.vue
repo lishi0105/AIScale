@@ -43,7 +43,7 @@
         @current-change="onInquirySelect"
         :header-cell-style="{ background: '#f3f4f6' }"
       >
-        <el-table-column type="index" label="序号" width="70" />
+        <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
         <el-table-column prop="InquiryTitle" label="询价单标题" min-width="240" />
         <el-table-column label="业务日期" width="140">
           <template #default="{ row }">{{ formatDate(row.InquiryDate) }}</template>
@@ -156,7 +156,8 @@ import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
 import { notifyError } from '@/utils/notify'
-
+const indexMethod = (rowIndex: number) =>
+  (page.value - 1) * pageSize.value + rowIndex + 1
 // 登录信息
 const jwtPayload = computed<JwtPayload | null>(() => {
   const token = getToken()

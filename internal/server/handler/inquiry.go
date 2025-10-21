@@ -2,9 +2,9 @@ package handler
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -1196,46 +1196,73 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		Filepath string `json:"filepath" binding:"required"`
-		OrgID    string `json:"org_id" binding:"required,uuid4"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		BadRequest(c, errTitle, "输入格式非法: "+err.Error())
+	// 1. 获取 org_id（来自表单字段）
+	orgID := c.PostForm("org_id")
+	if orgID == "" {
+		BadRequest(c, errTitle, "缺少 org_id 参数")
 		return
 	}
 
-	// 检查文件是否存在
-	if _, err := os.Stat(req.Filepath); os.IsNotExist(err) {
-		NotFoundError(c, errTitle, "文件不存在")
+	// 2. 获取上传的文件
+	file, err := c.FormFile("file")
+	if err != nil {
+		BadRequest(c, errTitle, "未上传文件或文件字段名错误（应为 'file'）")
 		return
 	}
 
-	// 校验Excel结构
-	excelData, err := h.s.ValidateExcelStructure(req.Filepath)
+	// 3. 验证文件扩展名（可选但推荐）
+	if !strings.HasSuffix(strings.ToLower(file.Filename), ".xlsx") &&
+		!strings.HasSuffix(strings.ToLower(file.Filename), ".xls") {
+		BadRequest(c, errTitle, "仅支持 .xls 或 .xlsx 格式的 Excel 文件")
+		return
+	}
+
+	// 4. 保存到临时文件（或直接读内存）
+	tmpFile, err := os.CreateTemp(h.uploadDir, "import_*.xlsx")
+	if err != nil {
+		logger.L().Error(errTitle, zap.Error(err))
+		InternalError(c, errTitle, "无法创建临时文件")
+		return
+	}
+	defer os.Remove(tmpFile.Name()) // 确保函数结束时删除
+	defer tmpFile.Close()
+
+	// 将上传的文件写入临时文件
+	srcFile, err := file.Open()
+	if err != nil {
+		logger.L().Error(errTitle, zap.Error(err))
+		InternalError(c, errTitle, "无法打开上传文件")
+		return
+	}
+	defer srcFile.Close()
+
+	if _, err := io.Copy(tmpFile, srcFile); err != nil {
+		logger.L().Error(errTitle, zap.Error(err))
+		InternalError(c, errTitle, "保存上传文件失败")
+		return
+	}
+
+	// 5. 校验 Excel 结构
+	excelData, err := h.s.ValidateExcelStructure(tmpFile.Name())
 	if err != nil {
 		if ve, ok := err.(*svc.ValidationError); ok {
+			logger.L().Error(errTitle, zap.String("校验Excel结构失败: ", ve.Error()))
 			BadRequest(c, errTitle, ve.Error())
 		} else {
-			InternalError(c, errTitle, err.Error())
+			logger.L().Error(errTitle, zap.String("校验Excel结构失败: ", err.Error()))
+			InternalError(c, errTitle, "校验Excel结构失败: "+err.Error())
 		}
 		return
 	}
 
-	// 导入数据
-	// if err := h.s.ImportExcelData(c, excelData, req.OrgID); err != nil {
-	// 	logger.L().Error(errTitle, zap.String("导入数据失败: ", err.Error()))
-	// 	InternalError(c, errTitle, "导入数据失败: "+err.Error())
-	// 	return
-	// }
+	// 6. （可选）执行导入逻辑
+	if err := h.s.ImportExcelData(c, excelData, orgID); err != nil {
+		logger.L().Error(errTitle, zap.Error(err))
+		InternalError(c, errTitle, "导入数据失败: "+err.Error())
+		return
+	}
 
-	// 删除临时文件
-	os.Remove(req.Filepath)
-	// 清理临时目录
-	tmpDir := filepath.Join(h.uploadDir, "tmp")
-	os.RemoveAll(tmpDir)
-
+	// 7. 返回成功
 	c.JSON(http.StatusOK, gin.H{
 		"ok":      true,
 		"message": "Excel数据导入成功",
