@@ -24,6 +24,21 @@ CREATE TABLE IF NOT EXISTS base_category (
 ) ENGINE=InnoDB
   COMMENT='商品品类（如 蔬菜/肉类/调味品 等）';
 
+/* ---------- 市场字典（用于记录 Excel 中的市场名称） ---------- */
+CREATE TABLE IF NOT EXISTS base_market (
+  id         CHAR(36)    NOT NULL COMMENT '主键UUID',
+  name       VARCHAR(64) NOT NULL COMMENT '市场名称（全局唯一）',
+  city       VARCHAR(64)     NULL COMMENT '城市（可选）',
+  address    VARCHAR(255)    NULL COMMENT '地址（可选）',
+  is_deleted TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
+  created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_market_name (name),
+  KEY idx_market_city (city),
+  KEY idx_market_del (is_deleted)
+) ENGINE=InnoDB COMMENT='市场字典（富万家、育英巷菜市场、大润发等）';
+
 /* ---------- Base_商品库 ---------- */
 /* 说明：
    - spec_id     → base_spec.id（规格字典）
@@ -37,7 +52,7 @@ CREATE TABLE IF NOT EXISTS base_goods (
   sort          INT           NOT NULL DEFAULT 0 COMMENT '排序码',
   pinyin        VARCHAR(128)      NULL COMMENT '商品拼音（检索用）',
   spec_id       CHAR(36)      NOT NULL COMMENT '规格ID（base_spec.id）',
-  unit_id       CHAR(36)      NOT NULL COMMENT '单位ID（base_spec.id）',
+  unit_id       CHAR(36)      NOT NULL COMMENT '单位ID（base_unit.id）',
   image_url     VARCHAR(512)      NULL COMMENT '商品图片URL',
   description   VARCHAR(512)  NULL COMMENT     '商品描述',
   category_id   CHAR(36)      NOT NULL COMMENT '商品品类ID（base_category.id）',
@@ -73,6 +88,9 @@ CREATE TABLE IF NOT EXISTS base_price_inquiry (
   market_1           VARCHAR(128)     NULL COMMENT '市场1',
   market_2           VARCHAR(128)     NULL COMMENT '市场2',
   market_3           VARCHAR(128)     NULL COMMENT '市场3',
+
+  -- Excel 导入友好：期间标签（如：2025年9月上旬）
+  period_label       VARCHAR(64)      NULL COMMENT '期间标签（可选，用于导入Excel）',
 
   org_id             CHAR(36)     NOT NULL COMMENT '中队ID',
   is_deleted         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
@@ -116,6 +134,9 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
   market2_price   DECIMAL(10,2)     NULL COMMENT '市场2价格',
   market3_price   DECIMAL(10,2)     NULL COMMENT '市场3价格',
 
+  -- Excel 中“上月均价/上期均价”
+  prev_avg_price  DECIMAL(10,2)     NULL COMMENT '上期/上月均价（导入Excel保留）',
+
   -- 非空平均：有几项填几项求平均；若都为空则为 NULL
   avg_price       DECIMAL(10,2)
     GENERATED ALWAYS AS (
@@ -133,7 +154,7 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
       END
     ) STORED COMMENT '商品均价（自动按非空项求平均，保留2位）',
 
-  inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录Id（price_inquiry.id）',
+  inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录Id（base_price_inquiry.id）',
   org_id          CHAR(36)          NULL COMMENT '中队Id',
   is_deleted      TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效,1=已删除',
   created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -150,9 +171,39 @@ CREATE TABLE IF NOT EXISTS base_goods_avg_detail (
 
   -- 外键
   CONSTRAINT fk_gad_goods   FOREIGN KEY (goods_id)   REFERENCES base_goods(id),
-  CONSTRAINT fk_gad_inquiry FOREIGN KEY (inquiry_id) REFERENCES price_inquiry(id)
+  CONSTRAINT fk_gad_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id)
 ) ENGINE=InnoDB
   COMMENT='Base_商品均价明细（按询价记录保存各市场价并生成均价）';
+
+/* ---------- 询价结算策略（名称 + 下浮比例） ---------- */
+/* 对应 Excel 中“胡坎本期结算价(下浮12%) / 贵海本期结算价(下浮14%)”。 */
+CREATE TABLE IF NOT EXISTS base_inquiry_settlement (
+  id            CHAR(36)     NOT NULL COMMENT '主键UUID',
+  inquiry_id    CHAR(36)     NOT NULL COMMENT '询价记录Id（base_price_inquiry.id）',
+  label         VARCHAR(64)  NOT NULL COMMENT '策略名称（如：胡坎/贵海）',
+  down_ratio    DECIMAL(6,4) NOT NULL COMMENT '下浮比例（0.1200 表示下浮12%）',
+  is_deleted    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '软删：0=有效 1=删除',
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_settle_inquiry_label (inquiry_id, label),
+  KEY idx_settle_inquiry (inquiry_id),
+  CONSTRAINT ck_settle_ratio_range CHECK (down_ratio >= 0 AND down_ratio < 1),
+  CONSTRAINT fk_settle_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id)
+) ENGINE=InnoDB COMMENT='询价结算策略（按名称+下浮比例）';
+
+/* 视图：计算结算价 = 均价 × (1 - 下浮比例) */
+CREATE OR REPLACE VIEW v_inquiry_goods_settlement AS
+SELECT
+  d.inquiry_id,
+  d.goods_id,
+  s.label      AS settlement_label,
+  s.down_ratio AS down_ratio,
+  d.avg_price,
+  ROUND(d.avg_price * (1 - s.down_ratio), 2) AS settlement_price
+FROM base_goods_avg_detail d
+JOIN base_inquiry_settlement s ON s.inquiry_id = d.inquiry_id
+WHERE d.is_deleted = 0 AND s.is_deleted = 0;
 
 CREATE TABLE IF NOT EXISTS supplier (
   id              CHAR(36)     NOT NULL COMMENT '主键UUID',
@@ -206,7 +257,7 @@ CREATE TABLE IF NOT EXISTS base_goods_price (
   id              CHAR(36)      NOT NULL COMMENT '主键UUID',
   goods_id        CHAR(36)      NOT NULL COMMENT '商品ID（base_goods.id）',
   supplier_id     CHAR(36)      NOT NULL COMMENT '供应商ID（supplier.id）',
-  inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录ID（price_inquiry.id）',
+  inquiry_id      CHAR(36)      NOT NULL COMMENT '询价记录ID（base_price_inquiry.id）',
 
   unit_price      DECIMAL(10,2) NOT NULL COMMENT '商品单价（本次报价）',
   float_ratio     DECIMAL(6,4)  NOT NULL DEFAULT 1.0000 COMMENT '浮动比例快照（来自 supplier.float_ratio）',
@@ -229,10 +280,108 @@ CREATE TABLE IF NOT EXISTS base_goods_price (
   -- 外键
   CONSTRAINT fk_bgp_goods FOREIGN KEY (goods_id) REFERENCES base_goods(id),
   CONSTRAINT fk_bgp_supplier FOREIGN KEY (supplier_id) REFERENCES supplier(id),
-  CONSTRAINT fk_bgp_inquiry FOREIGN KEY (inquiry_id) REFERENCES price_inquiry(id),
+  CONSTRAINT fk_bgp_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id),
 
   -- 业务约束（可选）
   CONSTRAINT ck_bgp_ratio_pos CHECK (float_ratio > 0)
 ) ENGINE=InnoDB
   COMMENT='Base_商品单价：按 询价×供应商×商品 的报价记录';
+
+/* =======================================================================
+   Excel 导入暂存表（结构贴合 Excel 列，便于一次性导入）
+   ======================================================================= */
+CREATE TABLE IF NOT EXISTS stg_market_price_excel_row (
+  id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '自增Id',
+  file_name        VARCHAR(128)     NULL COMMENT '来源文件名',
+  sheet_name       VARCHAR(64)      NULL COMMENT 'Sheet 名（如：蔬菜类/水产海鲜/水果）',
+  period_label     VARCHAR(64)      NULL COMMENT '期间标签（2025年9月上旬等）',
+  seq_no           INT              NULL COMMENT '序号',
+  goods_name       VARCHAR(128) NOT NULL COMMENT '品名',
+  spec_name        VARCHAR(32)  NOT NULL COMMENT '规格标准（如：新鲜/500g）',
+  unit_name        VARCHAR(32)  NOT NULL COMMENT '单位（斤/公斤/袋等）',
+  guide_price      DECIMAL(10,2)    NULL COMMENT '发改委指导价',
+  market1_price    DECIMAL(10,2)    NULL COMMENT '市场1价格',
+  market2_price    DECIMAL(10,2)    NULL COMMENT '市场2价格',
+  market3_price    DECIMAL(10,2)    NULL COMMENT '市场3价格',
+  prev_avg_price   DECIMAL(10,2)    NULL COMMENT '上月均价',
+  curr_avg_price   DECIMAL(10,2)    NULL COMMENT '本期均价（Excel计算/给定）',
+  settle1_label    VARCHAR(64)      NULL COMMENT '结算1名称（如：胡坎）',
+  settle1_price    DECIMAL(10,2)    NULL COMMENT '结算1价格',
+  settle2_label    VARCHAR(64)      NULL COMMENT '结算2名称（如：贵海）',
+  settle2_price    DECIMAL(10,2)    NULL COMMENT '结算2价格',
+  created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_stg_file_sheet (file_name, sheet_name)
+) ENGINE=InnoDB COMMENT='Excel 导入暂存（与 Excel 列一一对应）';
+
+/* ----------------------------------------------------------------------
+   以下为“从暂存表写入标准表”的示例（按需执行/可在ETL或应用层实现）
+   需替换其中的 ORG_ID、INQUIRY_ID 为实际值；示例仅用于演示。
+---------------------------------------------------------------------- */
+/*
+-- 1) 规格字典补齐
+INSERT INTO base_spec (id, name, code, sort, is_deleted)
+SELECT UUID(), t.spec_name, NULL, 0, 0
+FROM stg_market_price_excel_row t
+LEFT JOIN base_spec s ON s.name = t.spec_name
+WHERE s.id IS NULL
+GROUP BY t.spec_name;
+
+-- 2) 单位字典补齐
+INSERT INTO base_unit (id, name, code, sort, is_deleted)
+SELECT UUID(), t.unit_name, NULL, 0, 0
+FROM stg_market_price_excel_row t
+LEFT JOIN base_unit u ON u.name = t.unit_name
+WHERE u.id IS NULL
+GROUP BY t.unit_name;
+
+-- 3) 商品补齐（以 org+名称+规格+单位 唯一）
+INSERT INTO base_goods (id, name, code, sort, pinyin, spec_id, unit_id, image_url, description, category_id, org_id, is_deleted)
+SELECT UUID(), t.goods_name, CONCAT('AUTO-', UUID()), 0, NULL,
+       (SELECT id FROM base_spec WHERE name = t.spec_name LIMIT 1),
+       (SELECT id FROM base_unit WHERE name = t.unit_name LIMIT 1),
+       NULL, NULL,
+       (SELECT id FROM base_category WHERE name = t.sheet_name LIMIT 1),
+       '00000000-0000-0000-0000-000000000000',
+       0
+FROM stg_market_price_excel_row t
+LEFT JOIN base_goods g
+  ON g.name = t.goods_name
+ AND g.spec_id = (SELECT id FROM base_spec WHERE name = t.spec_name LIMIT 1)
+ AND g.unit_id = (SELECT id FROM base_unit WHERE name = t.unit_name LIMIT 1)
+ AND g.org_id = '00000000-0000-0000-0000-000000000000'
+WHERE g.id IS NULL
+GROUP BY t.goods_name, t.spec_name, t.unit_name;
+
+-- 4) 将市场价落到均价明细（avg_price 自动生成）
+INSERT INTO base_goods_avg_detail (id, goods_id, guide_price, market1_price, market2_price, market3_price, prev_avg_price, inquiry_id, org_id, is_deleted)
+SELECT UUID(),
+       g.id,
+       t.guide_price,
+       t.market1_price,
+       t.market2_price,
+       t.market3_price,
+       t.prev_avg_price,
+       '00000000-0000-0000-0000-000000000000', -- INQUIRY_ID
+       '00000000-0000-0000-0000-000000000000', -- ORG_ID
+       0
+FROM stg_market_price_excel_row t
+JOIN base_goods g ON g.name = t.goods_name
+  AND g.spec_id = (SELECT id FROM base_spec WHERE name = t.spec_name LIMIT 1)
+  AND g.unit_id = (SELECT id FROM base_unit WHERE name = t.unit_name LIMIT 1)
+  AND g.org_id = '00000000-0000-0000-0000-000000000000';
+
+-- 5) 结算策略（示例：插入 Excel 中出现过的两个标签；下浮比例请在应用层计算）
+INSERT INTO base_inquiry_settlement (id, inquiry_id, label, down_ratio)
+SELECT UUID(), '00000000-0000-0000-0000-000000000000', x.label, 0.1200
+FROM (
+  SELECT settle1_label AS label FROM stg_market_price_excel_row WHERE settle1_label IS NOT NULL
+  UNION
+  SELECT settle2_label AS label FROM stg_market_price_excel_row WHERE settle2_label IS NOT NULL
+) x
+LEFT JOIN base_inquiry_settlement s
+  ON s.inquiry_id = '00000000-0000-0000-0000-000000000000' AND s.label = x.label
+WHERE x.label IS NOT NULL AND s.id IS NULL
+GROUP BY x.label;
+*/
 
