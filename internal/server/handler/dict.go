@@ -73,7 +73,7 @@ func (h *DictHandler) CreateUnit(c *gin.Context) {
 		ConflictError(c, err_title, "添加单位失败:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, m)
+	SuccessResponse(c, m)
 }
 func (h *DictHandler) GetUnit(c *gin.Context) {
 	var req types.IDReq
@@ -89,7 +89,7 @@ func (h *DictHandler) GetUnit(c *gin.Context) {
 		NotFoundError(c, err_title, "单位不存在:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, m)
+	SuccessResponse(c, m)
 }
 func (h *DictHandler) ListUnits(c *gin.Context) {
 	kw := c.Query("keyword")
@@ -108,7 +108,7 @@ func (h *DictHandler) ListUnits(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *DictHandler) UpdateUnit(c *gin.Context) {
@@ -174,7 +174,7 @@ func (h *DictHandler) CreateSpec(c *gin.Context) {
 		ConflictError(c, err_title, "添加规格失败:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, m)
+	SuccessResponse(c, m)
 }
 func (h *DictHandler) GetSpec(c *gin.Context) {
 	var req types.IDReq
@@ -189,7 +189,7 @@ func (h *DictHandler) GetSpec(c *gin.Context) {
 		NotFoundError(c, err_title, "规格不存在:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, m)
+	SuccessResponse(c, m)
 }
 func (h *DictHandler) ListSpecs(c *gin.Context) {
 	kw := c.Query("keyword")
@@ -206,7 +206,7 @@ func (h *DictHandler) ListSpecs(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 func (h *DictHandler) UpdateSpec(c *gin.Context) {
 	var req dict_updateReq
@@ -228,7 +228,7 @@ func (h *DictHandler) UpdateSpec(c *gin.Context) {
 		ConflictError(c, err_title, "更新规格失败:"+err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	SuccessResponse(c, nil)
 }
 func (h *DictHandler) DeleteSpec(c *gin.Context) {
 	var req types.IDReq
@@ -246,7 +246,7 @@ func (h *DictHandler) DeleteSpec(c *gin.Context) {
 		ConflictError(c, err_title, err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	SuccessResponse(c, nil)
 }
 
 // ---------- MealTime ----------
@@ -271,7 +271,7 @@ func (h *DictHandler) CreateMealTime(c *gin.Context) {
 		ConflictError(c, err_title, "添加就餐时段失败:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, m)
+	SuccessResponse(c, m)
 }
 func (h *DictHandler) GetMealTime(c *gin.Context) {
 	var req types.IDReq
@@ -286,7 +286,7 @@ func (h *DictHandler) GetMealTime(c *gin.Context) {
 		NotFoundError(c, err_title, "就餐时段不存在:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, m)
+	SuccessResponse(c, m)
 }
 func (h *DictHandler) ListMealTimes(c *gin.Context) {
 	kw := c.Query("keyword")
@@ -303,7 +303,7 @@ func (h *DictHandler) ListMealTimes(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 func (h *DictHandler) UpdateMealTime(c *gin.Context) {
 	var req dict_updateReq
@@ -325,7 +325,7 @@ func (h *DictHandler) UpdateMealTime(c *gin.Context) {
 		ConflictError(c, err_title, "更新就餐时段失败:"+err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	SuccessResponse(c, nil)
 }
 func (h *DictHandler) DeleteMealTime(c *gin.Context) {
 	var req types.IDReq
@@ -343,5 +343,5 @@ func (h *DictHandler) DeleteMealTime(c *gin.Context) {
 		ConflictError(c, err_title, err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	SuccessResponse(c, nil)
 }

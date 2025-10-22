@@ -84,7 +84,7 @@ func (h *MarketHandler) createMarket(c *gin.Context) {
 		ForbiddenError(c, errTitle, "创建市场失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, market)
+	SuccessResponse(c, market)
 }
 
 func (h *MarketHandler) getMarket(c *gin.Context) {
@@ -107,7 +107,7 @@ func (h *MarketHandler) getMarket(c *gin.Context) {
 		NotFoundError(c, errTitle, "市场不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, market)
+	SuccessResponse(c, market)
 }
 
 func (h *MarketHandler) listMarkets(c *gin.Context) {
@@ -132,7 +132,7 @@ func (h *MarketHandler) listMarkets(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *MarketHandler) updateMarket(c *gin.Context) {
@@ -188,7 +188,7 @@ func (h *MarketHandler) softDeleteMarket(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *MarketHandler) hardDeleteMarket(c *gin.Context) {
@@ -274,7 +274,7 @@ func (h *InquiryHandler) createInquiry(c *gin.Context) {
 		ForbiddenError(c, errTitle, "创建询价单失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, inquiry)
+	SuccessResponse(c, inquiry)
 }
 
 func (h *InquiryHandler) getInquiry(c *gin.Context) {
@@ -297,7 +297,7 @@ func (h *InquiryHandler) getInquiry(c *gin.Context) {
 		NotFoundError(c, errTitle, "询价单不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, inquiry)
+	SuccessResponse(c, inquiry)
 }
 
 func (h *InquiryHandler) listInquiries(c *gin.Context) {
@@ -339,7 +339,7 @@ func (h *InquiryHandler) listInquiries(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *InquiryHandler) updateInquiry(c *gin.Context) {
@@ -394,7 +394,7 @@ func (h *InquiryHandler) softDeleteInquiry(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *InquiryHandler) hardDeleteInquiry(c *gin.Context) {
@@ -510,7 +510,7 @@ func (h *InquiryItemHandler) createInquiryItem(c *gin.Context) {
 		ForbiddenError(c, errTitle, "创建询价商品明细失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, item)
+	SuccessResponse(c, item)
 }
 
 func (h *InquiryItemHandler) getInquiryItem(c *gin.Context) {
@@ -533,7 +533,7 @@ func (h *InquiryItemHandler) getInquiryItem(c *gin.Context) {
 		NotFoundError(c, errTitle, "询价商品明细不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, item)
+	SuccessResponse(c, item)
 }
 
 func (h *InquiryItemHandler) listInquiryItems(c *gin.Context) {
@@ -563,7 +563,7 @@ func (h *InquiryItemHandler) listInquiryItems(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *InquiryItemHandler) updateInquiryItem(c *gin.Context) {
@@ -628,7 +628,7 @@ func (h *InquiryItemHandler) softDeleteInquiryItem(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *InquiryItemHandler) hardDeleteInquiryItem(c *gin.Context) {
@@ -719,7 +719,7 @@ func (h *MarketInquiryHandler) createMarketInquiry(c *gin.Context) {
 		ForbiddenError(c, errTitle, "创建市场报价失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, marketInquiry)
+	SuccessResponse(c, marketInquiry)
 }
 
 func (h *MarketInquiryHandler) getMarketInquiry(c *gin.Context) {
@@ -742,7 +742,7 @@ func (h *MarketInquiryHandler) getMarketInquiry(c *gin.Context) {
 		NotFoundError(c, errTitle, "市场报价不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, marketInquiry)
+	SuccessResponse(c, marketInquiry)
 }
 
 func (h *MarketInquiryHandler) listMarketInquiries(c *gin.Context) {
@@ -772,7 +772,7 @@ func (h *MarketInquiryHandler) listMarketInquiries(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *MarketInquiryHandler) updateMarketInquiry(c *gin.Context) {
@@ -828,7 +828,7 @@ func (h *MarketInquiryHandler) softDeleteMarketInquiry(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *MarketInquiryHandler) hardDeleteMarketInquiry(c *gin.Context) {
@@ -924,7 +924,7 @@ func (h *SupplierSettlementHandler) createSupplierSettlement(c *gin.Context) {
 		ForbiddenError(c, errTitle, "创建供应商结算失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, settlement)
+	SuccessResponse(c, settlement)
 }
 
 func (h *SupplierSettlementHandler) getSupplierSettlement(c *gin.Context) {
@@ -947,7 +947,7 @@ func (h *SupplierSettlementHandler) getSupplierSettlement(c *gin.Context) {
 		NotFoundError(c, errTitle, "供应商结算不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, settlement)
+	SuccessResponse(c, settlement)
 }
 
 func (h *SupplierSettlementHandler) listSupplierSettlements(c *gin.Context) {
@@ -977,7 +977,7 @@ func (h *SupplierSettlementHandler) listSupplierSettlements(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *SupplierSettlementHandler) updateSupplierSettlement(c *gin.Context) {
@@ -1034,7 +1034,7 @@ func (h *SupplierSettlementHandler) softDeleteSupplierSettlement(c *gin.Context)
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *SupplierSettlementHandler) hardDeleteSupplierSettlement(c *gin.Context) {
@@ -1102,11 +1102,7 @@ func (h *InquiryImportHandler) uploadChunk(c *gin.Context) {
 		InternalError(c, errTitle, "上传文件切片失败")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"ok":          true,
-		"chunk_index": chunkIndex,
-		"message":     "切片上传成功",
-	})
+	SuccessResponse(c, map[string]any{"chunk_index": chunkIndex, "message": "切片上传成功"})
 }
 
 func (h *InquiryImportHandler) mergeChunks(c *gin.Context) {
@@ -1126,11 +1122,7 @@ func (h *InquiryImportHandler) mergeChunks(c *gin.Context) {
 		InternalError(c, errTitle, "合并切片失败")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"ok":       true,
-		"filepath": finalPath,
-		"message":  "切片合并成功",
-	})
+	SuccessResponse(c, map[string]any{"filepath": finalPath, "message": "切片合并成功"})
 }
 
 // validateExcel 校验Excel文件结构
@@ -1171,11 +1163,10 @@ func (h *InquiryImportHandler) validateExcel(c *gin.Context) {
 	}
 
 	// 返回校验结果摘要
-	c.JSON(http.StatusOK, gin.H{
-		"ok":    true,
+	SuccessResponse(c, map[string]any{
 		"title": excelData.Title,
 		"date":  excelData.InquiryDate.Format("2006-01-02"),
-		"stats": gin.H{
+		"stats": map[string]any{
 			"sheets":    len(excelData.Sheets),
 			"markets":   len(excelData.Markets),
 			"suppliers": len(excelData.Suppliers),
@@ -1225,7 +1216,14 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 	tmpFile, err := os.CreateTemp(h.uploadDir, "import_*.xlsx")
 	if err != nil {
 		logger.L().Error(errTitle, zap.Error(err))
-		InternalError(c, errTitle, "无法创建临时文件")
+
+		err := &svc.ImportInquiryError{
+			Code:      int(svc.ErrInternal),
+			Value:     "",
+			Message:   "无法创建临时文件",
+			InquiryID: "",
+		}
+		InternalError(c, errTitle, err.GetErrorDetails())
 		return
 	}
 	tmpFilePath := tmpFile.Name()
@@ -1236,7 +1234,14 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 	if err != nil {
 		logger.L().Error(errTitle, zap.Error(err))
 		os.Remove(tmpFilePath)
-		InternalError(c, errTitle, "无法打开上传文件")
+
+		err := &svc.ImportInquiryError{
+			Code:      int(svc.ErrInternal),
+			Value:     "",
+			Message:   "无法打开上传文件",
+			InquiryID: "",
+		}
+		InternalError(c, errTitle, err.GetErrorDetails())
 		return
 	}
 	defer srcFile.Close()
@@ -1244,7 +1249,13 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 	if _, err := io.Copy(tmpFile, srcFile); err != nil {
 		logger.L().Error(errTitle, zap.Error(err))
 		os.Remove(tmpFilePath)
-		InternalError(c, errTitle, "保存上传文件失败")
+		err := &svc.ImportInquiryError{
+			Code:      int(svc.ErrInternal),
+			Value:     "",
+			Message:   "保存上传文件失败",
+			InquiryID: "",
+		}
+		InternalError(c, errTitle, err.GetErrorDetails())
 		return
 	}
 
@@ -1254,19 +1265,49 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 		os.Remove(tmpFilePath) // 校验失败，删除临时文件
 		if ve, ok := err.(*svc.ValidationError); ok {
 			logger.L().Error(errTitle, zap.String("校验Excel结构失败: ", ve.Error()))
-			BadRequest(c, errTitle, ve.Error())
+			err := &svc.ImportInquiryError{
+				Code:      int(svc.ErrValidate),
+				Value:     ve.Error(),
+				Message:   "校验Excel结构失败",
+				InquiryID: "",
+			}
+			BadRequest(c, errTitle, err.GetErrorDetails())
 		} else {
 			logger.L().Error(errTitle, zap.String("校验Excel结构失败: ", err.Error()))
-			InternalError(c, errTitle, "校验Excel结构失败: "+err.Error())
+			err := &svc.ImportInquiryError{
+				Code:      int(svc.ErrValidate),
+				Value:     err.Error(),
+				Message:   "校验Excel结构失败",
+				InquiryID: "",
+			}
+			InternalError(c, errTitle, err.GetErrorDetails())
 		}
 		return
 	}
 
-	// 6. 创建导入任务（内存）
+	// 6. 检查重复（同步）
+	if err := h.s.CheckDuplicateInquiry(orgID, excelData.Title, excelData.InquiryDate); err != nil {
+		os.Remove(tmpFilePath) // 删除临时文件
+		if dupErr, ok := err.(*svc.ImportInquiryError); ok {
+			ConflictError(c, errTitle, dupErr.GetErrorDetails())
+		} else {
+			logger.L().Error(errTitle, zap.Error(err))
+			err := &svc.ImportInquiryError{
+				Code:      int(svc.ErrInternal),
+				Value:     "",
+				Message:   "检查重复失败",
+				InquiryID: "",
+			}
+			InternalError(c, errTitle, err.GetErrorDetails())
+		}
+		return
+	}
+
+	// 7. 创建导入任务（内存）
 	task := h.s.CreateImportTask(orgID, file.Filename, len(excelData.Sheets))
 
-	// 7. 立即返回任务ID（异步执行导入）
-	c.JSON(http.StatusAccepted, gin.H{
+	// 8. 立即返回任务ID（异步执行导入）
+	SuccessResponse(c, map[string]any{
 		"ok":      true,
 		"message": "Excel文件校验通过，开始异步导入",
 		"task_id": task.ID,
@@ -1278,16 +1319,16 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 		},
 	})
 
-	// 8. 启动异步导入goroutine
+	// 9. 启动异步导入goroutine
 	go func() {
 		defer os.Remove(tmpFilePath) // 导入完成后删除临时文件
-		
+
 		logger.L().Info("开始异步导入任务",
 			zap.String("task_id", task.ID),
 			zap.String("org_id", orgID),
 			zap.String("file", file.Filename),
 			zap.Bool("force_delete", forceDelete))
-		
+
 		if err := h.s.ImportExcelDataAsync(task.ID, excelData, orgID, forceDelete); err != nil {
 			logger.L().Error("异步导入失败",
 				zap.String("task_id", task.ID),
@@ -1355,5 +1396,5 @@ func (h *InquiryImportHandler) getImportStatus(c *gin.Context) {
 		response["message"] = "等待处理"
 	}
 
-	c.JSON(http.StatusOK, response)
+	SuccessResponse(c, response)
 }

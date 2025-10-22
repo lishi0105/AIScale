@@ -92,7 +92,7 @@ func (h *GoodsHandler) create(c *gin.Context) {
 		ConflictError(c, errTitle, "创建商品失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, goods)
+	SuccessResponse(c, goods)
 }
 
 func (h *GoodsHandler) get(c *gin.Context) {
@@ -115,7 +115,7 @@ func (h *GoodsHandler) get(c *gin.Context) {
 		NotFoundError(c, errTitle, "商品不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, goods)
+	SuccessResponse(c, goods)
 }
 
 func (h *GoodsHandler) list(c *gin.Context) {
@@ -156,7 +156,7 @@ func (h *GoodsHandler) list(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *GoodsHandler) update(c *gin.Context) {
@@ -218,7 +218,7 @@ func (h *GoodsHandler) softDelete(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *GoodsHandler) hardDelete(c *gin.Context) {

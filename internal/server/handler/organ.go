@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -93,7 +92,7 @@ func (h *OrganHandler) create(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"id": m.ID})
+	SuccessResponse(c, map[string]any{"id": m.ID})
 }
 
 func (h *OrganHandler) get(c *gin.Context) {
@@ -108,7 +107,7 @@ func (h *OrganHandler) get(c *gin.Context) {
 		NotFoundError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, o)
+	SuccessResponse(c, o)
 }
 
 func ptr[T any](v T) *T { return &v }
@@ -149,7 +148,7 @@ func (h *OrganHandler) list(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *OrganHandler) update(c *gin.Context) {
@@ -197,7 +196,7 @@ func (h *OrganHandler) update(c *gin.Context) {
 		InternalError(c, errTitle, "获取更新后数据失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, obj)
+	SuccessResponse(c, obj)
 }
 
 func (h *OrganHandler) softDelete(c *gin.Context) {
@@ -221,7 +220,7 @@ func (h *OrganHandler) softDelete(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *OrganHandler) hardDelete(c *gin.Context) {
@@ -245,5 +244,5 @@ func (h *OrganHandler) hardDelete(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }

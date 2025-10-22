@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"net/http"
 	"time"
 
 	"go.uber.org/zap"
@@ -64,9 +63,9 @@ func (h *AuthHandler) login(c *gin.Context) {
 		BadRequest(c, err_title, "生成token失败"+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
+	SuccessResponse(c, map[string]any{
 		"token":      ss,
 		"token_type": "Bearer",
-		"expires_in": int(exp.Sub(now).Seconds()),
+		"expires_in": int(exp.Sub(now).Seconds()), // 秒
 	})
 }

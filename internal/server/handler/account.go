@@ -2,7 +2,6 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -116,7 +115,7 @@ func (h *AccountHandler) create(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"id": a.ID})
+	SuccessResponse(c, map[string]any{"id": a.ID})
 }
 
 func (h *AccountHandler) get(c *gin.Context) {
@@ -142,7 +141,7 @@ func (h *AccountHandler) get(c *gin.Context) {
 		NotFoundError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, a)
+	SuccessResponse(c, a)
 }
 
 func (h *AccountHandler) getByUsername(c *gin.Context) {
@@ -166,7 +165,7 @@ func (h *AccountHandler) getByUsername(c *gin.Context) {
 		NotFoundError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, a)
+	SuccessResponse(c, a)
 }
 
 func (h *AccountHandler) list(c *gin.Context) {
@@ -205,7 +204,7 @@ func (h *AccountHandler) list(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, gin.H{"total": total, "items": list})
 }
 
 func (h *AccountHandler) updatePassword(c *gin.Context) {
@@ -241,7 +240,7 @@ func (h *AccountHandler) updatePassword(c *gin.Context) {
 		InternalError(c, errTitle, "更新密码失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *AccountHandler) update(c *gin.Context) {
@@ -279,7 +278,7 @@ func (h *AccountHandler) update(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *AccountHandler) softDelete(c *gin.Context) {
@@ -310,7 +309,7 @@ func (h *AccountHandler) softDelete(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *AccountHandler) hardDelete(c *gin.Context) {
@@ -341,7 +340,7 @@ func (h *AccountHandler) hardDelete(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *AccountHandler) changePassword(c *gin.Context) {
@@ -368,5 +367,5 @@ func (h *AccountHandler) changePassword(c *gin.Context) {
 		BadRequest(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }

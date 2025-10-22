@@ -28,8 +28,8 @@ type ImportTask struct {
 	ID              string
 	OrgID           string
 	FileName        string
-	Status          string  // pending/processing/success/failed
-	Progress        int     // 0-100
+	Status          string // pending/processing/success/failed
+	Progress        int    // 0-100
 	TotalSheets     int
 	ProcessedSheets int
 	InquiryID       string
@@ -435,57 +435,90 @@ func (s *InquiryImportService) ValidateExcelStructure(filePath string) (*ExcelDa
 	return excelData, nil
 }
 
+type ImportErrorCode int
+
+const (
+	ErrDuplicate ImportErrorCode = 1001 // 重复
+	ErrValidate  ImportErrorCode = 1002 // 验证错误
+	ErrInternal  ImportErrorCode = 1003 // 内部错误
+)
+
 // DuplicateInquiryError 重复询价单错误
-type DuplicateInquiryError struct {
-	Title     string
-	Date      string
-	Message   string
-	InquiryID string
+type ImportInquiryError struct {
+	Code      int    `json:"code"`       // 1001: 重复询价单
+	Value     string `json:"value"`      // 重复的值（标题或日期）
+	Message   string `json:"message"`    // 错误信息
+	InquiryID string `json:"inquiry_id"` // 询价单ID
 }
 
-func (e *DuplicateInquiryError) Error() string {
+func (e *ImportInquiryError) Error() string {
 	return e.Message
 }
 
-// checkDuplicateInquiry 检查是否存在重复的询价单
+// GetErrorDetails 获取错误详情，用于前端显示
+func (e *ImportInquiryError) GetErrorDetails() map[string]interface{} {
+	return map[string]interface{}{
+		"code":    e.Code,
+		"value":   e.Value,
+		"message": e.Message,
+	}
+}
+
+// CheckDuplicateInquiry 检查是否存在重复的询价单（公开方法，用于同步检查）
+func (s *InquiryImportService) CheckDuplicateInquiry(orgID, title string, date time.Time) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		return s.checkDuplicateInquiry(tx, orgID, title, date)
+	})
+}
+
+// checkDuplicateInquiry 检查是否存在重复的询价单（内部方法）
 // 返回 DuplicateInquiryError 表示存在重复
 func (s *InquiryImportService) checkDuplicateInquiry(tx *gorm.DB, orgID, title string, date time.Time) error {
 	// 1) 检查标题
 	var existingByTitle inquiryDomain.BasePriceInquiry
 	errTitle := tx.Where("org_id = ? AND is_deleted = 0 AND inquiry_title = ?", orgID, title).
 		First(&existingByTitle).Error
-	
+
 	if errTitle == nil {
 		// 找到了相同标题的记录
-		return &DuplicateInquiryError{
-			Title:     title,
-			Date:      date.Format("2006-01-02"),
-			Message:   fmt.Sprintf("该组织已存在相同标题的询价单（title=%s）", title),
+		return &ImportInquiryError{
+			Code:      int(ErrDuplicate),
+			Value:     title,
+			Message:   "发现标题重复的询价单",
 			InquiryID: existingByTitle.ID,
 		}
 	} else if errTitle != gorm.ErrRecordNotFound {
 		logger.L().Error("检查标题重复失败", zap.Error(errTitle),
 			zap.String("org_id", orgID), zap.String("title", title))
-		return fmt.Errorf("检查标题重复失败: %w", errTitle)
+		return &ImportInquiryError{
+			Code:      int(ErrInternal),
+			Value:     "",
+			Message:   "检查标题重复失败",
+			InquiryID: "",
+		}
 	}
 
 	// 2) 检查日期
 	var existingByDate inquiryDomain.BasePriceInquiry
 	errDate := tx.Where("org_id = ? AND is_deleted = 0 AND inquiry_date = ?", orgID, date).
 		First(&existingByDate).Error
-	
+
 	if errDate == nil {
-		// 找到了相同日期的记录
-		return &DuplicateInquiryError{
-			Title:     title,
-			Date:      date.Format("2006-01-02"),
-			Message:   fmt.Sprintf("该组织已存在相同日期的询价单（date=%s）", date.Format("2006-01-02")),
+		return &ImportInquiryError{
+			Code:      int(ErrDuplicate),
+			Value:     date.Format("2006-01-02"),
+			Message:   "发现日期重复的询价单",
 			InquiryID: existingByDate.ID,
 		}
 	} else if errDate != gorm.ErrRecordNotFound {
 		logger.L().Error("检查日期重复失败", zap.Error(errDate),
 			zap.String("org_id", orgID), zap.Time("inquiry_date", date))
-		return fmt.Errorf("检查日期重复失败: %w", errDate)
+		return &ImportInquiryError{
+			Code:      int(ErrInternal),
+			Value:     date.Format("2006-01-02"),
+			Message:   "检查日期重复失败",
+			InquiryID: "",
+		}
 	}
 
 	return nil
@@ -494,27 +527,27 @@ func (s *InquiryImportService) checkDuplicateInquiry(tx *gorm.DB, orgID, title s
 // deleteInquiryCompletely 完全删除询价单及其所有关联数据
 func (s *InquiryImportService) deleteInquiryCompletely(tx *gorm.DB, inquiryID string) error {
 	logger.L().Info("开始删除询价单", zap.String("inquiry_id", inquiryID))
-	
+
 	// 1. 删除供应商结算
 	if err := tx.Where("inquiry_id = ?", inquiryID).Delete(&inquiryDomain.PriceSupplierSettlement{}).Error; err != nil {
 		return fmt.Errorf("删除供应商结算失败: %w", err)
 	}
-	
+
 	// 2. 删除市场报价
 	if err := tx.Where("inquiry_id = ?", inquiryID).Delete(&inquiryDomain.PriceMarketInquiry{}).Error; err != nil {
 		return fmt.Errorf("删除市场报价失败: %w", err)
 	}
-	
+
 	// 3. 删除询价商品明细
 	if err := tx.Where("inquiry_id = ?", inquiryID).Delete(&inquiryDomain.PriceInquiryItem{}).Error; err != nil {
 		return fmt.Errorf("删除询价商品明细失败: %w", err)
 	}
-	
+
 	// 4. 删除询价单
 	if err := tx.Delete(&inquiryDomain.BasePriceInquiry{}, "id = ?", inquiryID).Error; err != nil {
 		return fmt.Errorf("删除询价单失败: %w", err)
 	}
-	
+
 	logger.L().Info("询价单删除成功", zap.String("inquiry_id", inquiryID))
 	return nil
 }
@@ -523,36 +556,36 @@ func (s *InquiryImportService) deleteInquiryCompletely(tx *gorm.DB, inquiryID st
 func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *ExcelData, orgID string, forceDelete bool) error {
 	logger.L().Info("开始异步导入Excel数据", zap.String("task_id", taskID), zap.String("org_id", orgID),
 		zap.String("title", excelData.Title), zap.Time("inquiry_date", excelData.InquiryDate), zap.Bool("force_delete", forceDelete))
-	
+
 	// 更新任务状态为处理中
 	s.UpdateTaskStatus(taskID, "processing", 5, 0)
-	
+
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 0. 检查Excel数据是否已存在
-		logger.L().Debug("检查Excel数据是否已存在")
-		if err := s.checkDuplicateInquiry(tx, orgID, excelData.Title, excelData.InquiryDate); err != nil {
-			// 如果是重复错误且设置了强制删除
-			if dupErr, ok := err.(*DuplicateInquiryError); ok && forceDelete {
-				logger.L().Info("检测到重复记录，开始强制删除", 
-					zap.String("inquiry_id", dupErr.InquiryID),
-					zap.String("title", dupErr.Title))
-				
-				// 删除旧的询价单及所有关联数据
-				if err := s.deleteInquiryCompletely(tx, dupErr.InquiryID); err != nil {
-					logger.L().Error("删除旧询价单失败", zap.Error(err))
-					return fmt.Errorf("删除旧询价单失败: %w", err)
+		// 0. 如果设置了强制删除，先删除可能存在的重复记录
+		if forceDelete {
+			logger.L().Debug("强制删除模式，检查并删除重复记录")
+			if err := s.checkDuplicateInquiry(tx, orgID, excelData.Title, excelData.InquiryDate); err != nil {
+				if dupErr, ok := err.(*ImportInquiryError); ok {
+					logger.L().Info("检测到重复记录，开始强制删除",
+						zap.String("inquiry_id", dupErr.InquiryID),
+						zap.String("value", dupErr.Value))
+
+					// 删除旧的询价单及所有关联数据
+					if err := s.deleteInquiryCompletely(tx, dupErr.InquiryID); err != nil {
+						logger.L().Error("删除旧询价单失败", zap.Error(err))
+						return fmt.Errorf("删除旧询价单失败: %w", err)
+					}
+
+					logger.L().Info("旧询价单删除成功，继续导入新数据")
+				} else {
+					return err
 				}
-				
-				logger.L().Info("旧询价单删除成功，继续导入新数据")
-			} else {
-				// 不是重复错误，或者没有设置强制删除
-				return err
 			}
 		}
-		
+
 		// 更新进度：10%
 		s.UpdateTaskStatus(taskID, "processing", 10, 0)
-		
+
 		logger.L().Debug("事务已开启，准备创建询价单")
 		// 1. 创建或获取询价单
 		inquiry := &inquiryDomain.BasePriceInquiry{
@@ -565,7 +598,7 @@ func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *Ex
 			return fmt.Errorf("创建询价单失败: %w", err)
 		}
 		logger.L().Info("询价单创建成功", zap.String("inquiry_id", inquiry.ID))
-		
+
 		// 更新进度：20%
 		s.UpdateTaskStatus(taskID, "processing", 20, 0)
 
@@ -580,7 +613,7 @@ func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *Ex
 			marketIDMap[marketName] = marketID
 			logger.L().Debug("市场就绪", zap.String("market", marketName), zap.String("market_id", marketID))
 		}
-		
+
 		// 更新进度：30%
 		s.UpdateTaskStatus(taskID, "processing", 30, 0)
 
@@ -598,7 +631,7 @@ func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *Ex
 				zap.Float64("ratio", supplier.FloatRatio),
 				zap.String("supplier_id", supplierID))
 		}
-		
+
 		// 更新进度：40%
 		s.UpdateTaskStatus(taskID, "processing", 40, 0)
 
@@ -717,26 +750,26 @@ func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *Ex
 						zap.Float64("settlement", safeDeref(settlementPrice)))
 				}
 			}
-			
+
 			// 更新每个sheet的进度：40% + (sheetIdx+1)/totalSheets * 50%
 			progress := 40 + int(float64(sheetIdx+1)/float64(totalSheets)*50)
 			s.UpdateTaskStatus(taskID, "processing", progress, sheetIdx+1)
 		}
 
 		logger.L().Info("导入完成，准备提交事务", zap.String("inquiry_id", inquiry.ID))
-		
+
 		// 更新任务成功
 		s.UpdateTaskSuccess(taskID, inquiry.ID)
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		// 更新任务失败状态
 		s.UpdateTaskError(taskID, err.Error())
 		return err
 	}
-	
+
 	return nil
 }
 

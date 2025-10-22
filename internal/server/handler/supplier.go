@@ -109,7 +109,7 @@ func (h *SupplierHandler) create(c *gin.Context) {
 		ConflictError(c, errTitle, "创建供应商失败: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, supplier)
+	SuccessResponse(c, supplier)
 }
 
 func (h *SupplierHandler) get(c *gin.Context) {
@@ -132,7 +132,7 @@ func (h *SupplierHandler) get(c *gin.Context) {
 		NotFoundError(c, errTitle, "供应商不存在: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, supplier)
+	SuccessResponse(c, supplier)
 }
 
 func (h *SupplierHandler) list(c *gin.Context) {
@@ -190,7 +190,7 @@ func (h *SupplierHandler) list(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *SupplierHandler) update(c *gin.Context) {
@@ -271,7 +271,7 @@ func (h *SupplierHandler) softDelete(c *gin.Context) {
 		InternalError(c, errTitle, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *SupplierHandler) hardDelete(c *gin.Context) {

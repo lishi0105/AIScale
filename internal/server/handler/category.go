@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -64,7 +63,7 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 		ConflictError(c, err_title, "添加品类失败:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, m)
+	SuccessResponse(c, m)
 }
 
 func (h *CategoryHandler) Get(c *gin.Context) {
@@ -87,7 +86,7 @@ func (h *CategoryHandler) Get(c *gin.Context) {
 		NotFoundError(c, err_title, "品类不存在:"+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, m)
+	SuccessResponse(c, m)
 }
 
 func (h *CategoryHandler) List(c *gin.Context) {
@@ -111,7 +110,7 @@ func (h *CategoryHandler) List(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": total, "items": list})
+	SuccessResponse(c, map[string]any{"total": total, "items": list})
 }
 
 func (h *CategoryHandler) Update(c *gin.Context) {
@@ -134,7 +133,7 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 		ConflictError(c, err_title, "更新品类失败:"+err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	SuccessResponse(c, nil)
 }
 
 func (h *CategoryHandler) SoftDelete(c *gin.Context) {
@@ -158,7 +157,7 @@ func (h *CategoryHandler) SoftDelete(c *gin.Context) {
 		InternalError(c, err_title, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	SuccessResponse(c, nil)
 }
 
 func (h *CategoryHandler) HardDelete(c *gin.Context) {
@@ -181,5 +180,5 @@ func (h *CategoryHandler) HardDelete(c *gin.Context) {
 		ConflictError(c, err_title, err.Error())
 		return
 	}
-	c.Status(http.StatusNoContent)
+	SuccessResponse(c, nil)
 }

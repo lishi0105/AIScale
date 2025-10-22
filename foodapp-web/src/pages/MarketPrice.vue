@@ -120,28 +120,19 @@
     </div>
 
     <!-- 导入Excel弹窗 -->
-    <el-dialog v-model="importDialogVisible" title="导入Excel" width="520px">
-      <div class="import-dialog-content">
-        <el-upload
-          ref="uploadRef"
-          :auto-upload="false"
-          :limit="1"
-          accept=".xlsx,.xls"
-          :on-change="onFileChange"
-          :file-list="fileList"
-          drag
-        >
-          <el-icon class="upload-icon"><UploadFilled /></el-icon>
-          <div class="upload-text">将文件拖到此处，或<em>点击上传</em></div>
-          <template #tip>
-            <div class="upload-tip">只能上传 xlsx/xls 文件</div>
-          </template>
-        </el-upload>
-      </div>
-      <template #footer>
-        <el-button @click="importDialogVisible=false" :disabled="uploading">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="onSubmitImport">确定导入</el-button>
-      </template>
+    <el-dialog
+      v-model="importDialogVisible"
+      title="询价单导入"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+    >
+      <InquiryImport
+        :org-id="organId"
+        @close="handleImportClose"
+        @import-success="handleImportSuccess"
+      />
     </el-dialog>
   </div>
 </template>
@@ -149,13 +140,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
-import type { UploadFile } from 'element-plus'
 import { InquiryAPI, InquiryItemAPI, type InquiryRow, type InquiryItemRow } from '@/api/inquiry'
 import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
 import { ROLE_ADMIN } from '@/utils/role'
 import { notifyError } from '@/utils/notify'
+import InquiryImport from './InquiryImport.vue'
 const indexMethod = (rowIndex: number) =>
   (page.value - 1) * pageSize.value + rowIndex + 1
 // 登录信息
@@ -306,70 +296,23 @@ const onDeleteInquiry = async (row: InquiryRow) => {
   }
 }
 
-// 导入Excel
+// 导入Excel - 打开弹窗
 const importDialogVisible = ref(false)
-const fileList = ref<UploadFile[]>([])
-const uploadRef = ref()
-const uploading = ref(false)
 
 const onImport = () => {
-  fileList.value = []
   importDialogVisible.value = true
 }
 
-const onFileChange = (file: UploadFile) => {
-  fileList.value = [file]
+// 关闭导入弹窗
+const handleImportClose = () => {
+  importDialogVisible.value = false
 }
 
-const onSubmitImport = async () => {
-  if (fileList.value.length === 0) {
-    ElMessage.warning('请选择要上传的文件')
-    return
-  }
-
-  const uploadFile = fileList.value[0]
-  if (!uploadFile || !uploadFile.raw) {
-    ElMessage.warning('文件不存在')
-    return
-  }
-  
-  const file = uploadFile.raw
-
-  if (!organId.value) {
-    ElMessage.warning('缺少组织信息')
-    return
-  }
-
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('org_id', organId.value)
-
-  uploading.value = true
-  try {
-    // 调用导入接口
-    const response = await fetch('/api/v1/inquiry_import/import_inquiry', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-      },
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || '导入失败')
-    }
-
-    const result = await response.json()
-    ElMessage.success(result.message || '导入成功')
-    importDialogVisible.value = false
-    fileList.value = []
-    await fetchInquiries()
-  } catch (e: any) {
-    ElMessage.error(e.message || '导入失败')
-  } finally {
-    uploading.value = false
-  }
+// 导入成功
+const handleImportSuccess = () => {
+  importDialogVisible.value = false
+  // 刷新询价单列表
+  fetchInquiries()
 }
 
 // 格式化日期

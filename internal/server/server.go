@@ -221,7 +221,7 @@ func New(gdb *gorm.DB, authCfg configs.AuthConfig, webDir string) *gin.Engine {
 	r.NoRoute(func(c *gin.Context) {
 		p := c.Request.URL.Path
 		if strings.HasPrefix(p, "/api/") || p == "/healthz" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			handler.NotFoundError(c, "not found")
 			return
 		}
 		c.File(filepath.Join(webDir, "index.html"))

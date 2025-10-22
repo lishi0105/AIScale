@@ -31,6 +31,17 @@ export interface ImportResponse {
   }
 }
 
+export interface ImportError {
+  error: string
+  details?: {
+    code: number   // 1001 / 'DUPLICATE_INQUIRY'
+    message?: string
+    value?: string
+    inquiry_id?: string
+    type?: string
+  }
+}
+
 // ========== 询价单 (BasePriceInquiry) ==========
 
 export interface InquiryListParams {

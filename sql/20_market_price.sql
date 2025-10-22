@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS base_price_inquiry (
   KEY idx_inquiry_date (inquiry_date),
   KEY idx_inquiry_period (org_id, inquiry_year, inquiry_month, inquiry_ten_day),
   KEY idx_inquiry_title (inquiry_title),
-  CONSTRAINT fk_inquiry_org FOREIGN KEY (org_id) REFERENCES base_org(id)
   UNIQUE KEY uk_inquiry_org_title_date (org_id, inquiry_title, inquiry_date)
+  CONSTRAINT fk_inquiry_org FOREIGN KEY (org_id) REFERENCES base_org(id)
 ) ENGINE=InnoDB
   COMMENT='询价单（表头）';
 
