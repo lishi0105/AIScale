@@ -1,8 +1,15 @@
 <template>
   <div class="page-market-price">
-    <!-- 顶部查询条件 -->
-    <div class="search-bar">
-      <div class="search-filters">
+    <!-- 顶部：标题(左) + 年月旬/搜索(中) + 功能按钮(右) 三组等间距 -->
+    <div class="header-bar">
+      <!-- 左：标题（name/sub 竖排） -->
+      <div class="title">
+        <span class="name">{{ selectedInquiry?.InquiryTitle }}</span>
+        <span class="sub">（最近更新时间：{{ formatDateTime(selectedInquiry?.UpdatedAt || '') }}）</span>
+      </div>
+
+      <!-- 中：筛选/搜索 -->
+      <div class="filters">
         <el-select v-model="searchYear" placeholder="选择年份" clearable style="width: 120px">
           <el-option v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
         </el-select>
@@ -10,113 +17,101 @@
           <el-option v-for="m in monthOptions" :key="m" :label="`${m}月`" :value="m" />
         </el-select>
         <el-select v-model="searchTenDay" placeholder="选择旬" clearable style="width: 120px">
-          <el-option label="上旬" :value="1" />
-          <el-option label="中旬" :value="2" />
-          <el-option label="下旬" :value="3" />
+          <el-option v-for="t in tenDayOptions" :key="t" :label="tenDayLabel(t)" :value="t" />
         </el-select>
         <el-input
           v-model="keyword"
           placeholder="请输入"
           clearable
-          style="width: 280px"
+          style="width: 240px"
           @clear="onSearch"
           @keyup.enter="onSearch"
         />
         <el-button @click="onSearch">查询</el-button>
       </div>
-      <div class="search-actions">
-        <el-button @click="onEdit" :disabled="!selectedInquiry || !isAdmin" plain>编辑</el-button>
-        <el-button @click="onCreate" :disabled="!isAdmin" plain>+ 新建</el-button>
-        <el-button @click="onImport" :disabled="!isAdmin" plain>+ 导入Excel</el-button>
-        <el-button @click="onExport" :disabled="!selectedInquiry" plain>导出</el-button>
-      </div>
-    </div>
 
-    <!-- 询价单列表 -->
-    <div class="inquiry-list-section">
-      <div class="section-title">询价单列表</div>
-      <el-table
-        :data="inquiries"
-        stripe
-        v-loading="inquiryLoading"
-        highlight-current-row
-        @current-change="onInquirySelect"
-        :header-cell-style="{ background: '#f3f4f6' }"
-      >
-        <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
-        <el-table-column prop="InquiryTitle" label="询价单标题" min-width="240" />
-        <el-table-column label="业务日期" width="140">
-          <template #default="{ row }">{{ formatDate(row.InquiryDate) }}</template>
-        </el-table-column>
-        <el-table-column label="年份" width="100">
-          <template #default="{ row }">{{ row.InquiryYear }}</template>
-        </el-table-column>
-        <el-table-column label="月份" width="100">
-          <template #default="{ row }">{{ row.InquiryMonth }}</template>
-        </el-table-column>
-        <el-table-column label="旬" width="100">
-          <template #default="{ row }">{{ tenDayLabel(row.InquiryTenDay) }}</template>
-        </el-table-column>
-        <el-table-column label="创建时间" width="180">
-          <template #default="{ row }">{{ formatDateTime(row.CreatedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="danger" @click="onDeleteInquiry(row)" :disabled="!isAdmin">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pager">
-        <el-pagination
-          background
-          layout="sizes, prev, pager, next, jumper, ->, total"
-          :page-sizes="pageSizes"
-          :current-page="page"
-          :page-size="pageSize"
-          :total="total"
-          @current-change="handlePageChange"
-          @size-change="handleSizeChange"
-        />
+      <!-- 右：动作按钮 -->
+      <div class="actions">
+        <el-button type="primary" @click="onCreateClick" plain>新增</el-button>
+        <el-button type="primary" @click="onEditClick" plain>编辑</el-button>
+        <el-button type="primary" @click="onImportClick" plain>导入</el-button>
+        <el-button type="primary" @click="onExportClick" plain>导出</el-button>
       </div>
     </div>
 
     <!-- 询价商品明细列表 -->
     <div class="inquiry-items-section" v-if="selectedInquiry">
-      <div class="section-title">
-        商品价格明细 - {{ selectedInquiry.InquiryTitle }}
+      <div class="detail-body">
+        <!-- 左侧：品类面板 -->
+        <aside class="category-panel">
+          <div class="panel-title-line">商品品类</div>
+          <div class="category-list">
+            <div class="category-row" :class="{ active: (selectedCategory || 'ALL')==='ALL' }" @click="onCategorySelect('ALL')">
+              <span class="name">全部</span>
+            </div>
+            <el-scrollbar>
+              <div
+                v-for="c in categoryList"
+                :key="c || 'blank'"
+                class="category-row"
+                :class="{ active: selectedCategory===c }"
+                @click="onCategorySelect(c || '')"
+              >
+                <span class="name">{{ c || '未分类' }}</span>
+              </div>
+            </el-scrollbar>
+          </div>
+        </aside>
+
+        <div class="list-pane">
+          <el-table
+            :data="inquiryItems"
+            stripe
+            v-loading="itemsLoading"
+            :header-cell-style="{ background: '#f3f4f6' }"
+            height="100%"
+          >
+            <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
+            <el-table-column label="商品图" width="90">
+              <template #default>
+                <div class="img-ph">无</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="GoodsNameSnap" label="品名" min-width="160" />
+            <el-table-column label="拼音" width="120">
+              <template #default>—</template>
+            </el-table-column>
+            <el-table-column prop="SpecNameSnap" label="规格" width="120">
+              <template #default="{ row }">{{ row.SpecNameSnap || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="UnitNameSnap" label="单位" width="100">
+              <template #default="{ row }">{{ row.UnitNameSnap || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="LastMonthAvgPrice" label="上期均价" width="110">
+              <template #default="{ row }">{{ formatPrice(row.LastMonthAvgPrice) }}</template>
+            </el-table-column>
+            <el-table-column prop="CurrentAvgPrice" label="本期均价" width="110">
+              <template #default="{ row }">{{ formatPrice(row.CurrentAvgPrice) }}</template>
+            </el-table-column>
+            <el-table-column label="供应商价" width="110">
+              <template #default>—</template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager">
+            <el-pagination
+              background
+              layout="sizes, prev, pager, next, jumper, ->, total"
+              :page-sizes="pageSizes"
+              :current-page="page"
+              :page-size="pageSize"
+              :total="total"
+              @current-change="handlePageChange"
+              @size-change="handleSizeChange"
+            />
+          </div>
+        </div>
       </div>
-      <el-table
-        :data="inquiryItems"
-        stripe
-        v-loading="itemsLoading"
-        :header-cell-style="{ background: '#f3f4f6' }"
-        max-height="500"
-      >
-        <el-table-column type="index" label="序号" width="70" />
-        <el-table-column label="商品图" width="90">
-          <template #default>
-            <div class="img-ph">无</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="GoodsNameSnap" label="品名" min-width="140" />
-        <el-table-column prop="CategoryNameSnap" label="品类" width="120" />
-        <el-table-column prop="SpecNameSnap" label="规格标准" width="120">
-          <template #default="{ row }">{{ row.SpecNameSnap || '—' }}</template>
-        </el-table-column>
-        <el-table-column prop="UnitNameSnap" label="单位" width="100">
-          <template #default="{ row }">{{ row.UnitNameSnap || '—' }}</template>
-        </el-table-column>
-        <el-table-column prop="GuidePrice" label="指导价" width="100">
-          <template #default="{ row }">{{ formatPrice(row.GuidePrice) }}</template>
-        </el-table-column>
-        <el-table-column prop="LastMonthAvgPrice" label="上期均价" width="100">
-          <template #default="{ row }">{{ formatPrice(row.LastMonthAvgPrice) }}</template>
-        </el-table-column>
-        <el-table-column prop="CurrentAvgPrice" label="本期均价" width="100">
-          <template #default="{ row }">{{ formatPrice(row.CurrentAvgPrice) }}</template>
-        </el-table-column>
-      </el-table>
     </div>
 
     <!-- 导入Excel弹窗 -->
@@ -139,13 +134,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { InquiryAPI, InquiryItemAPI, type InquiryRow, type InquiryItemRow } from '@/api/inquiry'
+import { CategoryAPI, type CategoryRow } from '@/api/category'
 import { getToken } from '@/api/http'
 import { parseJwt, type JwtPayload } from '@/utils/jwt'
-import { ROLE_ADMIN } from '@/utils/role'
 import { notifyError } from '@/utils/notify'
 import InquiryImport from './InquiryImport.vue'
+
 const indexMethod = (rowIndex: number) =>
   (page.value - 1) * pageSize.value + rowIndex + 1
 // 登录信息
@@ -154,7 +149,6 @@ const jwtPayload = computed<JwtPayload | null>(() => {
   return token ? parseJwt(token) : null
 })
 const organId = computed(() => jwtPayload.value?.org_id || '')
-const isAdmin = computed(() => jwtPayload.value?.role === ROLE_ADMIN)
 
 // 查询条件
 const searchYear = ref<number | undefined>()
@@ -162,34 +156,58 @@ const searchMonth = ref<number | undefined>()
 const searchTenDay = ref<number | undefined>()
 const keyword = ref('')
 
-// 年份和月份选项
-const currentYear = new Date().getFullYear()
-const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i)
-const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
+// 年/月/旬选项
+const yearOptions = ref<number[]>([])
+const monthOptions = ref<number[]>([])
+const tenDayOptions = ref<number[]>([])
 
-// 询价单列表
+// 从列表数据提取筛选项
+const buildFilterOptions = (items: InquiryRow[]) => {
+  const years = new Set<number>()
+  const months = new Set<number>()
+  const tens = new Set<number>()
+  items.forEach(i => {
+    if (i.InquiryYear) years.add(i.InquiryYear)
+    if (i.InquiryMonth) months.add(i.InquiryMonth)
+    if (i.InquiryTenDay) tens.add(i.InquiryTenDay)
+  })
+  yearOptions.value = Array.from(years).sort((a, b) => b - a)
+  monthOptions.value = Array.from(months).sort((a, b) => a - b)
+  tenDayOptions.value = Array.from(tens).sort((a, b) => a - b)
+}
+
+// 分页与数据
 const page = ref(1)
 const pageSize = ref(15)
 const pageSizes = [10, 15, 20, 50]
 const total = ref(0)
+
 const inquiries = ref<InquiryRow[]>([])
 const inquiryLoading = ref(false)
 const selectedInquiry = ref<InquiryRow | null>(null)
 
-// 询价商品明细列表
 const inquiryItems = ref<InquiryItemRow[]>([])
 const itemsLoading = ref(false)
+const selectedCategory = ref<string | null>(null)
 
-// 分页处理
+// 品类列表
+const categories = ref<CategoryRow[]>([])
+const categoryList = computed(() => {
+  return categories.value
+    .filter(c => c.Name)
+    .sort((a, b) => (a.Sort || 0) - (b.Sort || 0))
+    .map(c => c.Name)
+})
+
+// 分页（明细）
 const handlePageChange = (p: number) => {
   page.value = p
-  fetchInquiries()
+  fetchInquiryItems()
 }
-
 const handleSizeChange = (size: number) => {
   pageSize.value = size
   page.value = 1
-  fetchInquiries()
+  fetchInquiryItems()
 }
 
 // 获取询价单列表
@@ -214,8 +232,9 @@ const fetchInquiries = async () => {
     const { data } = await InquiryAPI.list(params)
     inquiries.value = data?.items || []
     total.value = Number(data?.total || 0)
+    buildFilterOptions(inquiries.value)
 
-    // 如果当前选中的询价单不在列表中，清除选择
+    // 选中项已不在结果中则清空
     if (selectedInquiry.value && !inquiries.value.some(i => i.ID === selectedInquiry.value?.ID)) {
       selectedInquiry.value = null
       inquiryItems.value = []
@@ -227,17 +246,47 @@ const fetchInquiries = async () => {
   }
 }
 
+// 获取品类
+const fetchCategories = async () => {
+  if (!organId.value) {
+    categories.value = []
+    return
+  }
+  try {
+    const params = { org_id: organId.value, page: 1, page_size: 100 }
+    const { data } = await CategoryAPI.list(params)
+    categories.value = data?.items || []
+  } catch (e) {
+    notifyError(e)
+  }
+}
+
 // 获取询价商品明细
-const fetchInquiryItems = async (inquiryId: string) => {
+const fetchInquiryItems = async () => {
+  if (!selectedInquiry.value) {
+    inquiryItems.value = []
+    total.value = 0
+    return
+  }
+
   itemsLoading.value = true
   try {
-    const params = {
-      inquiry_id: inquiryId,
-      page: 1,
-      page_size: 1000,
+    const params: any = {
+      inquiry_id: selectedInquiry.value.ID,
+      page: page.value,
+      page_size: pageSize.value,
     }
+    // 分类筛选
+    if (selectedCategory.value && selectedCategory.value !== 'ALL') {
+      const category = categories.value.find(c => c.Name === selectedCategory.value)
+      if (category) {
+        params.category_id = category.ID
+      }
+    }
+
     const { data } = await InquiryItemAPI.list(params)
     inquiryItems.value = data?.items || []
+    total.value = Number(data?.total || 0)
   } catch (e) {
     notifyError(e)
   } finally {
@@ -245,92 +294,40 @@ const fetchInquiryItems = async (inquiryId: string) => {
   }
 }
 
-// 选择询价单
-const onInquirySelect = (row: InquiryRow | null) => {
-  selectedInquiry.value = row
-  if (row) {
-    fetchInquiryItems(row.ID)
-  } else {
-    inquiryItems.value = []
-  }
-}
-
-// 查询
+// 交互
 const onSearch = () => {
   page.value = 1
   fetchInquiries()
 }
-
-// 编辑
-const onCreate = () => {
-  ElMessage.info('新建功能暂未开放')
+const onCategorySelect = (key: string) => {
+  selectedCategory.value = key
+  page.value = 1
+  fetchInquiryItems()
 }
 
-// 新建
-const onEdit = () => {
-  ElMessage.info('编辑功能暂未开放')
-}
-
-// 导出
-const onExport = () => {
-  ElMessage.info('导出功能暂未开放')
-}
-
-// 删除询价单
-const onDeleteInquiry = async (row: InquiryRow) => {
-  try {
-    await ElMessageBox.confirm(`确认删除询价单 "${row.InquiryTitle}" ?`, '提示', { type: 'warning' })
-  } catch {
-    return
-  }
-  try {
-    await InquiryAPI.remove(row.ID)
-    ElMessage.success('删除成功')
-    if (selectedInquiry.value?.ID === row.ID) {
-      selectedInquiry.value = null
-      inquiryItems.value = []
-    }
-    await fetchInquiries()
-  } catch (e) {
-    notifyError(e)
-  }
-}
-
-// 导入Excel - 打开弹窗
+// 顶部按钮
+const onCreateClick = () => { /* TODO: 新增弹窗或路由 */ }
+const onEditClick = () => { /* TODO: 编辑模式 */ }
 const importDialogVisible = ref(false)
+const onImportClick = () => { importDialogVisible.value = true }
+const onExportClick = () => { /* TODO: 导出入口 */ }
 
-const onImport = () => {
-  importDialogVisible.value = true
-}
-
-// 关闭导入弹窗
-const handleImportClose = () => {
-  importDialogVisible.value = false
-}
-
-// 导入成功
+// 导入弹窗事件
+const handleImportClose = () => { importDialogVisible.value = false }
 const handleImportSuccess = () => {
   importDialogVisible.value = false
-  // 刷新询价单列表
   fetchInquiries()
 }
 
-// 格式化日期
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '—'
-  return dateStr.split('T')[0]
-}
-
+// 工具
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '—'
   return dateStr.replace('T', ' ').substring(0, 19)
 }
-
 const tenDayLabel = (tenDay?: number) => {
   if (!tenDay) return '—'
   return ['上旬', '中旬', '下旬'][tenDay - 1] || '—'
 }
-
 const formatPrice = (price?: number | null) => {
   if (price === null || price === undefined) return '—'
   return price.toFixed(2)
@@ -338,7 +335,17 @@ const formatPrice = (price?: number | null) => {
 
 // 初始化
 onMounted(() => {
-  fetchInquiries()
+  fetchCategories()
+  fetchInquiries().then(async () => {
+    if (!selectedInquiry.value && inquiries.value.length > 0) {
+      const latest = inquiries.value[0]
+      if (latest) {
+        selectedInquiry.value = latest
+        page.value = 1
+        await fetchInquiryItems()
+      }
+    }
+  })
 })
 </script>
 
@@ -351,54 +358,75 @@ onMounted(() => {
   min-height: 520px;
 }
 
-.search-bar {
-  background: #fff;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+/* 头部三组等间距 */
+.header-bar{
+  display:flex;
+  align-items:flex-start;      /* 让标题两行顶对齐更自然 */
+  gap:12px;
+  background:#fff;
+  border:1px solid #ebeef5;
+  border-radius:8px;
+  padding:12px;
+  justify-content: space-between; /* 三组横向等间距分布 */
+  /* 若希望两侧边距也与组间距相等，用 space-evenly：
+     justify-content: space-evenly;
+  */
 }
 
-.search-filters {
+/* 左：标题竖排 */
+.header-bar .title {
+  font-weight: 600;
+  color: #333;
   display: flex;
-  gap: 12px;
+  flex-direction: column;   /* 竖排 */
+  align-items: flex-start;  /* 左对齐 */
+  gap: 2px;
+  margin-right: 12px;
+  flex: 0 0 auto;           /* 不被挤压 */
+}
+.header-bar .title .name { font-size: 16px; line-height: 1.2; }
+.header-bar .title .sub  { color: #909399; font-size: 12px; }
+
+/* 中：筛选区可伸缩，占中间空间；窄屏可换行 */
+.header-bar .filters {
+  display: flex;
   align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;          /* 中间这组可以拉伸 */
+  min-width: 360px;        /* 视情况调整最小宽度 */
+  flex-wrap: wrap;         /* 可换行（小屏更友好） */
+}
+
+/* 右：动作按钮固定宽度 */
+.header-bar .actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+/* 内容区域 */
+.detail-body { display:flex; gap:16px; height: calc(100vh - 220px); }
+.category-panel { width: 260px; background:#fff; border:1px solid #ebeef5; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:10px; }
+.panel-title-line { font-weight:600; padding:4px 8px; background:#f5f7fa; border-radius:6px; color:#333; }
+.category-list { flex:1; min-height:0; overflow:hidden; }
+.category-row { display:flex; align-items:center; justify-content:space-between; padding:10px 10px; cursor:pointer; border-radius:6px; margin:4px 0; }
+.category-row:hover { background:#f6f7fb; }
+.category-row.active { background:#409eff; color:#fff; }
+.category-row .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.list-pane {
   flex: 1;
-}
-
-.search-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.inquiry-list-section,
-.inquiry-items-section {
-  background: #fff;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  padding: 16px;
+  min-width: 0;
+  background:#fff;
+  border:1px solid #ebeef5;
+  border-radius:8px;
+  padding:12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
-.inquiry-list-section {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.section-title {
-  font-weight: 600;
-  font-size: 16px;
-  color: #333;
-  padding: 4px 0;
-}
-
+/* 表尾分页 */
 .pager {
   display: flex;
   justify-content: flex-end;
@@ -417,31 +445,14 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.import-dialog-content {
-  padding: 20px 0;
-}
-
-.upload-icon {
-  font-size: 67px;
-  color: #c0c4cc;
-  margin-bottom: 16px;
-}
-
-.upload-text {
-  color: #606266;
-  font-size: 14px;
-  text-align: center;
-}
-
-.upload-text em {
-  color: #409eff;
-  font-style: normal;
-}
-
-.upload-tip {
-  color: #909399;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 8px;
+/* 详情容器 */
+.inquiry-items-section {
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 </style>

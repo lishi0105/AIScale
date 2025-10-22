@@ -1,3 +1,4 @@
+// logger/logger.go
 package logger
 
 import (
@@ -17,13 +18,22 @@ import (
 	"hdzk.cn/foodapp/configs"
 )
 
-var global *zap.Logger
+var (
+	global      *zap.Logger
+	globalLevel zap.AtomicLevel // 统一控制文件 + 控制台
+)
 
+// isTerminal 判断是否是交互式终端（用于是否彩色）
 func isTerminal() bool {
 	fd := os.Stdout.Fd()
 	return isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 }
 
+// Init 初始化全局 Logger。
+// - 文件输出：JSON + lumberjack 分卷
+// - 控制台输出：Console（TTY 彩色）
+// - 日志级别：默认 info，cfg.Level（大小写不敏感）
+// - 目录清理：按 MaxAgeDays & MaxFiles
 func Init(cfg configs.LogConfig) *zap.Logger {
 	// -------- 默认值 --------
 	if cfg.Dir == "" {
@@ -46,14 +56,24 @@ func Init(cfg configs.LogConfig) *zap.Logger {
 	}
 	_ = os.MkdirAll(cfg.Dir, 0o755)
 
-	// 主文件名：每次启动独立 or 固定名
+	// -------- 主文件名（固定/带时间戳） --------
 	filename := filepath.Join(cfg.Dir, cfg.BaseName+".log")
 	if cfg.StartupTimestamp {
 		ts := time.Now().Format("20060102-150405")
 		filename = filepath.Join(cfg.Dir, fmt.Sprintf("%s-%s.log", cfg.BaseName, ts))
 	}
 
-	// -------- 编码器：微秒时间，TTY 才彩色 --------
+	// -------- 级别（默认 info；大小写不敏感；失败兜底） --------
+	globalLevel = zap.NewAtomicLevel()
+	lvlTxt := strings.ToLower(strings.TrimSpace(cfg.Level))
+	if lvlTxt == "" {
+		lvlTxt = "info"
+	}
+	if err := globalLevel.UnmarshalText([]byte(lvlTxt)); err != nil {
+		globalLevel.SetLevel(zap.InfoLevel)
+	}
+
+	// -------- 编码器（控制台 + JSON 文件） --------
 	var levelEnc zapcore.LevelEncoder
 	if isTerminal() {
 		levelEnc = zapcore.CapitalColorLevelEncoder
@@ -61,7 +81,7 @@ func Init(cfg configs.LogConfig) *zap.Logger {
 		levelEnc = zapcore.CapitalLevelEncoder
 	}
 
-	consoleCfg := zapcore.EncoderConfig{
+	consoleEncCfg := zapcore.EncoderConfig{
 		TimeKey:       "ts",
 		LevelKey:      "lv",
 		CallerKey:     "caller",
@@ -70,25 +90,20 @@ func Init(cfg configs.LogConfig) *zap.Logger {
 		EncodeLevel:   levelEnc,
 		EncodeCaller:  zapcore.ShortCallerEncoder,
 	}
-	consoleCfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
-	consoleEnc := zapcore.NewConsoleEncoder(consoleCfg)
+	consoleEncCfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
+	consoleEnc := zapcore.NewConsoleEncoder(consoleEncCfg)
 
-	jsonCfg := zap.NewProductionEncoderConfig()
-	jsonCfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
-	jsonEnc := zapcore.NewJSONEncoder(jsonCfg)
+	jsonEncCfg := zap.NewProductionEncoderConfig()
+	jsonEncCfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000000")
+	jsonEnc := zapcore.NewJSONEncoder(jsonEncCfg)
 
-	// -------- 级别 --------
-	level := zapcore.InfoLevel
-	_ = level.Set(cfg.Level)
-
-	// -------- 文件滚动（按大小） --------
-	// 说明：MaxBackups 仅约束“当前主文件”的分卷数量。
-	// 我们把它设成 MaxFiles 的一个保守值，目录层面再全局清理。
+	// -------- 文件输出（lumberjack 分卷） --------
+	// 注意：MaxBackups 仅管理“当前主文件”的分卷数量；目录层面的总量由 cleanup 统一管控
 	lj := &lumberjack.Logger{
 		Filename:   filename,
-		MaxSize:    cfg.MaxSizeMB,          // 单文件大小(MB)
-		MaxBackups: max(1, cfg.MaxFiles/4), // 分卷数(保守); 目录层面还有总量清理
-		MaxAge:     cfg.MaxAgeDays,         // 按天的清理(对单主文件有效)
+		MaxSize:    cfg.MaxSizeMB,          // 单文件大小上限(MB)
+		MaxBackups: max(1, cfg.MaxFiles/4), // 分卷数（保守取值；目录层面还有总量清理）
+		MaxAge:     cfg.MaxAgeDays,         // 单文件保留天数
 		Compress:   cfg.Compress,
 	}
 	fileWS := zapcore.AddSync(lj)
@@ -96,17 +111,22 @@ func Init(cfg configs.LogConfig) *zap.Logger {
 	// Windows/部分终端需要 colorable 才能显示 ANSI 颜色
 	stdoutWS := zapcore.AddSync(colorable.NewColorableStdout())
 
+	// -------- Core（统一使用 globalLevel） --------
 	core := zapcore.NewTee(
-		zapcore.NewCore(jsonEnc, fileWS, level),                   // 文件：JSON
-		zapcore.NewCore(consoleEnc, stdoutWS, zapcore.DebugLevel), // 控制台：彩色
+		zapcore.NewCore(jsonEnc, fileWS, globalLevel),      // 文件：JSON
+		zapcore.NewCore(consoleEnc, stdoutWS, globalLevel), // 控制台：Console
 	)
 
-	global = zap.New(core, zap.AddCaller())
+	global = zap.New(
+		core,
+		zap.AddCaller(),
+		zap.AddStacktrace(zap.ErrorLevel), // 仅 error+ 打栈（降低 info 噪音）
+	)
 
 	// -------- 目录级别的清理（数量 & 天数）--------
-	// 1) 启动即清理一次
-	cleanupLogDir(cfg, filename)
-	// 2) 定时清理（可选：每小时/每天）
+	cleanupLogDir(cfg, filename) // 启动即清理一次
+
+	// 可选：定时清理（每小时）
 	go func() {
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
@@ -118,6 +138,7 @@ func Init(cfg configs.LogConfig) *zap.Logger {
 	return global
 }
 
+// L 获取全局 Logger。未初始化时 panic。
 func L() *zap.Logger {
 	if global == nil {
 		panic("logger not initialized, call logger.Init() first")
@@ -125,11 +146,39 @@ func L() *zap.Logger {
 	return global
 }
 
+// SetLevel 动态设置日志级别（运行时）
+// 例如：logger.SetLevel(zap.DebugLevel)
+func SetLevel(l zapcore.Level) {
+	globalLevel.SetLevel(l)
+}
+
+// SetLevelByString 动态设置日志级别（字符串）
+// 例如：logger.SetLevelByString("debug")
+func SetLevelByString(level string) {
+	_ = globalLevel.UnmarshalText([]byte(strings.ToLower(strings.TrimSpace(level))))
+}
+
+// GetLevel 获取当前日志级别
+func GetLevel() zapcore.Level {
+	return globalLevel.Level()
+}
+
+// Sync 尽量刷新缓冲输出（在程序退出时调用）
+func Sync() {
+	if global != nil {
+		_ = global.Sync()
+	}
+}
+
 // 目录级别清理：
 // - 删除超过 MaxAgeDays 的文件
-// - 总数量超过 MaxFiles 时，删除最早的（不含当前正在写的文件）
+// - 总数量超过 MaxFiles 时，删除最早的（不含 currentFile）
 func cleanupLogDir(cfg configs.LogConfig, currentFile string) {
-	entries, _ := os.ReadDir(cfg.Dir)
+	entries, err := os.ReadDir(cfg.Dir)
+	if err != nil {
+		return
+	}
+
 	type fmeta struct {
 		path string
 		info os.FileInfo
@@ -146,14 +195,21 @@ func cleanupLogDir(cfg configs.LogConfig, currentFile string) {
 			continue
 		}
 		name := e.Name()
+
 		// 仅处理我们的日志
 		if !(strings.HasPrefix(name, prefix1) || strings.HasPrefix(name, prefix2)) {
 			continue
 		}
 		// 只认 .log 开头的文件及其分卷/压缩
-		if !strings.HasPrefix(filepath.Ext(name), ".log") {
+		ext := filepath.Ext(name) // 例如 ".log" / ".gz"
+		if ext == "" {
 			continue
 		}
+		// name 可能是 "app.log.1" / "app.log.2.gz" 等，这里只要含 ".log" 即可
+		if !strings.Contains(name, ".log") {
+			continue
+		}
+
 		fi, err := e.Info()
 		if err != nil {
 			continue

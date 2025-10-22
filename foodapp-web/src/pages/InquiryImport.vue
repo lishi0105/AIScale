@@ -110,7 +110,7 @@ import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { InquiryAPI, type ImportError, type ImportTask } from '@/api/inquiry'
+import { InquiryAPI, type ErrorResponse, type DuplicateErrorDetails, type ImportTask } from '@/api/inquiry'
 
 // Props
 interface Props {
@@ -239,30 +239,38 @@ const performImport = async (forceDelete: boolean) => {
     }
 
     const response = await InquiryAPI.importInquiry(formData)
-    const data = response.data
+    const data = response.data // 统一响应结构由拦截器解包
 
-    // 成功：按你后端成功响应结构处理
-    ElMessage.success(data.message || '导入任务已提交')
-    startPolling(data.task_id)
+    // 成功：按统一响应结构处理
+    if (data) {
+      ElMessage.success(data.message || '导入任务已提交')
+      startPolling(data.task_id)
+    } else {
+      ElMessage.error('响应数据为空')
+    }
   } catch (error: any) {
 
-    const ax = error as AxiosError<ImportError>
+    const ax = error as AxiosError<ErrorResponse>
     console.log('ax:', JSON.stringify(ax, null, 2))
     const payload = ax.response?.data
 
     console.log('payload:', JSON.stringify(payload, null, 2))
 
-    const code = payload?.details?.code
-    if (code === 1001 || code === 'DUPLICATE_INQUIRY') {
-      const d = payload!.details!
-      const duplicateType = d.type === 'title' ? '标题' : '日期'
-      const msg = d.message || '发现重复的询价单'
+    // 检查是否是重复错误
+    if (payload?.error && payload.details?.code === 1001) {
+      const details = payload.details as DuplicateErrorDetails
+      const msg = details.message || '发现重复的询价单'
+      
       await ElMessageBox.confirm(
-        `${msg}：已存在相同${duplicateType}的询价单（${d.value ?? ''}），是否强制导入？`,
-        '检测到重复记录',
+        `${msg}：（${details.value}），是否强制导入？`,
+        '检测到重复询价记录',
         { confirmButtonText: '强制导入', cancelButtonText: '取消', type: 'warning' }
       )
       return await performImport(true)
+    } else {
+      // 其他错误
+      const errorMsg = payload?.error || error.message || error.toString()
+      ElMessage.error('导入失败: ' + errorMsg)
     }
   } finally {
     // 放在 finally，避免某些分支未复位
@@ -295,15 +303,23 @@ const stopPolling = () => {
 const pollStatus = async (taskId: string) => {
   try {
     const response = await InquiryAPI.getImportStatus(taskId)
-    importTask.value = response.data
-    uploading.value = false
+    const data = response.data // 统一响应结构由拦截器解包
+    
+    if (data) {
+      importTask.value = data
+      uploading.value = false
 
-    // 如果完成或失败，停止轮询
-    if (importTask.value.status === 'success' || importTask.value.status === 'failed') {
-      stopPolling()
-      if (importTask.value.status === 'success') {
-        emit('importSuccess')
+      // 如果完成或失败，停止轮询
+      if (data.status === 'success' || data.status === 'failed') {
+        stopPolling()
+        if (data.status === 'success') {
+          emit('importSuccess')
+        }
       }
+    } else {
+      console.error('查询导入状态失败: 响应数据为空')
+      stopPolling()
+      uploading.value = false
     }
   } catch (error: any) {
     console.error('查询导入状态失败:', error)

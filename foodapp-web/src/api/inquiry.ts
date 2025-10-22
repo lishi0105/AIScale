@@ -18,9 +18,20 @@ export interface ImportTask {
   updated_at: string
 }
 
+// 统一响应结构
+export interface SuccessResponse<T = any> {
+  ok: boolean
+  data?: T
+}
+
+export interface ErrorResponse {
+  ok: boolean
+  error: string
+  details?: any
+}
+
 // 导入响应
 export interface ImportResponse {
-  ok: boolean
   message: string
   task_id: string
   stats: {
@@ -31,15 +42,13 @@ export interface ImportResponse {
   }
 }
 
-export interface ImportError {
-  error: string
-  details?: {
-    code: number   // 1001 / 'DUPLICATE_INQUIRY'
-    message?: string
-    value?: string
-    inquiry_id?: string
-    type?: string
-  }
+// 重复错误详情
+export interface DuplicateErrorDetails {
+  code: number   // 1001
+  message: string
+  value: string
+  inquiry_id: string
+  type: string   // 'title' | 'date'
 }
 
 // ========== 询价单 (BasePriceInquiry) ==========

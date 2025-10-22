@@ -97,11 +97,11 @@
         <el-table-column prop="Pinyin" label="拼音" width="160">
           <template #default="{ row }">{{ row.Pinyin || '—' }}</template>
         </el-table-column>
-        <el-table-column label="商品描述" min-width="280" show-overflow-tooltip>
-          <template #default="{ row }">{{ row.Description || '—' }}</template>
-        </el-table-column>
         <el-table-column prop="Code" label="商品编码" width="140" />
         <el-table-column prop="Sort" label="排序码" width="100" />
+        <el-table-column label="商品描述" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.Description || '—' }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link @click="openEdit(row)" :disabled="!isAdmin">编辑</el-button>

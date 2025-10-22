@@ -1197,6 +1197,7 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 
 	// 1.5 获取 force_delete 参数（可选）
 	forceDelete := c.PostForm("force_delete") == "true"
+	logger.L().Warn("force_delete", zap.Bool("force_delete", forceDelete))
 
 	// 2. 获取上传的文件
 	file, err := c.FormFile("file")
@@ -1286,21 +1287,23 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 	}
 
 	// 6. 检查重复（同步）
-	if err := h.s.CheckDuplicateInquiry(orgID, excelData.Title, excelData.InquiryDate); err != nil {
-		os.Remove(tmpFilePath) // 删除临时文件
-		if dupErr, ok := err.(*svc.ImportInquiryError); ok {
-			ConflictError(c, errTitle, dupErr.GetErrorDetails())
-		} else {
-			logger.L().Error(errTitle, zap.Error(err))
-			err := &svc.ImportInquiryError{
-				Code:      int(svc.ErrInternal),
-				Value:     "",
-				Message:   "检查重复失败",
-				InquiryID: "",
+	if !forceDelete {
+		if err := h.s.CheckDuplicateInquiry(orgID, excelData.Title, excelData.InquiryDate); err != nil {
+			os.Remove(tmpFilePath) // 删除临时文件
+			if dupErr, ok := err.(*svc.ImportInquiryError); ok {
+				ConflictError(c, errTitle, dupErr.GetErrorDetails())
+			} else {
+				logger.L().Error(errTitle, zap.Error(err))
+				err := &svc.ImportInquiryError{
+					Code:      int(svc.ErrInternal),
+					Value:     "",
+					Message:   "检查重复失败",
+					InquiryID: "",
+				}
+				InternalError(c, errTitle, err.GetErrorDetails())
 			}
-			InternalError(c, errTitle, err.GetErrorDetails())
+			return
 		}
-		return
 	}
 
 	// 7. 创建导入任务（内存）
@@ -1308,7 +1311,6 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 
 	// 8. 立即返回任务ID（异步执行导入）
 	SuccessResponse(c, map[string]any{
-		"ok":      true,
 		"message": "Excel文件校验通过，开始异步导入",
 		"task_id": task.ID,
 		"stats": gin.H{

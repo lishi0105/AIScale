@@ -57,20 +57,27 @@ let redirecting = false
 
 // 响应拦截
 http.interceptors.response.use(
-  // 成功分支：如果后端在 200 中也塞了 {error, details}，按业务失败处理
+  // 成功分支：解包统一成功结构 { ok, data }；若是业务错误 { ok:false, error, details } 则转为失败并保留原始响应
   (resp: AxiosResponse) => {
-    const msg = extractBackendMessage(resp.data)
-    if (msg) {
+    const payload = resp.data as any
+    if (payload && typeof payload === 'object' && 'ok' in payload) {
+      if (payload.ok === true) {
+        // 解包 data，使调用方直接使用 response.data
+        resp.data = payload.data
+        return resp
+      }
+      // ok=false 视为业务失败，构造 AxiosError 保留 response 供调用方读取 details
+      const msg = extractBackendMessage(payload) || '业务处理失败'
       const err = new AxiosError(msg, undefined, resp.config, resp.request, resp)
       return Promise.reject(err)
     }
     return resp
   },
-  // 失败分支：把 message 统一为可读文案，并处理 401 跳转
+  // 失败分支：保留原始 AxiosError，只增强 message，便于上层读取 error.response?.data 细节
   (error: AxiosError) => {
     const status = error?.response?.status
     const respData = error?.response?.data
-    let msg =
+    const msg =
       extractBackendMessage(respData) ||
       error.message ||
       (status ? `请求失败（${status}）` : '网络异常，请检查连接')
@@ -81,12 +88,13 @@ http.interceptors.response.use(
       if (!redirecting && !location.pathname.startsWith('/login')) {
         redirecting = true
         const here = encodeURIComponent(location.pathname + location.search + location.hash)
-        location.href = `/login?redirect=${here}` // ✨ 过期后登录回来仍在原页
+        location.href = `/login?redirect=${here}`
       }
     }
 
-    // 用 Error 包装，message 已是友好文案
-    return Promise.reject(new Error(msg))
+    // 不丢失原始响应，便于业务侧读取 details
+    error.message = msg
+    return Promise.reject(error)
   }
 )
 
