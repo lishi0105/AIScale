@@ -1,5 +1,36 @@
 import http from './http'
 
+// ========== 询价单导入相关 ==========
+
+// 导入任务状态
+export interface ImportTask {
+  ok: boolean
+  task_id: string
+  status: 'pending' | 'processing' | 'success' | 'failed'
+  progress: number
+  total_sheets: number
+  processed_sheets: number
+  file_name: string
+  inquiry_id?: string
+  error_message?: string
+  message: string
+  created_at: string
+  updated_at: string
+}
+
+// 导入响应
+export interface ImportResponse {
+  ok: boolean
+  message: string
+  task_id: string
+  stats: {
+    title: string
+    sheets: number
+    markets: number
+    suppliers: number
+  }
+}
+
 // ========== 询价单 (BasePriceInquiry) ==========
 
 export interface InquiryListParams {
@@ -43,6 +74,21 @@ export const InquiryAPI = {
   list: (params: InquiryListParams) => http.post('/inquiry/list_inquiries', null, { params }),
   update: (data: InquiryUpdatePayload) => http.post('/inquiry/update_inquiry', data),
   remove: (id: string) => http.post('/inquiry/soft_delete_inquiry', { id }),
+  
+  // 导入询价单Excel（异步）
+  importInquiry: (formData: FormData) => 
+    http.post<ImportResponse>('/inquiry_import/import_inquiry', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      timeout: 60000 // 60秒超时
+    }),
+
+  // 查询导入任务状态
+  getImportStatus: (taskId: string) => 
+    http.post<ImportTask>('/inquiry_import/import_status', {
+      task_id: taskId
+    })
 }
 
 // ========== 询价商品明细 (PriceInquiryItem) ==========

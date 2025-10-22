@@ -10,6 +10,7 @@ import Accounts from '@/pages/Accounts.vue'
 import Suppliers from '@/pages/Suppliers.vue'
 import Goods from '@/pages/Goods.vue'
 import MarketPrice from '@/pages/MarketPrice.vue'
+import InquiryImport from '@/pages/InquiryImport.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -37,6 +38,10 @@ const routes = [
   { path: '/base/market-price',
     component: MarketPrice,
     meta: { requiresAuth: true, section: '基础库管理', title: '商品价格管理' }
+  },
+  { path: '/inquiry/import',
+    component: InquiryImport,
+    meta: { requiresAuth: true, section: '询价管理', title: '询价单导入' }
   },
   { path: '/acl/orgs',
     component: Organs,
