@@ -24,6 +24,36 @@ CREATE TABLE IF NOT EXISTS base_market (
 ) ENGINE=InnoDB
   COMMENT='Base_市场（基础市场主数据：名称）';
 
+/* ---------- 市场报价 ---------- */
+CREATE TABLE IF NOT EXISTS price_market_inquiry (
+  id               CHAR(36)         NOT NULL COMMENT '主键UUID',
+  goods_id         CHAR(36)         NOT NULL COMMENT 'base_goods.id',
+  inquiry_id       CHAR(36)         NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
+  item_id          CHAR(36)         NOT NULL COMMENT 'price_inquiry_item.id',
+  market_id        CHAR(36)             NULL COMMENT 'base_market.id（可为空，仅保存名称）',
+  market_name_snap VARCHAR(64)      NOT NULL COMMENT '市场名称快照（如：富万家/育英巷/大润发）',
+  price            DECIMAL(12,2)        NULL COMMENT '该市场的单价,可能因为缺货而为NULL',
+  is_deleted       TINYINT(1)       NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=已删除',
+  created_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  -- 同一询价单的同一商品在同一市场只能有一条报价记录
+  UNIQUE KEY uq_quote_inquiry_item_market (inquiry_id, item_id, market_name_snap),
+  KEY idx_quote_inquiry (inquiry_id),
+  KEY idx_quote_item (item_id),
+  KEY idx_quote_market (market_id),
+  KEY idx_quote_goods (goods_id),
+  -- 联合检索优化索引
+  KEY idx_quote_inquiry_goods (inquiry_id, goods_id),
+  KEY idx_quote_goods_market (goods_id, market_name_snap),
+  KEY idx_quote_inquiry_market (inquiry_id, market_name_snap),
+  CONSTRAINT fk_quote_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quote_item    FOREIGN KEY (item_id)    REFERENCES price_inquiry_item(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quote_goods   FOREIGN KEY (goods_id)   REFERENCES base_goods(id),
+  CONSTRAINT fk_quote_market  FOREIGN KEY (market_id)  REFERENCES base_market(id)
+) ENGINE=InnoDB
+  COMMENT='市场报价（询价明细在多个市场的报价记录）';
+
 /* =====================================================================
    询价与报价数据表
    - 支持任意数量的市场与供应商参与同一轮询价
@@ -86,36 +116,15 @@ CREATE TABLE IF NOT EXISTS price_inquiry_item (
   KEY idx_item_inquiry (inquiry_id),
   KEY idx_item_category (category_id),
   KEY idx_item_goods (goods_id),
+  KEY idx_item_inquiry_goods (inquiry_id, goods_id),
 
-  CONSTRAINT fk_item_inquiry   FOREIGN KEY (inquiry_id)  REFERENCES base_price_inquiry(id) ON DELETE CASCADE,
-  CONSTRAINT fk_item_goods     FOREIGN KEY (goods_id)    REFERENCES base_goods(id),
-  CONSTRAINT fk_item_category  FOREIGN KEY (category_id) REFERENCES base_category(id),
-  CONSTRAINT fk_item_spec      FOREIGN KEY (spec_id)     REFERENCES base_spec(id),
-  CONSTRAINT fk_item_unit      FOREIGN KEY (unit_id)     REFERENCES base_unit(id)
+  CONSTRAINT fk_item_inquiry        FOREIGN KEY (inquiry_id)  REFERENCES base_price_inquiry(id) ON DELETE CASCADE,
+  CONSTRAINT fk_item_goods          FOREIGN KEY (goods_id)    REFERENCES base_goods(id),
+  CONSTRAINT fk_item_category       FOREIGN KEY (category_id) REFERENCES base_category(id),
+  CONSTRAINT fk_item_spec           FOREIGN KEY (spec_id)     REFERENCES base_spec(id),
+  CONSTRAINT fk_item_unit           FOREIGN KEY (unit_id)     REFERENCES base_unit(id)
 ) ENGINE=InnoDB
   COMMENT='询价商品明细（每行一个商品）';
-
-/* ---------- 市场报价 ---------- */
-CREATE TABLE IF NOT EXISTS price_market_inquiry (
-  id               CHAR(36)         NOT NULL COMMENT '主键UUID',
-  inquiry_id       CHAR(36)         NOT NULL COMMENT 'base_price_inquiry.id（冗余便于查询）',
-  item_id          CHAR(36)         NOT NULL COMMENT 'price_inquiry_item.id',
-  market_id        CHAR(36)         NULL COMMENT 'base_market.id（可为空，仅保存名称）',
-  market_name_snap VARCHAR(64)      NOT NULL COMMENT '市场名称快照（如：富万家/育英巷/大润发）',
-  price            DECIMAL(12,2)        NULL COMMENT '该市场的单价,可能因为缺货而为NULL',
-  is_deleted       TINYINT(1)       NOT NULL DEFAULT 0 COMMENT '软删标记：0=有效 1=已删除',
-  created_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_quote_item_market (item_id, market_name_snap),
-  KEY idx_quote_inquiry (inquiry_id),
-  KEY idx_quote_item (item_id),
-  KEY idx_quote_market (market_id),
-  CONSTRAINT fk_quote_inquiry FOREIGN KEY (inquiry_id) REFERENCES base_price_inquiry(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quote_item    FOREIGN KEY (item_id)    REFERENCES price_inquiry_item(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quote_market  FOREIGN KEY (market_id)  REFERENCES base_market(id)
-) ENGINE=InnoDB
-  COMMENT='市场报价（询价明细在多个市场的报价记录）';
 
 /* ---------- 供应商结算（N 个供应商可变） ---------- */
 CREATE TABLE IF NOT EXISTS price_supplier_settlement (
@@ -161,7 +170,52 @@ SELECT
   i.last_month_avg_price,
   -- 如果未回填 current_avg_price，则以市场报价实算
   COALESCE(i.current_avg_price,
-           (SELECT AVG(q.price) FROM price_market_inquiry q WHERE q.item_id = i.id)) AS current_avg_price
+           (SELECT AVG(q.price) FROM price_market_inquiry q WHERE q.item_id = i.id AND q.is_deleted = 0)) AS current_avg_price
 FROM base_price_inquiry h
 JOIN price_inquiry_item i ON i.inquiry_id = h.id
 WHERE h.is_deleted = 0 AND i.is_deleted = 0;
+
+/* ---------- 市场报价详细视图：包含市场报价信息 ---------- */
+CREATE OR REPLACE VIEW vw_market_inquiry_detail AS
+SELECT 
+    m.id as market_inquiry_id,
+    m.goods_id,
+    m.inquiry_id,
+    m.item_id,
+    m.market_id,
+    m.market_name_snap,
+    m.price,
+    m.inquiry_date,
+    m.created_at,
+    m.updated_at,
+    i.goods_name_snap,
+    i.category_name_snap,
+    i.spec_name_snap,
+    i.unit_name_snap,
+    i.guide_price,
+    i.last_month_avg_price,
+    i.current_avg_price,
+    h.inquiry_title,
+    h.org_id,
+    h.inquiry_year,
+    h.inquiry_month,
+    h.inquiry_ten_day
+FROM price_market_inquiry m
+JOIN price_inquiry_item i ON i.id = m.item_id
+JOIN base_price_inquiry h ON h.id = m.inquiry_id
+WHERE m.is_deleted = 0 AND i.is_deleted = 0 AND h.is_deleted = 0;
+
+/* ---------- 商品市场价格历史视图 ---------- */
+CREATE OR REPLACE VIEW vw_goods_market_price_history AS
+SELECT 
+    goods_id,
+    goods_name_snap,
+    market_name_snap,
+    inquiry_date,
+    price,
+    inquiry_id,
+    inquiry_title
+FROM price_market_inquiry m
+JOIN base_price_inquiry h ON h.id = m.inquiry_id
+WHERE m.is_deleted = 0 AND h.is_deleted = 0
+ORDER BY goods_id, market_name_snap, inquiry_date DESC;

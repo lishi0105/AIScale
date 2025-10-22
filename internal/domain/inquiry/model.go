@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	goodsDomain "hdzk.cn/foodapp/internal/domain/goods"
 	utils "hdzk.cn/foodapp/pkg/utils"
 )
 
@@ -163,14 +164,20 @@ func (m *PriceInquiryItem) BeforeCreate(tx *gorm.DB) error {
 // PriceMarketInquiry 市场报价
 type PriceMarketInquiry struct {
 	ID             string    `gorm:"primaryKey;type:char(36)"`
+	GoodsID        string    `gorm:"column:goods_id;type:char(36);not null;comment:base_goods.id"`
 	InquiryID      string    `gorm:"column:inquiry_id;type:char(36);not null;comment:base_price_inquiry.id"`
 	ItemID         string    `gorm:"column:item_id;type:char(36);not null;comment:price_inquiry_item.id"`
 	MarketID       *string   `gorm:"column:market_id;type:char(36);comment:base_market.id"`
 	MarketNameSnap string    `gorm:"column:market_name_snap;size:64;not null;comment:市场名称快照"`
+	InquiryDate    time.Time `gorm:"column:inquiry_date;type:date;not null;comment:询价日期"`
 	Price          *float64  `gorm:"type:decimal(12,2);comment:该市场的单价"`
 	IsDeleted      int       `gorm:"column:is_deleted;not null;default:0;comment:软删标记：0=有效 1=已删除"`
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `gorm:"autoUpdateTime"`
+
+	// 关联关系
+	Goods  *goodsDomain.Goods `gorm:"foreignKey:GoodsID;references:ID"`
+	Market *BaseMarket        `gorm:"foreignKey:MarketID;references:ID"`
 }
 
 func (PriceMarketInquiry) TableName() string { return "price_market_inquiry" }

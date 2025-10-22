@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -677,8 +678,10 @@ func (h *MarketInquiryHandler) Register(rg *gin.RouterGroup) {
 type marketInquiryCreateReq struct {
 	InquiryID      string   `json:"inquiry_id" binding:"required,uuid4"`
 	ItemID         string   `json:"item_id" binding:"required,uuid4"`
+	GoodsID        string   `json:"goods_id" binding:"required,uuid4"`
 	MarketID       *string  `json:"market_id" binding:"omitempty,uuid4"`
 	MarketNameSnap string   `json:"market_name_snap" binding:"required,min=1,max=64"`
+	InquiryDate    string   `json:"inquiry_date" binding:"required,datetime=2006-01-02"`
 	Price          *float64 `json:"price" binding:"omitempty,min=0"`
 }
 
@@ -707,11 +710,20 @@ func (h *MarketInquiryHandler) createMarketInquiry(c *gin.Context) {
 		return
 	}
 
+	// 解析日期
+	inquiryDate, err := time.Parse("2006-01-02", req.InquiryDate)
+	if err != nil {
+		BadRequest(c, errTitle, "询价日期格式错误，应为 YYYY-MM-DD")
+		return
+	}
+
 	params := svc.MarketInquiryCreateParams{
 		InquiryID:      req.InquiryID,
 		ItemID:         req.ItemID,
+		GoodsID:        req.GoodsID,
 		MarketID:       req.MarketID,
 		MarketNameSnap: req.MarketNameSnap,
+		InquiryDate:    inquiryDate,
 		Price:          req.Price,
 	}
 	marketInquiry, err := h.s.CreateMarketInquiry(c, params)

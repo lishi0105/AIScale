@@ -548,8 +548,10 @@ func NewMarketInquiryService(r repo.MarketInquiryRepository) *MarketInquiryServi
 type MarketInquiryCreateParams struct {
 	InquiryID      string
 	ItemID         string
+	GoodsID        string
 	MarketID       *string
 	MarketNameSnap string
+	InquiryDate    time.Time
 	Price          *float64
 }
 
@@ -569,6 +571,10 @@ func (s *MarketInquiryService) CreateMarketInquiry(ctx context.Context, params M
 	if err != nil {
 		return nil, err
 	}
+	goodsID, err := normalizeRequiredValue(params.GoodsID, "goods_id")
+	if err != nil {
+		return nil, err
+	}
 	marketNameSnap, err := normalizeRequiredValue(params.MarketNameSnap, "market_name_snap")
 	if err != nil {
 		return nil, err
@@ -578,10 +584,12 @@ func (s *MarketInquiryService) CreateMarketInquiry(ctx context.Context, params M
 
 	m := &domain.PriceMarketInquiry{
 		ID:             uuid.NewString(),
+		GoodsID:        goodsID,
 		InquiryID:      inquiryID,
 		ItemID:         itemID,
 		MarketID:       normalizedMarketID,
 		MarketNameSnap: marketNameSnap,
+		InquiryDate:    params.InquiryDate,
 		Price:          params.Price,
 	}
 	return m, s.r.CreateMarketInquiry(ctx, m)

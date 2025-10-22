@@ -702,10 +702,12 @@ func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *Ex
 					}
 					marketID := marketIDMap[marketName]
 					marketInquiry := &inquiryDomain.PriceMarketInquiry{
+						GoodsID:        goodsID,
 						InquiryID:      inquiry.ID,
 						ItemID:         inquiryItem.ID,
 						MarketID:       &marketID,
 						MarketNameSnap: marketName,
+						InquiryDate:    excelData.InquiryDate,
 						Price:          price,
 					}
 					if err := tx.Create(marketInquiry).Error; err != nil {
@@ -716,6 +718,10 @@ func (s *InquiryImportService) ImportExcelDataAsync(taskID string, excelData *Ex
 							zap.Float64("price", safeDeref(price)))
 						return fmt.Errorf("创建市场报价失败: %w", err)
 					}
+					logger.L().Debug("市场报价创建成功",
+						zap.String("item_id", inquiryItem.ID),
+						zap.String("market", marketName),
+						zap.Float64("price", safeDeref(price)))
 				}
 
 				// 创建供应商结算（结算价 = 本期均价 * 浮动比例）
@@ -889,10 +895,12 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 					}
 					marketID := marketIDMap[marketName]
 					marketInquiry := &inquiryDomain.PriceMarketInquiry{
+						GoodsID:        goodsID,
 						InquiryID:      inquiry.ID,
 						ItemID:         inquiryItem.ID,
 						MarketID:       &marketID,
 						MarketNameSnap: marketName,
+						InquiryDate:    excelData.InquiryDate,
 						Price:          price,
 					}
 					if err := tx.Create(marketInquiry).Error; err != nil {
@@ -903,6 +911,10 @@ func (s *InquiryImportService) ImportExcelData(ctx context.Context, excelData *E
 							zap.Float64("price", safeDeref(price)))
 						return fmt.Errorf("创建市场报价失败: %w", err)
 					}
+					logger.L().Debug("市场报价创建成功",
+						zap.String("item_id", inquiryItem.ID),
+						zap.String("market", marketName),
+						zap.Float64("price", safeDeref(price)))
 				}
 
 				// 创建供应商结算（结算价 = 本期均价 * 浮动比例）
@@ -1336,4 +1348,82 @@ func (s *InquiryImportService) getOrCreateSupplier(tx *gorm.DB, name string, flo
 
 	logger.L().Info("创建供应商成功", zap.String("supplier_id", supplier.ID), zap.String("name", name), zap.Float64("ratio", floatRatio))
 	return supplier.ID, nil
+}
+
+// GetInquiryMarketPrices 获取询价记录对应的所有市场和商品价格
+func (s *InquiryImportService) GetInquiryMarketPrices(inquiryID string) ([]inquiryDomain.PriceMarketInquiry, error) {
+	var marketInquiries []inquiryDomain.PriceMarketInquiry
+
+	err := s.db.Where("inquiry_id = ? AND is_deleted = 0", inquiryID).
+		Preload("Goods", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name, pinyin")
+		}).
+		Preload("Market", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name")
+		}).
+		Order("created_at ASC").
+		Find(&marketInquiries).Error
+
+	if err != nil {
+		logger.L().Error("查询询价市场报价失败", zap.String("inquiry_id", inquiryID), zap.Error(err))
+		return nil, fmt.Errorf("查询询价市场报价失败: %w", err)
+	}
+
+	logger.L().Info("查询询价市场报价成功",
+		zap.String("inquiry_id", inquiryID),
+		zap.Int("count", len(marketInquiries)))
+
+	return marketInquiries, nil
+}
+
+// GetInquiryMarketPricesByItem 根据询价明细ID获取对应的市场报价
+func (s *InquiryImportService) GetInquiryMarketPricesByItem(itemID string) ([]inquiryDomain.PriceMarketInquiry, error) {
+	var marketInquiries []inquiryDomain.PriceMarketInquiry
+
+	err := s.db.Where("item_id = ? AND is_deleted = 0", itemID).
+		Preload("Goods", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name, pinyin")
+		}).
+		Preload("Market", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name")
+		}).
+		Order("created_at ASC").
+		Find(&marketInquiries).Error
+
+	if err != nil {
+		logger.L().Error("查询明细市场报价失败", zap.String("item_id", itemID), zap.Error(err))
+		return nil, fmt.Errorf("查询明细市场报价失败: %w", err)
+	}
+
+	logger.L().Info("查询明细市场报价成功",
+		zap.String("item_id", itemID),
+		zap.Int("count", len(marketInquiries)))
+
+	return marketInquiries, nil
+}
+
+// GetInquiryMarketPricesByGoods 根据商品ID获取所有询价记录的市场报价
+func (s *InquiryImportService) GetInquiryMarketPricesByGoods(goodsID string) ([]inquiryDomain.PriceMarketInquiry, error) {
+	var marketInquiries []inquiryDomain.PriceMarketInquiry
+
+	err := s.db.Where("goods_id = ? AND is_deleted = 0", goodsID).
+		Preload("Goods", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name, pinyin")
+		}).
+		Preload("Market", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id, name")
+		}).
+		Order("inquiry_date DESC, created_at ASC").
+		Find(&marketInquiries).Error
+
+	if err != nil {
+		logger.L().Error("查询商品市场报价失败", zap.String("goods_id", goodsID), zap.Error(err))
+		return nil, fmt.Errorf("查询商品市场报价失败: %w", err)
+	}
+
+	logger.L().Info("查询商品市场报价成功",
+		zap.String("goods_id", goodsID),
+		zap.Int("count", len(marketInquiries)))
+
+	return marketInquiries, nil
 }
