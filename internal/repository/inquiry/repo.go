@@ -71,6 +71,7 @@ type InquiryItemRepository interface {
 	CreateInquiryItem(ctx context.Context, m *domain.PriceInquiryItem) error
 	GetInquiryItem(ctx context.Context, id string) (*domain.PriceInquiryItem, error)
 	ListInquiryItems(ctx context.Context, inquiryID string, categoryID *string, page, pageSize int) ([]domain.PriceInquiryItem, int64, error)
+	GetInquiryMarkets(ctx context.Context, inquiryID string) ([]domain.BaseMarket, error)
 	UpdateInquiryItem(ctx context.Context, params InquiryItemUpdateParams) error
 	SoftDeleteInquiryItem(ctx context.Context, id string) error
 	HardDeleteInquiryItem(ctx context.Context, id string) error

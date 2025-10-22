@@ -436,6 +436,7 @@ func (h *InquiryItemHandler) Register(rg *gin.RouterGroup) {
 	g.POST("/create_inquiry_item", h.createInquiryItem)
 	g.POST("/get_inquiry_item", h.getInquiryItem)
 	g.POST("/list_inquiry_items", h.listInquiryItems)
+	g.POST("/get_inquiry_markets", h.getInquiryMarkets)
 	g.POST("/update_inquiry_item", h.updateInquiryItem)
 	g.POST("/soft_delete_inquiry_item", h.softDeleteInquiryItem)
 	g.POST("/hard_delete_inquiry_item", h.hardDeleteInquiryItem)
@@ -565,6 +566,28 @@ func (h *InquiryItemHandler) listInquiryItems(c *gin.Context) {
 		return
 	}
 	SuccessResponse(c, map[string]any{"total": total, "items": list})
+}
+
+func (h *InquiryItemHandler) getInquiryMarkets(c *gin.Context) {
+	const errTitle = "获取询价单涉及市场失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+
+	inquiryID := strings.TrimSpace(c.Query("inquiry_id"))
+	if inquiryID == "" {
+		BadRequest(c, errTitle, "参数错误：缺少 inquiry_id")
+		return
+	}
+
+	markets, err := h.s.GetInquiryMarkets(c, inquiryID)
+	if err != nil {
+		InternalError(c, errTitle, err.Error())
+		return
+	}
+	SuccessResponse(c, map[string]any{"markets": markets})
 }
 
 func (h *InquiryItemHandler) updateInquiryItem(c *gin.Context) {

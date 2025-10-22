@@ -170,12 +170,46 @@ export interface InquiryItemRow {
   IsDeleted: number
   CreatedAt: string
   UpdatedAt: string
+  Pinyin?: string | null
+  Goods?: GoodsRow | null
+  MarketInquiries?: MarketInquiryRow[] | null
+}
+
+export interface GoodsRow {
+  ID: string
+  Name: string
+  Code?: string | null
+  Sort: number
+  Pinyin?: string | null
+  SpecID: string
+  UnitID: string
+  ImageURL?: string | null
+  Description?: string | null
+  CategoryID: string
+  IsDeleted: number
+  CreatedAt: string
+  UpdatedAt: string
+}
+
+export interface MarketInquiryRow {
+  ID: string
+  GoodsID: string
+  InquiryID: string
+  ItemID: string
+  MarketID?: string | null
+  MarketNameSnap: string
+  InquiryDate: string
+  Price?: number | null
+  IsDeleted: number
+  CreatedAt: string
+  UpdatedAt: string
 }
 
 export const InquiryItemAPI = {
   create: (data: InquiryItemCreatePayload) => http.post('/inquiry_item/create_inquiry_item', data),
   get: (id: string) => http.post('/inquiry_item/get_inquiry_item', { id }),
-  list: (params: InquiryItemListParams) => http.post('/inquiry_item/list_inquiry_items', null, { params }),
+  listItems: (params: InquiryItemListParams) => http.post('/inquiry_item/list_inquiry_items', null, { params }),
+  getMarkets: (inquiryId: string) => http.post('/inquiry_item/get_inquiry_markets', null, { params: { inquiry_id: inquiryId } }),
   update: (data: InquiryItemUpdatePayload) => http.post('/inquiry_item/update_inquiry_item', data),
   remove: (id: string) => http.post('/inquiry_item/soft_delete_inquiry_item', { id }),
 }

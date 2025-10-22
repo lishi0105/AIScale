@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	goodsDomain "hdzk.cn/foodapp/internal/domain/goods"
 	domain "hdzk.cn/foodapp/internal/domain/inquiry"
 )
 
@@ -168,64 +169,64 @@ func (r *inquiryRepo) UpdateInquiry(ctx context.Context, params InquiryUpdatePar
 }
 
 func (r *inquiryRepo) SoftDeleteInquiry(ctx context.Context, id string) error {
-    return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-        // 软删表头
-        if err := tx.Model(&domain.BasePriceInquiry{}).
-            Where("id = ?", id).
-            Update("is_deleted", 1).Error; err != nil {
-            return err
-        }
-        // 软删明细
-        if err := tx.Model(&domain.PriceInquiryItem{}).
-            Where("inquiry_id = ?", id).
-            Update("is_deleted", 1).Error; err != nil {
-            return err
-        }
-        // 软删市场报价
-        if err := tx.Model(&domain.PriceMarketInquiry{}).
-            Where("inquiry_id = ?", id).
-            Update("is_deleted", 1).Error; err != nil {
-            return err
-        }
-        // 软删供应商结算
-        if err := tx.Model(&domain.PriceSupplierSettlement{}).
-            Where("inquiry_id = ?", id).
-            Update("is_deleted", 1).Error; err != nil {
-            return err
-        }
-        return nil
-    })
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 软删表头
+		if err := tx.Model(&domain.BasePriceInquiry{}).
+			Where("id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		// 软删明细
+		if err := tx.Model(&domain.PriceInquiryItem{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		// 软删市场报价
+		if err := tx.Model(&domain.PriceMarketInquiry{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		// 软删供应商结算
+		if err := tx.Model(&domain.PriceSupplierSettlement{}).
+			Where("inquiry_id = ?", id).
+			Update("is_deleted", 1).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r *inquiryRepo) HardDeleteInquiry(ctx context.Context, id string) error {
-    if id == "" {
-        return errors.New("id 不能为空")
-    }
-    return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-        // 先删依赖（按 inquiry_id）
-        if err := tx.Unscoped().
-            Where("inquiry_id = ?", id).
-            Delete(&domain.PriceMarketInquiry{}).Error; err != nil {
-            return err
-        }
-        if err := tx.Unscoped().
-            Where("inquiry_id = ?", id).
-            Delete(&domain.PriceSupplierSettlement{}).Error; err != nil {
-            return err
-        }
-        if err := tx.Unscoped().
-            Where("inquiry_id = ?", id).
-            Delete(&domain.PriceInquiryItem{}).Error; err != nil {
-            return err
-        }
-        // 最后删表头
-        if err := tx.Unscoped().
-            Where("id = ?", id).
-            Delete(&domain.BasePriceInquiry{}).Error; err != nil {
-            return err
-        }
-        return nil
-    })
+	if id == "" {
+		return errors.New("id 不能为空")
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 先删依赖（按 inquiry_id）
+		if err := tx.Unscoped().
+			Where("inquiry_id = ?", id).
+			Delete(&domain.PriceMarketInquiry{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().
+			Where("inquiry_id = ?", id).
+			Delete(&domain.PriceSupplierSettlement{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().
+			Where("inquiry_id = ?", id).
+			Delete(&domain.PriceInquiryItem{}).Error; err != nil {
+			return err
+		}
+		// 最后删表头
+		if err := tx.Unscoped().
+			Where("id = ?", id).
+			Delete(&domain.BasePriceInquiry{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // ========== PriceInquiryItem Repository ==========
@@ -251,11 +252,14 @@ func (r *inquiryItemRepo) ListInquiryItems(ctx context.Context, inquiryID string
 	var list []domain.PriceInquiryItem
 	var total int64
 
+	// 先获取基础数据
 	q := r.db.WithContext(ctx).Model(&domain.PriceInquiryItem{}).
-		Where("is_deleted = 0 AND inquiry_id = ?", inquiryID)
+		Select("price_inquiry_item.*, base_goods.pinyin").
+		Joins("LEFT JOIN base_goods ON price_inquiry_item.goods_id = base_goods.id").
+		Where("price_inquiry_item.is_deleted = 0 AND price_inquiry_item.inquiry_id = ?", inquiryID)
 
 	if categoryID != nil && *categoryID != "" {
-		q = q.Where("category_id = ?", *categoryID)
+		q = q.Where("price_inquiry_item.category_id = ?", *categoryID)
 	}
 
 	q.Count(&total)
@@ -267,11 +271,49 @@ func (r *inquiryItemRepo) ListInquiryItems(ctx context.Context, inquiryID string
 	}
 
 	err := q.
-		Order("sort ASC").
-		Order("goods_name_snap ASC").
+		Order("price_inquiry_item.sort ASC").
+		Order("price_inquiry_item.goods_name_snap ASC").
 		Limit(pageSize).Offset((page - 1) * pageSize).
 		Find(&list).Error
+
+	if err != nil {
+		return list, total, err
+	}
+
+	// 为每个询价明细加载完整的商品信息和市场报价
+	for i := range list {
+		// 加载完整商品信息
+		var goods goodsDomain.Goods
+		if err := r.db.WithContext(ctx).Where("id = ? AND is_deleted = 0", list[i].GoodsID).First(&goods).Error; err == nil {
+			list[i].Goods = &goods
+		}
+
+		// 加载市场报价信息
+		var marketInquiries []domain.PriceMarketInquiry
+		if err := r.db.WithContext(ctx).
+			Where("item_id = ? AND is_deleted = 0", list[i].ID).
+			Order("created_at ASC").
+			Find(&marketInquiries).Error; err == nil {
+			list[i].MarketInquiries = marketInquiries
+		}
+	}
+
 	return list, total, err
+}
+
+func (r *inquiryItemRepo) GetInquiryMarkets(ctx context.Context, inquiryID string) ([]domain.BaseMarket, error) {
+	var markets []domain.BaseMarket
+
+	// 通过市场报价表关联查询涉及的市场
+	err := r.db.WithContext(ctx).
+		Table("base_market").
+		Select("DISTINCT base_market.*").
+		Joins("INNER JOIN price_market_inquiry ON base_market.id = price_market_inquiry.market_id").
+		Where("price_market_inquiry.inquiry_id = ? AND price_market_inquiry.is_deleted = 0 AND base_market.is_deleted = 0", inquiryID).
+		Order("base_market.sort ASC, base_market.name ASC").
+		Find(&markets).Error
+
+	return markets, err
 }
 
 func (r *inquiryItemRepo) UpdateInquiryItem(ctx context.Context, params InquiryItemUpdateParams) error {

@@ -479,6 +479,15 @@ func (s *InquiryItemService) ListInquiryItems(ctx context.Context, inquiryID str
 	return s.r.ListInquiryItems(ctx, trimmedInquiry, categoryPtr, page, pageSize)
 }
 
+// GetInquiryMarkets 根据询价单ID获取所有涉及的市场
+func (s *InquiryItemService) GetInquiryMarkets(ctx context.Context, inquiryID string) ([]domain.BaseMarket, error) {
+	trimmedInquiry := strings.TrimSpace(inquiryID)
+	if trimmedInquiry == "" {
+		return nil, fmt.Errorf("inquiry_id 不能为空")
+	}
+	return s.r.GetInquiryMarkets(ctx, trimmedInquiry)
+}
+
 func (s *InquiryItemService) UpdateInquiryItem(ctx context.Context, params InquiryItemUpdateParams) error {
 	normalizedGoodsID, err := normalizeOptionalRequired(params.GoodsID, "goods_id")
 	if err != nil {

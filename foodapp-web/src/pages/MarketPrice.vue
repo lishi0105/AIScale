@@ -73,19 +73,37 @@
           >
             <el-table-column type="index" label="序号" width="70" :index="indexMethod" />
             <el-table-column label="商品图" width="90">
-              <template #default>
-                <div class="img-ph">无</div>
+              <template #default="{ row }">
+                <div class="img-ph" v-if="row.Goods?.ImageURL">
+                  <img :src="row.Goods.ImageURL" :alt="row.GoodsNameSnap" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
+                </div>
+                <div class="img-ph" v-else>无</div>
               </template>
             </el-table-column>
             <el-table-column prop="GoodsNameSnap" label="品名" min-width="160" />
             <el-table-column label="拼音" width="120">
-              <template #default>—</template>
+              <template #default="{ row }">{{ row.Pinyin || '—' }}</template>
             </el-table-column>
             <el-table-column prop="SpecNameSnap" label="规格" width="120">
               <template #default="{ row }">{{ row.SpecNameSnap || '—' }}</template>
             </el-table-column>
             <el-table-column prop="UnitNameSnap" label="单位" width="100">
               <template #default="{ row }">{{ row.UnitNameSnap || '—' }}</template>
+            </el-table-column>
+            <el-table-column label="市场报价" min-width="200">
+              <template #default="{ row }">
+                <div v-if="markets.length > 0" class="market-prices">
+                  <div 
+                    v-for="market in markets" 
+                    :key="market.ID" 
+                    class="market-price-item"
+                  >
+                    <span class="market-name">{{ market.Name }}</span>
+                    <span class="market-price">{{ getMarketPrice(row, market.ID) }}</span>
+                  </div>
+                </div>
+                <span v-else>—</span>
+              </template>
             </el-table-column>
             <el-table-column prop="LastMonthAvgPrice" label="上期均价" width="110">
               <template #default="{ row }">{{ formatPrice(row.LastMonthAvgPrice) }}</template>
@@ -199,6 +217,9 @@ const categoryList = computed(() => {
     .map(c => c.Name)
 })
 
+// 市场列表
+const markets = ref<any[]>([])
+
 // 分页（明细）
 const handlePageChange = (p: number) => {
   page.value = p
@@ -266,27 +287,42 @@ const fetchInquiryItems = async () => {
   if (!selectedInquiry.value) {
     inquiryItems.value = []
     total.value = 0
+    markets.value = []
     return
   }
 
   itemsLoading.value = true
   try {
-    const params: any = {
-      inquiry_id: selectedInquiry.value.ID,
-      page: page.value,
-      page_size: pageSize.value,
-    }
-    // 分类筛选
-    if (selectedCategory.value && selectedCategory.value !== 'ALL') {
-      const category = categories.value.find(c => c.Name === selectedCategory.value)
-      if (category) {
-        params.category_id = category.ID
-      }
-    }
+    // 并行获取商品明细和市场列表
+    const [itemsResult, marketsResult] = await Promise.all([
+      (async () => {
+        const params: any = {
+          inquiry_id: selectedInquiry.value!.ID,
+          page: page.value,
+          page_size: pageSize.value,
+        }
+        // 分类筛选
+        if (selectedCategory.value && selectedCategory.value !== 'ALL') {
+          const category = categories.value.find(c => c.Name === selectedCategory.value)
+          if (category) {
+            params.category_id = category.ID
+          }
+        }
+        return InquiryItemAPI.listItems(params)
+      })(),
+      InquiryItemAPI.getMarkets(selectedInquiry.value!.ID)
+    ])
 
-    const { data } = await InquiryItemAPI.list(params)
-    inquiryItems.value = data?.items || []
-    total.value = Number(data?.total || 0)
+    inquiryItems.value = itemsResult.data?.items || []
+    total.value = Number(itemsResult.data?.total || 0)
+    markets.value = marketsResult.data?.markets || []
+    
+    // 调试信息
+    console.log('数据加载完成:', {
+      markets: markets.value,
+      inquiryItems: inquiryItems.value,
+      firstItemMarkets: inquiryItems.value[0]?.MarketInquiries
+    })
   } catch (e) {
     notifyError(e)
   } finally {
@@ -331,6 +367,30 @@ const tenDayLabel = (tenDay?: number) => {
 const formatPrice = (price?: number | null) => {
   if (price === null || price === undefined) return '—'
   return price.toFixed(2)
+}
+
+// 根据市场ID获取商品在该市场的价格
+const getMarketPrice = (row: InquiryItemRow, marketId: string) => {
+  if (!row.MarketInquiries || row.MarketInquiries.length === 0) {
+    return '—'
+  }
+  
+  // 在 market_inquiries 中查找与当前市场ID匹配的记录
+  const marketInquiry = row.MarketInquiries.find(mi => mi.MarketID === marketId)
+  
+  // 调试信息
+  console.log('查找价格:', {
+    goodsName: row.GoodsNameSnap,
+    marketId,
+    marketInquiries: row.MarketInquiries,
+    found: marketInquiry
+  })
+  
+  if (!marketInquiry || marketInquiry.Price === null || marketInquiry.Price === undefined) {
+    return '—'
+  }
+  
+  return formatPrice(marketInquiry.Price)
 }
 
 // 初始化
@@ -431,6 +491,33 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   padding-top: 12px;
+}
+
+/* 市场报价样式 */
+.market-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.market-price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.market-name {
+  color: #666;
+  font-weight: 500;
+}
+
+.market-price {
+  color: #e74c3c;
+  font-weight: 600;
 }
 
 .img-ph {

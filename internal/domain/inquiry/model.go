@@ -141,6 +141,13 @@ type PriceInquiryItem struct {
 	IsDeleted         int       `gorm:"column:is_deleted;not null;default:0;comment:软删：0=有效 1=删除"`
 	CreatedAt         time.Time `gorm:"autoCreateTime"`
 	UpdatedAt         time.Time `gorm:"autoUpdateTime"`
+
+	// 临时字段，用于联合查询时存储商品拼音
+	Pinyin *string `gorm:"column:pinyin;size:128;comment:商品拼音（联合查询用）"`
+
+	// 关联对象，用于前端显示
+	Goods           *goodsDomain.Goods   `gorm:"-" json:"goods,omitempty"`
+	MarketInquiries []PriceMarketInquiry `gorm:"-" json:"market_inquiries,omitempty"`
 }
 
 func (PriceInquiryItem) TableName() string { return "price_inquiry_item" }
@@ -174,10 +181,6 @@ type PriceMarketInquiry struct {
 	IsDeleted      int       `gorm:"column:is_deleted;not null;default:0;comment:软删标记：0=有效 1=已删除"`
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `gorm:"autoUpdateTime"`
-
-	// 关联关系
-	Goods  *goodsDomain.Goods `gorm:"foreignKey:GoodsID;references:ID"`
-	Market *BaseMarket        `gorm:"foreignKey:MarketID;references:ID"`
 }
 
 func (PriceMarketInquiry) TableName() string { return "price_market_inquiry" }
