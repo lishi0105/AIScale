@@ -1082,6 +1082,7 @@ func (h *InquiryImportHandler) Register(rg *gin.RouterGroup) {
 
 	g.POST("/import_inquiry", h.importInquiry)
 	g.POST("/validate", h.validateExcel)
+	g.POST("/import_status", h.getImportStatus)
 }
 
 func (h *InquiryImportHandler) uploadChunk(c *gin.Context) {
@@ -1183,7 +1184,7 @@ func (h *InquiryImportHandler) validateExcel(c *gin.Context) {
 	})
 }
 
-// importExcel 导入Excel数据
+// importExcel 导入Excel数据（异步）
 func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 	const errTitle = "导入Excel失败"
 	act := middleware.GetActor(c)
@@ -1203,6 +1204,9 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 		return
 	}
 
+	// 1.5 获取 force_delete 参数（可选）
+	forceDelete := c.PostForm("force_delete") == "true"
+
 	// 2. 获取上传的文件
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -1217,20 +1221,21 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 		return
 	}
 
-	// 4. 保存到临时文件（或直接读内存）
+	// 4. 保存到临时文件
 	tmpFile, err := os.CreateTemp(h.uploadDir, "import_*.xlsx")
 	if err != nil {
 		logger.L().Error(errTitle, zap.Error(err))
 		InternalError(c, errTitle, "无法创建临时文件")
 		return
 	}
-	defer os.Remove(tmpFile.Name()) // 确保函数结束时删除
+	tmpFilePath := tmpFile.Name()
 	defer tmpFile.Close()
 
 	// 将上传的文件写入临时文件
 	srcFile, err := file.Open()
 	if err != nil {
 		logger.L().Error(errTitle, zap.Error(err))
+		os.Remove(tmpFilePath)
 		InternalError(c, errTitle, "无法打开上传文件")
 		return
 	}
@@ -1238,13 +1243,15 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 
 	if _, err := io.Copy(tmpFile, srcFile); err != nil {
 		logger.L().Error(errTitle, zap.Error(err))
+		os.Remove(tmpFilePath)
 		InternalError(c, errTitle, "保存上传文件失败")
 		return
 	}
 
-	// 5. 校验 Excel 结构
-	excelData, err := h.s.ValidateExcelStructure(tmpFile.Name())
+	// 5. 校验 Excel 结构（同步）
+	excelData, err := h.s.ValidateExcelStructure(tmpFilePath)
 	if err != nil {
+		os.Remove(tmpFilePath) // 校验失败，删除临时文件
 		if ve, ok := err.(*svc.ValidationError); ok {
 			logger.L().Error(errTitle, zap.String("校验Excel结构失败: ", ve.Error()))
 			BadRequest(c, errTitle, ve.Error())
@@ -1255,17 +1262,14 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 		return
 	}
 
-	// 6. （可选）执行导入逻辑
-	if err := h.s.ImportExcelData(c, excelData, orgID); err != nil {
-		logger.L().Error(errTitle, zap.Error(err))
-		InternalError(c, errTitle, "导入数据失败: "+err.Error())
-		return
-	}
+	// 6. 创建导入任务（内存）
+	task := h.s.CreateImportTask(orgID, file.Filename, len(excelData.Sheets))
 
-	// 7. 返回成功
-	c.JSON(http.StatusOK, gin.H{
+	// 7. 立即返回任务ID（异步执行导入）
+	c.JSON(http.StatusAccepted, gin.H{
 		"ok":      true,
-		"message": "Excel数据导入成功",
+		"message": "Excel文件校验通过，开始异步导入",
+		"task_id": task.ID,
 		"stats": gin.H{
 			"title":     excelData.Title,
 			"sheets":    len(excelData.Sheets),
@@ -1273,4 +1277,83 @@ func (h *InquiryImportHandler) importInquiry(c *gin.Context) {
 			"suppliers": len(excelData.Suppliers),
 		},
 	})
+
+	// 8. 启动异步导入goroutine
+	go func() {
+		defer os.Remove(tmpFilePath) // 导入完成后删除临时文件
+		
+		logger.L().Info("开始异步导入任务",
+			zap.String("task_id", task.ID),
+			zap.String("org_id", orgID),
+			zap.String("file", file.Filename),
+			zap.Bool("force_delete", forceDelete))
+		
+		if err := h.s.ImportExcelDataAsync(task.ID, excelData, orgID, forceDelete); err != nil {
+			logger.L().Error("异步导入失败",
+				zap.String("task_id", task.ID),
+				zap.Error(err))
+		} else {
+			logger.L().Info("异步导入成功",
+				zap.String("task_id", task.ID))
+		}
+	}()
+}
+
+// getImportStatus 查询导入任务状态
+func (h *InquiryImportHandler) getImportStatus(c *gin.Context) {
+	const errTitle = "查询导入状态失败"
+	act := middleware.GetActor(c)
+	if act.Deleted != middleware.DeletedNo {
+		ForbiddenError(c, errTitle, "账户已删除，禁止操作")
+		return
+	}
+
+	var req struct {
+		TaskID string `json:"task_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, errTitle, "输入格式非法: "+err.Error())
+		return
+	}
+
+	// 查询任务
+	task, err := h.s.GetImportTask(req.TaskID)
+	if err != nil {
+		NotFoundError(c, errTitle, "任务不存在")
+		return
+	}
+
+	// 返回任务状态
+	response := gin.H{
+		"ok":               true,
+		"task_id":          task.ID,
+		"status":           task.Status,
+		"progress":         task.Progress,
+		"total_sheets":     task.TotalSheets,
+		"processed_sheets": task.ProcessedSheets,
+		"file_name":        task.FileName,
+		"created_at":       task.CreatedAt,
+		"updated_at":       task.UpdatedAt,
+	}
+
+	// 根据状态添加额外信息
+	switch task.Status {
+	case "success":
+		if task.InquiryID != "" {
+			response["inquiry_id"] = task.InquiryID
+		}
+		response["message"] = "导入成功"
+	case "failed":
+		if task.ErrorMessage != "" {
+			response["error_message"] = task.ErrorMessage
+		}
+		response["message"] = "导入失败"
+	case "processing":
+		response["message"] = "正在导入中..."
+	case "pending":
+		response["message"] = "等待处理"
+	}
+
+	c.JSON(http.StatusOK, response)
 }
