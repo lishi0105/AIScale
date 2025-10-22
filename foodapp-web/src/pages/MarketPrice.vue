@@ -90,19 +90,15 @@
             <el-table-column prop="UnitNameSnap" label="单位" width="100">
               <template #default="{ row }">{{ row.UnitNameSnap || '—' }}</template>
             </el-table-column>
-            <el-table-column label="市场报价" min-width="200">
+            <el-table-column 
+              v-for="market in markets" 
+              :key="market.ID"
+              :label="market.Name" 
+              width="120"
+              align="center"
+            >
               <template #default="{ row }">
-                <div v-if="markets.length > 0" class="market-prices">
-                  <div 
-                    v-for="market in markets" 
-                    :key="market.ID" 
-                    class="market-price-item"
-                  >
-                    <span class="market-name">{{ market.Name }}</span>
-                    <span class="market-price">{{ getMarketPrice(row, market.ID) }}</span>
-                  </div>
-                </div>
-                <span v-else>—</span>
+                {{ getMarketPrice(row, market.ID) }}
               </template>
             </el-table-column>
             <el-table-column prop="LastMonthAvgPrice" label="上期均价" width="110">
@@ -219,6 +215,7 @@ const categoryList = computed(() => {
 
 // 市场列表
 const markets = ref<any[]>([])
+const marketsFromListItems = ref<any[]>([])
 
 // 分页（明细）
 const handlePageChange = (p: number) => {
@@ -316,10 +313,12 @@ const fetchInquiryItems = async () => {
     inquiryItems.value = itemsResult.data?.items || []
     total.value = Number(itemsResult.data?.total || 0)
     markets.value = marketsResult.data?.markets || []
+    marketsFromListItems.value = itemsResult.data?.markets || []
     
     // 调试信息
     console.log('数据加载完成:', {
-      markets: markets.value,
+      marketsFromGetMarkets: markets.value,
+      marketsFromListItems: marketsFromListItems.value,
       inquiryItems: inquiryItems.value,
       firstItemMarkets: inquiryItems.value[0]?.MarketInquiries
     })
@@ -372,6 +371,11 @@ const formatPrice = (price?: number | null) => {
 // 根据市场ID获取商品在该市场的价格
 const getMarketPrice = (row: InquiryItemRow, marketId: string) => {
   if (!row.MarketInquiries || row.MarketInquiries.length === 0) {
+    console.log('没有市场报价:', {
+      goodsName: row.GoodsNameSnap,
+      marketId,
+      marketInquiries: row.MarketInquiries
+    })
     return '—'
   }
   
@@ -392,6 +396,7 @@ const getMarketPrice = (row: InquiryItemRow, marketId: string) => {
   
   return formatPrice(marketInquiry.Price)
 }
+
 
 // 初始化
 onMounted(() => {
@@ -494,30 +499,10 @@ onMounted(() => {
 }
 
 /* 市场报价样式 */
-.market-prices {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.market-price-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2px 8px;
-  background: #f8f9fa;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.market-name {
-  color: #666;
-  font-weight: 500;
-}
-
 .market-price {
   color: #e74c3c;
   font-weight: 600;
+  font-size: 14px;
 }
 
 .img-ph {
