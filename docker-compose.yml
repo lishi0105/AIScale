@@ -26,3 +26,24 @@ services:
       - ./sql:/docker-entrypoint-initdb.d:ro
       # 数据持久化
       - ./data/mariadb:/var/lib/mysql
+    networks: [appnet]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: foodapp:latest
+    container_name: foodapp
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "7380:7380"
+    volumes:
+    networks: [appnet]
+
+networks:
+  appnet: {}

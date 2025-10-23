@@ -39,3 +39,9 @@
 ├── go.mod
 └── .gitignore
 ```
+
+## docker构建
+```bash
+# 构建
+docker build -t foodapp-run:v1.0 .
+```
